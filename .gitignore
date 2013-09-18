@@ -1,4 +1,17 @@
-/*
-/.*
+# All ignore
+*
 
-!/.gitignore
+# allow directors
+!asm_functions/
+!boot/
+!include/
+
+# allow files
+!.gitignore
+!README*
+!Makefile
+!*.c
+!*.h
+!*.ld
+!*.mk
+!*.cfg
