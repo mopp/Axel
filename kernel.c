@@ -7,27 +7,16 @@
 #include <kernel.h>
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
-#include <stddef.h>
-#include <stdarg.h>
+#include <graphic_txt.h>
 
-static void putchar_txt(char);
-static void print_str_txt(const char*);
-static void init_screen_txt(void);
-static char* itoa(char*, char, uint32_t);
-static void printf_txt(const char*, ...);
+#include <stddef.h>
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, uint32_t, uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
 
-static int x_pos = 0, y_pos = 0;
-static uint16_t disp_attribute = (TEXTMODE_ATTR_BACK_COLOR_G | TEXTMODE_ATTR_FORE_COLOR_R);
-static volatile uint16_t* vram = (uint16_t*)TEXTMODE_VRAM_ADDR;
-
 void kernel_entry(Multiboot_info* boot_info) {
-    char buf[128] = {0};
-
     /* GDT初期化 */
     io_cli();
     init_gdt();
@@ -35,20 +24,13 @@ void kernel_entry(Multiboot_info* boot_info) {
     /* io_sti(); */
 
     /* 画面初期化 */
-    init_screen_txt();
+    clean_screen();
 
-    print_str_txt("Axel!\n\n");
-    print_str_txt("Print boot_info\n");
+    puts("Axel!\n\n");
+    puts("Print boot_info\n");
 
-    /* print_str_txt("Boot Loader Name: "); */
-    /* print_str_txt((char*)(boot_info->boot_loader_name)); */
-    printf_txt("Boot Loader Name: %s\n", (char*)(boot_info->boot_loader_name));
-    /* putchar_txt('\n'); */
-
-    print_str_txt("It is test message\n");
-    itoa(buf, 'x', boot_info->mmap_addr);
-    print_str_txt(buf);
-    putchar_txt('\n');
+    printf("Boot Loader Name: %s\n", (char*)(boot_info->boot_loader_name));
+    printf("%x\n", boot_info->mmap_addr);
 
     /*
      * Multiboot_memory_map* mmap = (Multiboot_memory_map*)(boot_info->mmap_addr);
@@ -154,132 +136,4 @@ static void init_idt(void) {
 
     /* set_gate_descriptor(idt + 21, IDT_GATE_TYPE_TRAP, (uint32_t)init_idt, 2, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT); */
     load_idtr(IDT_LIMIT, IDT_ADDR);
-}
-
-
-static void init_screen_txt(void) {
-    int i;
-    const int max = TEXTMODE_DISPLAY_MAX_X * TEXTMODE_DISPLAY_MAX_Y;
-
-    vram = (uint16_t*)TEXTMODE_VRAM_ADDR;
-
-    for (i = 0; i < max; ++i) {
-        /* 上1バイトが属性 */
-        /* 下1バイトが文字 */
-        vram[i] = (uint16_t)(disp_attribute | ' ');
-    }
-
-    x_pos = 0;
-    y_pos = 0;
-}
-
-
-/* テキストモードで改行を行う */
-static void nextline_txt(void) {
-    /* 改行 */
-    ++y_pos;
-    if (TEXTMODE_DISPLAY_MAX_Y <= y_pos) {
-        init_screen_txt();
-    }
-
-    x_pos = 0;
-
-    return;
-}
-
-
-/* テキストモードで一文字画面に表示する */
-static void putchar_txt(char c) {
-    if (c == '\n' || c == '\r') {
-        nextline_txt();
-        return;
-    }
-
-    vram[x_pos + y_pos * TEXTMODE_DISPLAY_MAX_X] = (disp_attribute | c);
-
-    ++x_pos;
-    if (TEXTMODE_DISPLAY_MAX_X <= x_pos) {
-        nextline_txt();
-    }
-
-    return;
-}
-
-
-static void print_str_txt(const char *str) {
-    while (*str != '\0') {
-        putchar_txt(*str++);
-    }
-    return;
-}
-
-
-static char* itoa(char* buf, char base, uint32_t num) {
-    int i, divisor = 16;
-
-    if (base == 'd') {
-        divisor = 10;
-    } else if (base == 'x') {
-        *buf++ = '0';
-        *buf++ = 'x';
-    }
-
-    int remainder;
-    do {
-        remainder = num % divisor;
-        buf[i++] = (remainder < 10) ? ('0' + remainder) : ('A' + remainder - 10);
-    } while (num /= divisor);
-
-    /* 終端子追加 */
-    buf[i] = '\0';
-
-    /* 反転 */
-    char *p1, *p2;
-    char tmp;
-    p1 = buf;
-    p2 = buf + i - 1;
-    while (p1 < p2) {
-        tmp = *p1;
-        *p1 = *p2;
-        *p2 = tmp;
-
-        p1++;
-        p2--;
-    }
-
-    return buf;
-}
-
-
-void printf_txt(const char* format, ...) {
-    va_list args;
-
-    va_start(args, format);
-
-    for (const char* c = format; *c!= '\0'; ++c) {
-        if (*c != '%') {
-            putchar_txt(*c);
-            continue;
-        }
-
-        ++c;
-        switch (*c) {
-            case '\n':
-                putchar_txt('\n');
-            case 's':
-                print_str_txt(va_arg(args, const char*));
-                break;
-            case 'd':
-            case 'x':
-                { // add local scope
-                    /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
-                    char buf[10];
-                    itoa(buf, *c, va_arg(args, const int));
-                    print_str_txt(buf);
-                    break;
-                }
-        }
-    }
-
-    va_end(args);
 }
