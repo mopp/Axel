@@ -4,6 +4,9 @@
  *              assembly only fanctions
  ************************************************************/
 
+#ifndef ASM_FUNCTIONS_H
+#define ASM_FUNCTIONS_H
+
 extern void io_cli(void);
 extern void io_sti(void);
 extern void io_hlt(void);
@@ -19,3 +22,5 @@ extern void io_out32(int port, int data);
 extern void load_gdtr(int, int);
 extern void load_idtr(int, int);
 extern void change_segment_selectors(int);
+
+#endif
