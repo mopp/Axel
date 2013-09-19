@@ -3,8 +3,8 @@
  * Description: Multiboot Standerd Structures
  ************************************************************/
 
-#ifndef MULTIBOOT_STRUCTS
-#define MULTIBOOT_STRUCTS 1
+#ifndef MULTIBOOT_STRUCTS_H
+#define MULTIBOOT_STRUCTS_H 1
 
 #include <stdint.h>
 

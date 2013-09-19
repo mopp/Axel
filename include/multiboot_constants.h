@@ -3,8 +3,8 @@
  * Description: Multiboot Standerd Constants
  ************************************************************/
 
-#ifndef MULTIBOOT_CONSTANTS
-#define MULTIBOOT_CONSTANTS 1
+#ifndef MULTIBOOT_CONSTANTS_H
+#define MULTIBOOT_CONSTANTS_H 1
 
 /* XXX 以降はアセンブラで使うためenum化しないこと */
 #define DISPLAY_MAX_X      320
