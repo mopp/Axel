@@ -1,12 +1,7 @@
 export AXEL_ROOT_DIR	:= $(shell pwd)/
 include globals.mk
 
-SUBDIRS 		:= ./asm_functions/ ./boot/
-
 CC 				:= $(GCC) -fno-builtin -ffreestanding -Wall -Wextra -std=c11
-KERNEL_HEADER	:= $(AXEL_INCLUDE_PATH)kernel.h
-KERNEL_SRC 		:= kernel.c
-KERNEL_OBJ 		:= kernel.o
 KERNEL_LNK	 	:= kernel.ld
 KERNEL_MAP	 	:= kernel.map
 
@@ -18,23 +13,27 @@ ASM_FUNC_DIR	:= ./asm_functions/
 
 LD 				:= $(GCC) -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP)
 # XXX 順序に注意
-LINK_OBJS 		:= $(BOOT_OBJ) string.o graphic_txt.o $(KERNEL_OBJ) $(ASM_FUNC_DIR)$(LIB_ASM)
+LINK_OBJS 		:= $(BOOT_OBJ) string.o graphic_txt.o kernel.o $(ASM_FUNC_DIR)$(LIB_ASM)
 
 AXEL_BIN 		:= axel.bin
 ISO_NAME 		:= axel.iso
 ISO_DIR 		:= iso_dir
 
+SUBDIRS 		:= $(BOOT_DIR) $(ASM_FUNC_DIR)
+
+
 .c.o:
 	$(CC) -c $< -o $@
+
 
 default :
 	make all
 	make $(ISO_NAME)
 	ctags -R ./*
 
-string.o		: string.c $(AXEL_INCLUDE_PATH)string.h $(MAKEFILE)
-graphic_txt.o	: graphic_txt.c $(AXEL_INCLUDE_PATH)graphic_txt.h $(MAKEFILE)
-kernel.o 		: kernel.c $(KERNEL_HEADER) $(MAKEFILE)
+string.o		: string.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
+graphic_txt.o	: graphic_txt.c $(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
+kernel.o 		: kernel.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h
 
 $(BOOT_OBJ) : $(MAKEFILE)
 	make -C $(BOOT_DIR)
