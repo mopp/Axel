@@ -18,19 +18,23 @@ ASM_FUNC_DIR	:= ./asm_functions/
 
 LD 				:= $(GCC) -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP)
 # XXX 順序に注意
-LINK_OBJS 		:= $(BOOT_OBJ)  $(KERNEL_OBJ) $(ASM_FUNC_DIR)$(LIB_ASM)
+LINK_OBJS 		:= $(BOOT_OBJ) string.o graphic_txt.o $(KERNEL_OBJ) $(ASM_FUNC_DIR)$(LIB_ASM)
 
 AXEL_BIN 		:= axel.bin
 ISO_NAME 		:= axel.iso
 ISO_DIR 		:= iso_dir
+
+.c.o:
+	$(CC) -c $< -o $@
 
 default :
 	make all
 	make $(ISO_NAME)
 	ctags -R ./*
 
-$(KERNEL_OBJ) : $(MAKEFILE) $(KERNEL_SRC) $(KERNEL_HEADER)
-	$(CC) -c $(KERNEL_SRC) -o $@
+string.o		: string.c $(AXEL_INCLUDE_PATH)string.h $(MAKEFILE)
+graphic_txt.o	: graphic_txt.c $(AXEL_INCLUDE_PATH)graphic_txt.h $(MAKEFILE)
+kernel.o 		: kernel.c $(KERNEL_HEADER) $(MAKEFILE)
 
 $(BOOT_OBJ) : $(MAKEFILE)
 	make -C $(BOOT_DIR)
