@@ -7,13 +7,15 @@
 #include <kernel.h>
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
-#include <stdbool.h>
-#include <stdlib.h>
+#include <stddef.h>
+#include <stdarg.h>
 
 static void putchar_txt(char);
 static void print_str_txt(const char*);
 static void init_screen_txt(void);
 static char* itoa(char*, char, uint32_t);
+static void printf_txt(const char*, ...);
+
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, uint32_t, uint16_t, uint8_t, uint8_t, uint8_t);
@@ -38,13 +40,20 @@ void kernel_entry(Multiboot_info* boot_info) {
     print_str_txt("Axel!\n\n");
     print_str_txt("Print boot_info\n");
 
-    print_str_txt("Boot Loader Name: ");
-    print_str_txt((char*)(boot_info->boot_loader_name));
-    putchar_txt('\n');
+    /* print_str_txt("Boot Loader Name: "); */
+    /* print_str_txt((char*)(boot_info->boot_loader_name)); */
+    printf_txt("Boot Loader Name: %s\n", (char*)(boot_info->boot_loader_name));
+    /* putchar_txt('\n'); */
 
-    print_str_txt("\n\nIt is test message\n");
+    print_str_txt("It is test message\n");
     itoa(buf, 'x', boot_info->mmap_addr);
     print_str_txt(buf);
+    putchar_txt('\n');
+
+    /*
+     * Multiboot_memory_map* mmap = (Multiboot_memory_map*)(boot_info->mmap_addr);
+     * printf_txt("this is %x\n", mmap->size);
+     */
 
     for(;;) {
         io_hlt();
@@ -239,4 +248,38 @@ static char* itoa(char* buf, char base, uint32_t num) {
     }
 
     return buf;
+}
+
+
+void printf_txt(const char* format, ...) {
+    va_list args;
+
+    va_start(args, format);
+
+    for (const char* c = format; *c!= '\0'; ++c) {
+        if (*c != '%') {
+            putchar_txt(*c);
+            continue;
+        }
+
+        ++c;
+        switch (*c) {
+            case '\n':
+                putchar_txt('\n');
+            case 's':
+                print_str_txt(va_arg(args, const char*));
+                break;
+            case 'd':
+            case 'x':
+                { // add local scope
+                    /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
+                    char buf[10];
+                    itoa(buf, *c, va_arg(args, const int));
+                    print_str_txt(buf);
+                    break;
+                }
+        }
+    }
+
+    va_end(args);
 }
