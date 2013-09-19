@@ -3,7 +3,7 @@ include globals.mk
 
 SUBDIRS 		:= ./asm_functions/ ./boot/
 
-CC 				:= $(GCC) -ffreestanding -Wall -Wextra -std=c11
+CC 				:= $(GCC) -fno-builtin -ffreestanding -Wall -Wextra -std=c11
 KERNEL_HEADER	:= $(AXEL_INCLUDE_PATH)kernel.h
 KERNEL_SRC 		:= kernel.c
 KERNEL_OBJ 		:= kernel.o
