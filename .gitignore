@@ -10,6 +10,7 @@
 !.gitignore
 !README*
 !Makefile
+!*.asm
 !*.c
 !*.h
 !*.ld
