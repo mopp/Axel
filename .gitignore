@@ -2,8 +2,8 @@
 *
 
 # allow directors
-!asm_functions/
-!boot/
+!src/
+!src/boot/
 !include/
 
 # allow files
