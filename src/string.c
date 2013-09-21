@@ -10,8 +10,8 @@ extern int putchar(int c);
 
 /* 数字を文字に変換 TODO: 負の数に対応 */
 char* itoa(char* buf, char base, int32_t num) {
-    int i, divisor = 16;
-    // 接頭辞をつけて、正しく返すため別のポインタで操作する
+    int i = 0, divisor = 16;
+    /* 接頭辞をつけて、正しく返すため別のポインタで操作する */
     char* local_buf = buf;
 
     if (base == 'd') {
