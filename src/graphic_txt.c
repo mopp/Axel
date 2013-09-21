@@ -7,12 +7,15 @@
 #include <stdarg.h>
 #include <string.h>
 
+
 static inline void newline(void);
+
 
 // text mode video ram
 static volatile uint16_t* vram = (uint16_t*)TEXTMODE_VRAM_ADDR;
 static int x_pos = 0, y_pos = 0;
 static uint16_t disp_attribute = (TEXTMODE_ATTR_BACK_COLOR_G | TEXTMODE_ATTR_FORE_COLOR_R);
+
 
 /* 画面を初期化する */
 void clean_screen(void) {
@@ -78,7 +81,7 @@ void printf(const char* format, ...) {
             case 'x':
                 { // add local scope
                     /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
-                    char buf[10] = {0}; // zero clear
+                    char buf[10];
                     puts(itoa(buf, *c, va_arg(args, int)));
                     break;
                 }
