@@ -8,13 +8,15 @@
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
 #include <graphic_txt.h>
-
 #include <stddef.h>
+
+#define IS_FLAG_NOT_ZERO(x) ((x != 0) ? 1 : 0)
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, uint32_t, uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
+
 
 void kernel_entry(Multiboot_info* boot_info) {
     /* GDT初期化 */
@@ -32,11 +34,6 @@ void kernel_entry(Multiboot_info* boot_info) {
     printf("Boot Loader Name: %s\n", (char*)(boot_info->boot_loader_name));
     printf("%x\n", boot_info->mmap_addr);
     printf("%d\n",-100);
-
-    /*
-     * Multiboot_memory_map* mmap = (Multiboot_memory_map*)(boot_info->mmap_addr);
-     * printf_txt("this is %x\n", mmap->size);
-     */
 
     for(;;) {
         io_hlt();
@@ -83,9 +80,9 @@ static Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_
     /* 0で予約されている */
     s->zero_reserved = 0;
     /* 扱う単位を16bitか32bitか設定 */
-    s->default_op_size = (op_flag != 0) ? (1) : (0);
+    s->default_op_size = IS_FLAG_NOT_ZERO(op_flag);
     /* セグメントサイズを4KB単位とする */
-    s->granularity_flag = (g_flag != 0) ? (1) : (0);
+    s->granularity_flag = IS_FLAG_NOT_ZERO(g_flag);
 
     return s;
 }
@@ -121,7 +118,7 @@ static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_typ
     /* 特権レベルを設定 */
     g->plivilege_level = pliv;
 
-    g->present_flag = p_flag;
+    g->present_flag = IS_FLAG_NOT_ZERO(p_flag);
 
     return g;
 }
@@ -130,7 +127,7 @@ static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_typ
 static void init_idt(void) {
     Gate_descriptor *idt = (Gate_descriptor*)IDT_ADDR;
 
-    /* 全セグメントを初期化 */
+    /* 全ゲートディスクリプタ初期化を初期化 */
     for (int i = 0; i < IDT_MAX_NUM; ++i) {
         set_gate_descriptor(idt + i, 0, 0, 0, 0, 0, 0);
     }
