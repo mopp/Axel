@@ -31,6 +31,7 @@ void kernel_entry(Multiboot_info* boot_info) {
 
     printf("Boot Loader Name: %s\n", (char*)(boot_info->boot_loader_name));
     printf("%x\n", boot_info->mmap_addr);
+    printf("%d\n",-100);
 
     /*
      * Multiboot_memory_map* mmap = (Multiboot_memory_map*)(boot_info->mmap_addr);
