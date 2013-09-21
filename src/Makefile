@@ -1,45 +1,62 @@
-export AXEL_ROOT_DIR	:= $(shell pwd)/
 include globals.mk
 
-CC 				:= $(GCC) -fno-builtin -ffreestanding -Wall -Wextra -std=c11
-KERNEL_LNK	 	:= kernel.ld
-KERNEL_MAP	 	:= kernel.map
+AXEL_ROOT_DIR		:= $(shell pwd)/../
+AXEL_INCLUDE_PATH 	:= $(AXEL_ROOT_DIR)include/
 
-BOOT_DIR		:= ./boot/
-BOOT_OBJ 		:= $(BOOT_DIR)multiboot.o
-GRUB_CONFIG 	:= $(BOOT_DIR)grub.cfg
+# files
+MAKEFILE 			:= Makefile
 
-ASM_FUNC_DIR	:= ./asm_functions/
+AXEL_BIN 			:= axel.bin
+ISO_NAME 			:= axel.iso
+ISO_DIR 			:= iso_dir
 
-LD 				:= $(GCC) -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP)
+BOOT_DIR			:= ./boot/
+BOOT_OBJ 			:= $(BOOT_DIR)multiboot.o
+GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
+KERNEL_LNK			:= kernel.ld
+KERNEL_MAP			:= kernel.map
 # XXX 順序に注意
-LINK_OBJS 		:= $(BOOT_OBJ) string.o graphic_txt.o kernel.o $(ASM_FUNC_DIR)$(LIB_ASM)
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o string.o graphic_txt.o kernel.o
 
-AXEL_BIN 		:= axel.bin
-ISO_NAME 		:= axel.iso
-ISO_DIR 		:= iso_dir
+SUBDIRS 			:= $(BOOT_DIR)
 
-SUBDIRS 		:= $(BOOT_DIR) $(ASM_FUNC_DIR)
+# CC          C compiler command
+# CFLAGS      C compiler flags
+# LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a nonstandard directory <lib dir>
+# LIBS        libraries to pass to the linker, e.g. -l<library>
+# CPPFLAGS    C/C++/Objective C preprocessor flags, e.g. -I<include dir> if you have headers in a nonstandard directory <include dir>
+# CXX         C++ compiler command
+# CXXFLAGS    C++ compiler flags
+CPPFLAGS			:= -I$(AXEL_INCLUDE_PATH) -I$(TOOL_PATH)include/ -L$(TOOL_PATH)lib/
+CFLAGS				:= -fno-builtin -ffreestanding -Wall -Wextra -std=c11
+LIBS				:= -lgcc
+LDFLAGS				:= -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
+CC 					:= $(GCC) $(CFLAGS) $(CPPFLAGS)
+LD 					:= $(GCC)
 
 
+
+# 一般生成規則
+.SUFFIXES: .c .o .asm
 .c.o:
 	$(CC) -c $< -o $@
-
+.asm.o:
+	$(NASM) -l $*.lst -o $@ $<
 
 default :
 	make all
-	make $(ISO_NAME)
 	ctags -R ./*
 
-string.o		: string.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
-graphic_txt.o	: graphic_txt.c $(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
-kernel.o 		: kernel.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h
+asm_functions.o 	: asm_functions.asm 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)asm_functions.h
+string.o			: string.c 				$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
+graphic_txt.o		: graphic_txt.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
+kernel.o			: kernel.c 				$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h
 
 $(BOOT_OBJ) : $(MAKEFILE)
 	make -C $(BOOT_DIR)
 
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(LINK_OBJS)
-	$(LD) -nostdlib -ffreestanding -lgcc $(LINK_OBJS) -o $@
+	$(LD) $(LDFLAGS) $(LINK_OBJS) -o $@
 
 $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	mkdir -p $(ISO_DIR)/boot/grub
@@ -52,6 +69,7 @@ all: $(SUBDIRS)
 	@for dir in $(SUBDIRS) ; do \
 		($(MAKE) -C $$dir); \
 		done
+	make $(ISO_NAME)
 
 .PHONY: clean
 clean:
