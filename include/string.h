@@ -6,7 +6,9 @@
 #ifndef STRING_H
 #define STRING_H
 
-char* itoa(char*, char, uint32_t);
-uint32_t strlen(const char*);
+#include <stddef.h>
+
+char* itoa(char*, char, int32_t);
+size_t strlen(const char*);
 
 #endif

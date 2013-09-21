@@ -78,9 +78,8 @@ void printf(const char* format, ...) {
             case 'x':
                 { // add local scope
                     /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
-                    char buf[10];
-                    itoa(buf, *c, va_arg(args, const int));
-                    puts(buf);
+                    char buf[10] = {0}; // zero clear
+                    puts(itoa(buf, *c, va_arg(args, int)));
                     break;
                 }
         }
