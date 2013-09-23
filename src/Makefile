@@ -76,7 +76,7 @@ clean:
 	@for dir in $(SUBDIRS) ; do \
 		($(MAKE) -C $$dir clean); \
 		done
-	$(RM) *.o *.bin *.iso *.map $(ISO_DIR) tags
+	$(RM) *.o *.bin *.iso *.map *.lst $(ISO_DIR) tags
 	ctags -R ./*
 
 .PHONY: run
