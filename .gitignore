@@ -2,9 +2,9 @@
 *
 
 # allow directors
-!src/
-!src/boot/
-!include/
+!/src/
+!/src/boot/
+!/include/
 
 # allow files
 !.gitignore
