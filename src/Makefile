@@ -28,7 +28,7 @@ SUBDIRS 			:= $(BOOT_DIR)
 # CXX         C++ compiler command
 # CXXFLAGS    C++ compiler flags
 CPPFLAGS			:= -I$(AXEL_INCLUDE_PATH) -I$(TOOL_PATH)include/ -L$(TOOL_PATH)lib/
-CFLAGS				:= -fno-builtin -ffreestanding -Wall -Wextra -std=c11
+CFLAGS				:= -fno-builtin -nostdlib -mno-red-zone -ffreestanding -nostdinc -fno-stack-protector -Wall -Wextra -std=c11
 LIBS				:= -lgcc
 LDFLAGS				:= -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
 CC 					:= $(GCC) $(CFLAGS) $(CPPFLAGS)

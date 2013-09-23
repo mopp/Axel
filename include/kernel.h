@@ -87,7 +87,7 @@ enum GDT_constants {
 };
 
 
-/* Interrupt Gate Descriptor Table*/
+/* Interrupt Gate Descriptor Table */
 struct gate_descriptor {
     /* 割り込みハンドラへのオフセット */
     uint16_t        offset_low;
@@ -125,6 +125,40 @@ enum IDT_constants {
 
     IDT_PRESENT             = 1,
     IDT_NOT_PRESENT         = 0,
+};
+
+
+/* Programmable Interrupt Controller */
+enum PIC_constants {
+    /* PIC Port Address */
+    PIC0_CMD_STATE_PORT     = 0x0020,
+    PIC1_CMD_STATE_PORT     = 0x00A0,
+    PIC0_IMR_DATA_PORT      = 0x0021,
+    PIC1_IMR_DATA_PORT      = 0x00A1,
+
+    /* Initialization Control Words */
+    PIC0_ICW1               = 0x11,
+    PIC0_ICW2               = 0x20,
+    PIC0_ICW3               = 0x04,
+    PIC0_ICW4               = 0x01,
+    PIC1_ICW1               = 0x11,
+    PIC1_ICW2               = 0x28,
+    PIC1_ICW3               = 0x02,
+    PIC1_ICW4               = 0x01,
+
+    /* Operation Command Words */
+    PIC0_OCW2               = 0x60,
+    PIC1_OCW2               = 0x60,
+
+    PIC_IMR_MASK_IRQ0       = 0x01,
+    PIC_IMR_MASK_IRQ1       = 0x02,
+    PIC_IMR_MASK_IRQ2       = 0x04,
+    PIC_IMR_MASK_IRQ3       = 0x08,
+    PIC_IMR_MASK_IRQ4       = 0x10,
+    PIC_IMR_MASK_IRQ5       = 0x20,
+    PIC_IMR_MASK_IRQ6       = 0x40,
+    PIC_IMR_MASK_IRQ7       = 0x80,
+    PIC_IMR_MASK_IRQ_ALL    = 0xFF,
 };
 
 #endif

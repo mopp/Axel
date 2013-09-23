@@ -33,7 +33,7 @@ io_sti:
     ret
 
 
-; int io_in8(int port);
+; uint8_t io_in8(uint16_t port);
 io_in8:
     mov EDX, [ESP + 4] ; port
     mov EAX, 0
@@ -41,7 +41,7 @@ io_in8:
     ret
 
 
-; int io_in16(int port);
+; uint16_t io_in16(uint16_t port);
 io_in16:
     mov EDX, [ESP + 4] ; port
     mov EAX, 0
@@ -49,7 +49,7 @@ io_in16:
     ret
 
 
-; int io_in32(int port);
+; uint32_t io_in32(uint16_t port);
 io_in32:
     mov EDX, [ESP + 4] ; port
     mov EAX, 0
@@ -57,7 +57,7 @@ io_in32:
     ret
 
 
-; void io_out8(int port, int data);
+; void io_out8(uint16_t port, uint8_t data);
 io_out8:
     mov EDX, [ESP + 4]  ; port
     mov AL, [ESP + 8]   ; data
@@ -65,7 +65,7 @@ io_out8:
     ret
 
 
-; void io_out16(int port, int data);
+; void io_out16(uint16_t port, uint16_t data);
 io_out16:
     mov EDX, [ESP + 4]  ; port
     mov EAX, [ESP + 8]  ; data
@@ -73,7 +73,7 @@ io_out16:
     ret
 
 
-; void io_out32(int port, int data);
+; void io_out32(uint16_t port, uint32_t data);
 io_out32:
     mov EDX, [ESP + 4]  ; port
     mov EAX, [ESP + 8]  ; data
