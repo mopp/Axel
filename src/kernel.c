@@ -16,6 +16,7 @@ static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t,
 static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, uint32_t, uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
+static void init_pic(void);
 
 
 void kernel_entry(Multiboot_info* boot_info) {
@@ -23,7 +24,8 @@ void kernel_entry(Multiboot_info* boot_info) {
     io_cli();
     init_gdt();
     init_idt();
-    /* io_sti(); */
+    init_pic();
+    io_sti();
 
     /* 画面初期化 */
     clean_screen();
@@ -96,8 +98,10 @@ static void init_gdt(void) {
         set_segment_descriptor(gdt + i, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
+    // 全アドレス空間を指定
     set_segment_descriptor(gdt + 1, 0xffffffff, 0x00000000, GDT_TYPE_CODE_EXR, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
     set_segment_descriptor(gdt + 2, 0xffffffff, 0x00000000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
+    /* set_segment_descriptor(gdt + 2, 0x00020000, 0x00010000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB); */
 
     load_gdtr(GDT_LIMIT, GDT_ADDR);
     change_segment_selectors(0x10);
@@ -134,4 +138,25 @@ static void init_idt(void) {
 
     /* set_gate_descriptor(idt + 21, IDT_GATE_TYPE_TRAP, (uint32_t)init_idt, 2, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT); */
     load_idtr(IDT_LIMIT, IDT_ADDR);
+}
+
+static void init_pic(void) {
+    /* 全割り込みを受けない */
+    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
+    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
+
+    /* Master */
+    io_out8(PIC0_CMD_STATE_PORT, PIC0_ICW1);
+    io_out8(PIC0_IMR_DATA_PORT,  PIC0_ICW2);
+    io_out8(PIC0_IMR_DATA_PORT,  PIC0_ICW3);
+    io_out8(PIC0_IMR_DATA_PORT,  PIC0_ICW4);
+
+    /* Slave */
+    io_out8(PIC1_CMD_STATE_PORT, PIC1_ICW1);
+    io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW2);
+    io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW3);
+    io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW4);
+
+    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & ~(PIC_IMR_MASK_IRQ2)); /* 11111011 PIC1以外は全て禁止 */
+    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL); /* 11111111 全ての割り込みを受け付けない */
 }
