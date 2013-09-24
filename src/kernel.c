@@ -17,14 +17,15 @@ static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, uint32_t, uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
 static void init_pic(void);
+static void init_pit(void);
 
 
 void kernel_entry(Multiboot_info* boot_info) {
-    /* GDT初期化 */
     io_cli();
     init_gdt();
     init_idt();
     init_pic();
+    init_pit();
     io_sti();
 
     /* 画面初期化 */
@@ -157,6 +158,15 @@ static void init_pic(void) {
     io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW3);
     io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW4);
 
-    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & ~(PIC_IMR_MASK_IRQ2)); /* 11111011 PIC1以外は全て禁止 */
-    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL); /* 11111111 全ての割り込みを受け付けない */
+    /* IRQ2以外の割り込みを受け付けない */
+    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & ~(PIC_IMR_MASK_IRQ2));
+    /* 全割り込みを受け付けない */
+    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
+}
+
+
+static void init_pit(void) {
+    io_out8(PIT_PORT_CONTROL, PIT_ICW);
+    io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_LOW);
+    io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
 }

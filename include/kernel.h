@@ -161,4 +161,22 @@ enum PIC_constants {
     PIC_IMR_MASK_IRQ_ALL    = 0xFF,
 };
 
+
+/* Programmable Interval Timer */
+enum PIT_constants {
+    PIT_PORT_COUNTER0       = 0x40,
+    PIT_PORT_COUNTER1       = 0x41,
+    PIT_PORT_COUNTER2       = 0x42,
+    PIT_PORT_CONTROL        = 0x43,
+
+    /* 制御コマンド */
+    PIT_ICW                 = 0x34,
+
+    /* カウンター値 */
+    /* 1193182 / 100 Hz */
+    PIT_COUNTER_VALUE_HIGH  = 0x2E,
+    PIT_COUNTER_VALUE_LOW   = 0x9C,
+};
+static const double PIT_CLOCK = 1193181.67;
+
 #endif
