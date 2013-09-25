@@ -1,6 +1,6 @@
 ;---------------------------------------------------------------------
 ; vim:ft=nasm:foldmethod=marker
-; File: asm_functions/functions.asm
+; File: src/asm_functions.asm
 ; Description:
 ;       It provides some assembly only functions to call those in C.
 ;---------------------------------------------------------------------

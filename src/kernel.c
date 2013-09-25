@@ -8,6 +8,7 @@
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
 #include <graphic_txt.h>
+#include <interrupt_handler.h>
 #include <stddef.h>
 
 #define IS_FLAG_NOT_ZERO(x) ((x != 0) ? 1 : 0)
@@ -21,15 +22,15 @@ static void init_pit(void);
 
 
 void kernel_entry(Multiboot_info* boot_info) {
+    /* 画面初期化 */
+    clean_screen();
+
     io_cli();
     init_gdt();
     init_idt();
     init_pic();
     init_pit();
     io_sti();
-
-    /* 画面初期化 */
-    clean_screen();
 
     puts("Axel!\n\n");
     puts("Print boot_info\n");
@@ -102,7 +103,6 @@ static void init_gdt(void) {
     // 全アドレス空間を指定
     set_segment_descriptor(gdt + 1, 0xffffffff, 0x00000000, GDT_TYPE_CODE_EXR, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
     set_segment_descriptor(gdt + 2, 0xffffffff, 0x00000000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
-    /* set_segment_descriptor(gdt + 2, 0x00020000, 0x00010000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB); */
 
     load_gdtr(GDT_LIMIT, GDT_ADDR);
     change_segment_selectors(0x10);
@@ -137,7 +137,7 @@ static void init_idt(void) {
         set_gate_descriptor(idt + i, 0, 0, 0, 0, 0, 0);
     }
 
-    /* set_gate_descriptor(idt + 21, IDT_GATE_TYPE_TRAP, (uint32_t)init_idt, 2, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT); */
+    set_gate_descriptor(idt + 20, IDT_GATE_TYPE_TRAP, (uint32_t)asm_interrupt_handler0x20, 1, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
     load_idtr(IDT_LIMIT, IDT_ADDR);
 }
 

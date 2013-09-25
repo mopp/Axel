@@ -131,10 +131,10 @@ enum IDT_constants {
 /* Programmable Interrupt Controller */
 enum PIC_constants {
     /* PIC Port Address */
-    PIC0_CMD_STATE_PORT     = 0x0020,
-    PIC1_CMD_STATE_PORT     = 0x00A0,
-    PIC0_IMR_DATA_PORT      = 0x0021,
-    PIC1_IMR_DATA_PORT      = 0x00A1,
+    PIC0_CMD_STATE_PORT     = 0x20,
+    PIC1_CMD_STATE_PORT     = 0xA0,
+    PIC0_IMR_DATA_PORT      = 0x21,
+    PIC1_IMR_DATA_PORT      = 0xA1,
 
     /* Initialization Control Words */
     PIC0_ICW1               = 0x11,
@@ -146,7 +146,7 @@ enum PIC_constants {
     PIC1_ICW3               = 0x02,
     PIC1_ICW4               = 0x01,
 
-    /* Operation Command Words */
+    /* Operation Command Words2 */
     PIC0_OCW2               = 0x60,
     PIC1_OCW2               = 0x60,
 
