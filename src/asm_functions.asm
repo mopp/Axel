@@ -100,7 +100,7 @@ load_idtr:
 
 ; void change_segment_selectors(int data_segment);
 change_segment_selectors:
-    jmp 5 * 0x08:.jmp_point
+    jmp 0x08:.jmp_point
 .jmp_point:
     mov AX, [ESP + 4]
     mov ES, AX
