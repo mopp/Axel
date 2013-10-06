@@ -30,18 +30,18 @@ section .text
 
 
 asm_interrupt_handler0x20:
-    ; handler_template interrupt_handler0x20
-    push    ES
-    push    DS
     pushad
-    mov     EAX,ESP
-    push    EAX
-    mov     AX,SS
-    mov     DS,AX
-    mov     ES,AX
-    call    interrupt_handler0x20
-    pop     EAX
+    push    ds
+    push    es
+    push    fs
+    push    gs
+
+    call interrupt_handler0x20
+
+    pop gs
+    pop fs
+    pop es
+    pop ds
     popad
-    pop     DS
-    pop     ES
-    iretd
+
+    iret

@@ -28,9 +28,9 @@ SUBDIRS 			:= $(BOOT_DIR)
 # CXX         C++ compiler command
 # CXXFLAGS    C++ compiler flags
 CPPFLAGS			:= -I$(AXEL_INCLUDE_PATH) -I$(TOOL_PATH)include/ -L$(TOOL_PATH)lib/
-CFLAGS				:= -fno-builtin -nostdlib -mno-red-zone -ffreestanding -nostdinc -fno-stack-protector -Wall -Wextra -std=c11
+CFLAGS				:= -g -Wall -Wextra -std=c11 -fno-builtin -nostdlib -mno-red-zone -ffreestanding -nostdinc -fno-stack-protector
 LIBS				:= -lgcc
-LDFLAGS				:= -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
+LDFLAGS				:= -g -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
 CC 					:= $(GCC) $(CFLAGS) $(CPPFLAGS)
 LD 					:= $(GCC)
 
@@ -84,3 +84,7 @@ clean:
 .PHONY: run
 run : $(MAKEFILE) $(ISO_NAME)
 	$(QEMU_EXE) -cdrom $(ISO_NAME)
+
+.PHONY: kernel_run
+kernel_run : $(MAKEFILE) $(AXEL_BIN)
+	$(QEMU_EXE) -kernel $(AXEL_BIN)

@@ -48,8 +48,8 @@ enum GDT_constants {
 
     /* セグメントレジスタは16bitで指す先は8byteの要素が配列として並ぶ */
     GDT_ELEMENT_SIZE        = 8,
-    GDT_LIMIT               = 0xFFFF,
-    GDT_MAX_NUM             = GDT_LIMIT / GDT_ELEMENT_SIZE,
+    GDT_MAX_NUM             = 8192,
+    GDT_LIMIT               = GDT_ELEMENT_SIZE * GDT_MAX_NUM - 1,
 
     GDT_TYPE_DATA_R         = 0x00, // Read-Only
     GDT_TYPE_DATA_RA        = 0x01, // Read-Only, accessed
@@ -94,10 +94,10 @@ struct gate_descriptor {
     /* 割り込みハンドラの属するセグメント CSレジスタへ設定される値 */
     uint16_t        segment_selector;
     /* 3つのゲートディスクリプタ的に0で固定して良さそう */
-    unsigned int    unused_zero     : 7;
+    uint8_t         unused_zero;
     /* 3つのうちどのゲートディスクリプタか */
     unsigned int    type            : 3;
-    unsigned int    size            : 2;
+    unsigned int    size            : 1;
     unsigned int    zero_reserved   : 1;
     unsigned int    plivilege_level : 2;
     unsigned int    present_flag    : 1;
@@ -107,16 +107,16 @@ typedef struct gate_descriptor Gate_descriptor;
 _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.");
 
 enum IDT_constants {
-    IDT_ADDR                = GDT_ADDR + GDT_LIMIT + 1,
+    IDT_ADDR                = 0x0026f800,
     IDT_MAX_NUM             = 256,
-    IDT_LIMIT               = IDT_MAX_NUM * 8,
+    IDT_LIMIT               = IDT_MAX_NUM * 8 - 1,
 
     IDT_GATE_TYPE_TASK      = 0x05,
     IDT_GATE_TYPE_INTERRUPT = 0x06,
     IDT_GATE_TYPE_TRAP      = 0x07,
 
-    IDT_GATE_SIZE_16 = 0x00,
-    IDT_GATE_SIZE_32 = 0x01,
+    IDT_GATE_SIZE_16        = 0x00,
+    IDT_GATE_SIZE_32        = 0x01,
 
     IDT_RING0               = 0x00,
     IDT_RING1               = 0x01,
@@ -137,14 +137,18 @@ enum PIC_constants {
     PIC1_IMR_DATA_PORT      = 0xA1,
 
     /* Initialization Control Words */
+    /* PICの設定 */
     PIC0_ICW1               = 0x11,
+    /* IRQから割り込みベクタへの変換されるベースアドレス
+     * x86では3-7bitを使用 */
     PIC0_ICW2               = 0x20,
     PIC0_ICW3               = 0x04,
     PIC0_ICW4               = 0x01,
-    PIC1_ICW1               = 0x11,
+
+    PIC1_ICW1               = PIC0_ICW1,
     PIC1_ICW2               = 0x28,
     PIC1_ICW3               = 0x02,
-    PIC1_ICW4               = 0x01,
+    PIC1_ICW4               = PIC0_ICW4,
 
     /* Operation Command Words2 */
     PIC0_OCW2               = 0x60,
@@ -171,6 +175,7 @@ enum PIT_constants {
 
     /* 制御コマンド */
     PIT_ICW                 = 0x34,
+    /* PIT_ICW                 = 0x36, */
 
     /* カウンター値 */
     /* 1193182 / 100 Hz */

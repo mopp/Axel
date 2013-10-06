@@ -5,8 +5,8 @@ TOOL_PATH 			:= /home/mopp/.mopp/
 
 # command
 RM 					:= rm -rf
-GCC					:= i686-elf-gcc
+GCC					:= i686-elf-gcc -g
 NASM 				:= nasm -f elf32
 AR					:= i686-elf-ar
 RANLIB				:= i686-elf-ranlib
-QEMU_EXE 			:= qemu-system-x86_64 -monitor stdio -vga std
+QEMU_EXE 			:= qemu-system-x86_64 -monitor stdio -vga std -s
