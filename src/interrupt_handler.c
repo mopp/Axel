@@ -15,5 +15,5 @@ void interrupt_handler0x20(uint32_t* esp) {
     /* io_out8(PIC1_CMD_STATE_PORT, 0x20); */
 
     printf("Call interrupt_handler0x20\n");
-    printf("esp is %x", esp);
+    printf("esp is %x\n", esp);
 }
