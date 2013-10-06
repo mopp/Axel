@@ -52,7 +52,7 @@ boot_kernel:
     push EBX
     call kernel_entry
 
-    sti
+    ; sti
 .sleep:
     hlt
     jmp .sleep
