@@ -1,6 +1,6 @@
 # bochsrc
 #
-megs: 128
+megs: 64
 #
 mouse: enabled=1
 #

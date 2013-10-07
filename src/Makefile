@@ -1,3 +1,7 @@
+#############################################################
+# File: src/Makefile
+# Description: Build Managing file
+#############################################################
 include globals.mk
 
 AXEL_ROOT_DIR		:= $(shell pwd)/../
@@ -16,7 +20,7 @@ GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
 KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 # XXX 順序に注意
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o asm_interrupt_handler.o string.o graphic_txt.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_txt.o kernel.o
 
 SUBDIRS 			:= $(BOOT_DIR)
 
@@ -48,7 +52,7 @@ default :
 	ctags -R ./*
 
 asm_functions.o 		: asm_functions.asm 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)asm_functions.h
-asm_interrupt_handler.o : asm_interrupt_handler.asm $(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
+interrupt_handler_asm.o : interrupt_handler_asm.asm $(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
 interrupt_handler.o 	: interrupt_handler.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
 string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
 graphic_txt.o			: graphic_txt.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h

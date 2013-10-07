@@ -22,13 +22,13 @@
 
 ; 割り込みハンドラのひな形
 %macro asm_interrupt_handler 1
-    global asm_interrupt_handler0x%1
-    extern interrupt_handler0x%1
+    global asm_interrupt_handler%1
+    extern interrupt_handler%1
 
-asm_interrupt_handler0x%1:
+asm_interrupt_handler%1:
     push_all
 
-    call interrupt_handler0x%1
+    call interrupt_handler%1
 
     pop_all
 
