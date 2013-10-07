@@ -6,42 +6,37 @@
 ;---------------------------------------------------------------------
     bits 32
 
-    global asm_interrupt_handler0x20
-    extern interrupt_handler0x20
+%macro push_all 0
+        push DS
+        push ES
+        pushad
+%endmacro
 
-section .text
 
-%macro  handler_template 1
-    push    ES
-    push    DS
-    pushad
-    mov     EAX,ESP
-    push    EAX
-    mov     AX,SS
-    mov     DS,AX
-    mov     ES,AX
-    call    %1
-    pop     EAX
-    popad
-    pop     DS
-    pop     ES
+%macro pop_all 0
+        popad
+        pop ES
+        pop DS
+%endmacro
+
+
+; 割り込みハンドラのひな形
+%macro asm_interrupt_handler 1
+    global asm_interrupt_handler0x%1
+    extern interrupt_handler0x%1
+
+asm_interrupt_handler0x%1:
+    push_all
+
+    call interrupt_handler0x%1
+
+    pop_all
+
     iretd
 %endmacro
 
 
-asm_interrupt_handler0x20:
-    pushad
-    push    ds
-    push    es
-    push    fs
-    push    gs
+section .text
 
-    call interrupt_handler0x20
-
-    pop gs
-    pop fs
-    pop es
-    pop ds
-    popad
-
-    iret
+; 割り込みハンドラを作成
+asm_interrupt_handler 0x20

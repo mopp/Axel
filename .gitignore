@@ -10,7 +10,7 @@
 !.gitignore
 !README*
 !Makefile
-!bochs*
+!bochsrc
 !*.asm
 !*.c
 !*.h

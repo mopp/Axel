@@ -182,7 +182,6 @@ static void init_pit(void) {
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
 
     /* PITはIRQ0なのでPICのIRQ0を解除 */
-    /* io_out8(PIC0_IMR_DATA_PORT, 0xFD); */
     io_out8(PIC0_IMR_DATA_PORT, 0xFE);
     /* io_out8(PIC1_IMR_DATA_PORT, 0xFF); */
 }
