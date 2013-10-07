@@ -39,7 +39,6 @@ CC 					:= $(GCC) $(CFLAGS) $(CPPFLAGS)
 LD 					:= $(GCC)
 
 
-
 # 一般生成規則
 .SUFFIXES: .c .o .asm
 .c.o:
@@ -47,9 +46,11 @@ LD 					:= $(GCC)
 .asm.o:
 	$(NASM) -l $*.lst -o $@ $<
 
+
 default :
 	make all
 	ctags -R ./*
+
 
 asm_functions.o 		: asm_functions.asm 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)asm_functions.h
 interrupt_handler_asm.o : interrupt_handler_asm.asm $(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
@@ -58,11 +59,14 @@ string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
 graphic_txt.o			: graphic_txt.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
 kernel.o				: kernel.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h
 
+
 $(BOOT_OBJ) : $(MAKEFILE)
 	make -C $(BOOT_DIR)
 
+
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(LINK_OBJS)
 	$(LD) $(LDFLAGS) $(LINK_OBJS) -o $@
+
 
 $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	mkdir -p $(ISO_DIR)/boot/grub
@@ -70,12 +74,14 @@ $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	cp $(GRUB_CONFIG) $(ISO_DIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
 
+
 .PHONY: all $(SUBDIRS)
 all: $(SUBDIRS)
 	@for dir in $(SUBDIRS) ; do \
 		($(MAKE) -C $$dir); \
 		done
 	make $(ISO_NAME)
+
 
 .PHONY: clean
 clean:
@@ -85,10 +91,17 @@ clean:
 	$(RM) *.o *.bin *.iso *.map *.lst $(ISO_DIR) tags
 	ctags -R ../*
 
-.PHONY: run
-run : $(MAKEFILE) $(ISO_NAME)
-	$(QEMU_EXE) -cdrom $(ISO_NAME)
 
-.PHONY: kernel_run
-kernel_run : $(MAKEFILE) $(AXEL_BIN)
-	$(QEMU_EXE) -kernel $(AXEL_BIN)
+.PHONY: run_qemu_cdrom
+run_qemu_cdrom: $(MAKEFILE) $(ISO_NAME)
+	$(QEMU) -cdrom $(ISO_NAME)
+
+
+.PHONY: run_qemu_kernel
+run_qemu_kernel: $(MAKEFILE) $(AXEL_BIN)
+	$(QEMU) -kernel $(AXEL_BIN)
+
+
+.PHONY: run_bochs
+run_bochs: $(MAKEFILE) $(ISO_NAME)
+	$(BOCHS)
