@@ -109,11 +109,11 @@ static void init_gdt(void) {
 
     /* 全アドレス空間を指定 */
     /* Flat Setup */
-    set_segment_descriptor(gdt + 1, 0xffffffff, 0x00000000, GDT_TYPE_CODE_EXR, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
-    set_segment_descriptor(gdt + 2, 0xffffffff, 0x00000000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
+    set_segment_descriptor(gdt + GDT_KERNEL_CODE_INDEX, 0xffffffff, 0x00000000, GDT_TYPE_CODE_EXR, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
+    set_segment_descriptor(gdt + GDT_KERNEL_DATA_INDEX, 0xffffffff, 0x00000000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
 
     load_gdtr(GDT_LIMIT, GDT_ADDR);
-    change_segment_selectors(2 * 8);
+    change_segment_selectors(GDT_KERNEL_DATA_INDEX * 8);
 }
 
 
@@ -147,7 +147,7 @@ static void init_idt(void) {
     }
     load_idtr(IDT_LIMIT, IDT_ADDR);
 
-    set_gate_descriptor(idt + 0x20, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x20, 1, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
+    set_gate_descriptor(idt + 0x20, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x20, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
 }
 
 

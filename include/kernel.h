@@ -44,7 +44,10 @@ _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descript
 
 enum GDT_constants {
     /* 設定先アドレス */
-    GDT_ADDR            = 0x00270000,
+    GDT_ADDR                = 0x00270000,
+
+    GDT_KERNEL_CODE_INDEX   = 1,
+    GDT_KERNEL_DATA_INDEX   = 2,
 
     /* セグメントレジスタは16bitで指す先は8byteの要素が配列として並ぶ */
     GDT_ELEMENT_SIZE        = 8,
@@ -151,8 +154,7 @@ enum PIC_constants {
     PIC1_ICW4               = PIC0_ICW4,
 
     /* Operation Command Words2 */
-    PIC0_OCW2               = 0x60,
-    PIC1_OCW2               = 0x60,
+    PIC_OCW2_EOI            = 0x20,
 
     PIC_IMR_MASK_IRQ0       = 0x01,
     PIC_IMR_MASK_IRQ1       = 0x02,
@@ -175,7 +177,6 @@ enum PIT_constants {
 
     /* 制御コマンド */
     PIT_ICW                 = 0x34,
-    /* PIT_ICW                 = 0x36, */
 
     /* カウンター値 */
     /* 1193182 / 100 Hz */
