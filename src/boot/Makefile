@@ -1,6 +1,6 @@
 include ../globals.mk
 
-CPPFLAGS	:= -I../../include/
+CPPFLAGS	:= -I../include/
 CFLAGS		:=  -x c -E
 CC 			:= $(GCC) $(CFLAGS) $(CPPFLAGS)
 

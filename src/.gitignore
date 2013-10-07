@@ -1,0 +1,17 @@
+# All ignore
+*
+
+# allow directors
+!./boot/
+!./include/
+
+# allow files
+!.gitignore
+!Makefile
+!bochsrc
+!*.asm
+!*.c
+!*.h
+!*.ld
+!*.mk
+!*.cfg

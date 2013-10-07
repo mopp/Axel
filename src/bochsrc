@@ -16,6 +16,8 @@ clock: sync=realtime, time0=local
 
 display_library: x, options="gui_debug"
 
+mouse: enabled=0
+
 # panic: action=ask
 # error: action=report
 # info: action=ignore
