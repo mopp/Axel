@@ -4,16 +4,8 @@
 # allow directors
 !/src/
 !/src/boot/
-!/include/
 
 # allow files
 !.gitignore
-!README*
-!Makefile
-!bochsrc
-!*.asm
-!*.c
-!*.h
-!*.ld
-!*.mk
-!*.cfg
+!README.md
+!*.iso

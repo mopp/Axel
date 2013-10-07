@@ -15,17 +15,20 @@ SECTIONS {
     .rodata BLOCK(4K) : ALIGN(4K) {
         *(.multiboot_header)
         *(.rodata)
+        . = ALIGN(4096);
     }
 
     /* Code. */
     .text BLOCK(4K) : ALIGN(4K) {
         *(.boot_kernel)
         *(.text)
+        . = ALIGN(4096);
     }
 
     /* Read-write data (initialized) */
     .data BLOCK(4K) : ALIGN(4K) {
         *(.data)
+        . = ALIGN(4096);
     }
 
     /* Read-write data (uninitialized) and stack */
@@ -33,5 +36,6 @@ SECTIONS {
         *(.kernel_init_stack)
         *(COMMON)
         *(.bss)
+        . = ALIGN(4096);
     }
 }

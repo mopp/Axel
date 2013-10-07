@@ -4,7 +4,7 @@
 #############################################################
 include globals.mk
 
-AXEL_ROOT_DIR		:= $(shell pwd)/../
+AXEL_ROOT_DIR		:= $(shell pwd)/
 AXEL_INCLUDE_PATH 	:= $(AXEL_ROOT_DIR)include/
 
 # files
@@ -88,7 +88,7 @@ clean:
 	@for dir in $(SUBDIRS) ; do \
 		($(MAKE) -C $$dir clean); \
 		done
-	$(RM) *.o *.bin *.iso *.map *.lst $(ISO_DIR) tags
+	$(RM) *.o *.bin *.iso *.map *.lst *.log $(ISO_DIR) tags
 	ctags -R ../*
 
 
