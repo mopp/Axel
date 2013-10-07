@@ -9,12 +9,16 @@
 %macro push_all 0
         push DS
         push ES
+        push FS
+        push GS
         pushad
 %endmacro
 
 
 %macro pop_all 0
         popad
+        pop GS
+        pop FS
         pop ES
         pop DS
 %endmacro
