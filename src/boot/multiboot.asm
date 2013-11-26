@@ -22,7 +22,10 @@ align 4
     dd $0
 
     ; Graphic field
-    ; dd $0
+    ; dd 0
+    ; dd 800  ; width
+    ; dd 600  ; height
+    ; dd 0
     dd 1
     dd DISPLAY_MAX_X
     dd DISPLAY_MAX_Y

@@ -89,7 +89,7 @@ clean:
 		($(MAKE) -C $$dir clean); \
 		done
 	$(RM) *.o *.bin *.iso *.map *.lst *.log $(ISO_DIR) tags
-	ctags -R ../*
+	ctags -R ./*
 
 
 .PHONY: run_qemu_cdrom
