@@ -3,6 +3,8 @@
  * Description: kernel header
  ************************************************************/
 
+/* TODO: Add comment */
+
 #ifndef KERNEL_H
 #define KERNEL_H
 
@@ -142,10 +144,12 @@ enum PIC_constants {
     /* Initialization Control Words */
     /* PICの設定 */
     PIC0_ICW1               = 0x11,
-    /* IRQから割り込みベクタへの変換されるベースアドレス
+    /* IRQから割り込みベクタへの変換されるベースの番号
      * x86では3-7bitを使用 */
     PIC0_ICW2               = 0x20,
+    /* スレーブと接続されているピン */
     PIC0_ICW3               = 0x04,
+    /* 動作モードを指定 */
     PIC0_ICW4               = 0x01,
 
     PIC1_ICW1               = PIC0_ICW1,
@@ -176,6 +180,7 @@ enum PIT_constants {
     PIT_PORT_CONTROL        = 0x43,
 
     /* 制御コマンド */
+    /* パルス生成モード */
     PIT_ICW                 = 0x34,
 
     /* カウンター値 */
@@ -183,6 +188,5 @@ enum PIT_constants {
     PIT_COUNTER_VALUE_HIGH  = 0x2E,
     PIT_COUNTER_VALUE_LOW   = 0x9C,
 };
-static const double PIT_CLOCK = 1193181.67;
 
 #endif

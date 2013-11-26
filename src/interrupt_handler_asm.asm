@@ -1,8 +1,7 @@
 ;---------------------------------------------------------------------
 ; vim:ft=nasm:foldmethod=marker
 ; File: src/interrupt_handler.asm
-; Description:
-;       It provides interrupt handler entry point
+; Description: It provides interrupt handler entry point
 ;---------------------------------------------------------------------
     bits 32
 

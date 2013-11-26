@@ -10,6 +10,7 @@
 #include <graphic_txt.h>
 #include <interrupt_handler.h>
 #include <stddef.h>
+#include <vbe.h>
 
 #define IS_FLAG_NOT_ZERO(x) ((x != 0) ? 1 : 0)
 
@@ -40,15 +41,10 @@ void kernel_entry(Multiboot_info* boot_info) {
     printf("PIC0 Data %x\n", io_in8(PIC0_IMR_DATA_PORT));
     printf("PIC1 Data %x\n", io_in8(PIC1_IMR_DATA_PORT));
 
-    printf("IDT Addr %x\n", IDT_ADDR);
-    printf("IDT limit %x\n", IDT_LIMIT);
-
-    printf("before hlt!\n");
     for(;;) {
-        /* printf("hlt!\n"); */
+        printf("hlt!\n");
         io_hlt();
     }
-    printf("End of kernel_entry\n");
 }
 
 
@@ -153,8 +149,8 @@ static void init_idt(void) {
 
 static void init_pic(void) {
     /* 全割り込みを受けない */
-    /* io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL); */
-    /* io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL); */
+    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
+    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
 
     /* Master */
     io_out8(PIC0_CMD_STATE_PORT, PIC0_ICW1);
@@ -169,10 +165,10 @@ static void init_pic(void) {
     io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW4);
 
     /* IRQ2以外の割り込みを受け付けない */
-    /* io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & (~PIC_IMR_MASK_IRQ2)); */
-    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
+    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & (~PIC_IMR_MASK_IRQ2));
+
     /* 全割り込みを受け付けない */
-    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
+    /* io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL); */
 }
 
 
@@ -181,7 +177,6 @@ static void init_pit(void) {
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_LOW);
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
 
-    /* PITはIRQ0なのでPICのIRQ0を解除 */
-    io_out8(PIC0_IMR_DATA_PORT, 0xFE);
-    /* io_out8(PIC1_IMR_DATA_PORT, 0xFF); */
+    /* PITはタイマーでIRQ0なのでPICのIRQ0を解除 */
+    /* io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (~PIC_IMR_MASK_IRQ0)); */
 }
