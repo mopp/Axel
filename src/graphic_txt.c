@@ -14,7 +14,7 @@ static inline void newline(void);
 // text mode video ram
 static volatile uint16_t* vram = (uint16_t*)TEXTMODE_VRAM_ADDR;
 static int x_pos = 0, y_pos = 0;
-static uint16_t disp_attribute = (TEXTMODE_ATTR_BACK_COLOR_G | TEXTMODE_ATTR_FORE_COLOR_R);
+static uint16_t disp_attribute = (TEXTMODE_ATTR_BACK_COLOR_B | TEXTMODE_ATTR_FORE_COLOR_G);
 
 
 /* 画面を初期化する */

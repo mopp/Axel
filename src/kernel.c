@@ -14,13 +14,20 @@
 
 #define IS_FLAG_NOT_ZERO(x) ((x != 0) ? 1 : 0)
 
+/* &無しで参照させるためにここで別変数に格納 */
+extern uint32_t LD_KERNEL_SIZE;
+extern uint32_t LD_KERNEL_START;
+extern uint32_t LD_KERNEL_END;
+uint32_t KERNEL_SIZE = (uint32_t)&LD_KERNEL_SIZE;
+uint32_t KERNEL_END_ADDR = (uint32_t)&LD_KERNEL_END;
+uint32_t KERNEL_START_ADDR = (uint32_t)&LD_KERNEL_START;
+
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void(*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
 static void init_pic(void);
 static void init_pit(void);
-
 
 void kernel_entry(Multiboot_info* boot_info) {
     io_cli();
@@ -33,13 +40,34 @@ void kernel_entry(Multiboot_info* boot_info) {
     /* 画面初期化 */
     clean_screen();
 
-    puts("Axel!\n\n");
+    puts("---------- Start Axel ! ---------- \n\n");
 
-    printf("PIC0 State %x\n", io_in8(PIC0_CMD_STATE_PORT));
-    printf("PIC1 State %x\n", io_in8(PIC1_CMD_STATE_PORT));
+    printf("kernel size: %dKB\n", KERNEL_SIZE / 1024);
+    printf("kernel start address: 0x%x\n", KERNEL_START_ADDR);
+    printf("kernel end address: 0x%x\n", KERNEL_END_ADDR);
 
-    printf("PIC0 Data %x\n", io_in8(PIC0_IMR_DATA_PORT));
-    printf("PIC1 Data %x\n", io_in8(PIC1_IMR_DATA_PORT));
+    printf("PIC0 State: %x\n",  io_in8(PIC0_CMD_STATE_PORT));
+    printf("PIC0 Data: %x\n",   io_in8(PIC0_IMR_DATA_PORT));
+    printf("PIC1 State: %x\n",  io_in8(PIC1_CMD_STATE_PORT));
+    printf("PIC1 Data: %x\n",   io_in8(PIC1_IMR_DATA_PORT));
+
+    uint32_t boot_flags = boot_info->flags;
+
+    printf("BootInfo flags %x\n", boot_flags); /* 0001 1010 0110 0111 */
+
+    /* mem_*フィールドを確認 */
+    if (boot_flags & 0x01) {
+        printf("mem_lower(low memory size)      %dKB\n", boot_info->mem_lower);
+        printf("mem_upper(extends memory size)  %dKB\n", boot_info->mem_upper);
+    }
+
+    /* nmap_*フィールドを確認 */
+    if (boot_flags & 0x20) {
+        uint32_t mmap_length = boot_info->mmap_length;
+        printf("nmap_length %d\n", mmap_length);
+        uint32_t mmap_addr = boot_info->mmap_addr;
+        printf("nmap_addr %x\n", mmap_addr);
+    }
 
     for(;;) {
         printf("hlt!\n");
@@ -166,9 +194,6 @@ static void init_pic(void) {
 
     /* IRQ2以外の割り込みを受け付けない */
     io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & (~PIC_IMR_MASK_IRQ2));
-
-    /* 全割り込みを受け付けない */
-    /* io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL); */
 }
 
 
