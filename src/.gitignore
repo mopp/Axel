@@ -2,8 +2,8 @@
 *
 
 # allow directors
-!./boot/
-!./include/
+!boot
+!include
 
 # allow files
 !.gitignore
