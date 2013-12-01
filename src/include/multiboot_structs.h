@@ -46,7 +46,21 @@ typedef struct {
 
 
 typedef struct {
-    /* Multiboot info version number */
+    /*
+     * Multiboot info version number
+     * bit00 mem_*
+     * bit01 boot_device
+     * bit02 cmdline
+     * bit03 mods_*
+     * bit04 a.outカーネルイメージ用
+     * bit05 ELFカーネルイメージ用
+     * bit06 mmap_*
+     * bit07 drives_*
+     * bit08 config_table
+     * bit09 boot_loader_name
+     * bit10 apm_table
+     * bit11 vbe_*
+     */
     uint32_t flags;
     /* Available memory from BIOS */
     uint32_t mem_lower;
@@ -92,7 +106,7 @@ struct multiboot_mmap_entry {
 #define MULTIBOOT_MEMORY_RESERVED 2
     uint32_t type;
 } __attribute__((packed));
-typedef struct multiboot_mmap_entry Multiboot_memory_map;
+typedef struct multiboot_mmap_entry Multiboot_memory_map_entry;
 
 
 struct multiboot_mod_list {

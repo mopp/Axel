@@ -94,12 +94,12 @@ clean:
 
 .PHONY: run_qemu_cdrom
 run_qemu_cdrom: $(MAKEFILE) $(ISO_NAME)
-	$(QEMU) -cdrom $(ISO_NAME)
+	$(QEMU) -m 32 -cdrom $(ISO_NAME)
 
 
 .PHONY: run_qemu_kernel
 run_qemu_kernel: $(MAKEFILE) $(AXEL_BIN)
-	$(QEMU) -kernel $(AXEL_BIN)
+	$(QEMU) -m 32 -kernel $(AXEL_BIN)
 
 
 .PHONY: run_bochs
