@@ -108,6 +108,13 @@ struct multiboot_mmap_entry {
 } __attribute__((packed));
 typedef struct multiboot_mmap_entry Multiboot_memory_map_entry;
 
+enum Memory_map_constans {
+    MMAP_USABLE_MEMORY_FOR_OS       = 0x01,
+    MMAP_UNUSABLE_ROM               = 0x02,
+    MMAP_USABLE_MEMORY_FOR_ACPI     = 0x03,
+    MMAP_UNUSABLE_MEMORY_FOR_ACPI   = 0x04,
+};
+
 
 struct multiboot_mod_list {
     /* the memory used goes from bytes ’mod start’ to ’mod end-1’ inclusive */

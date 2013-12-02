@@ -42,7 +42,7 @@ struct segment_descriptor {
     uint8_t         base_addr_hi;
 };
 typedef struct segment_descriptor Segment_descriptor;
-_Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descriptor size is NOT 8 byte.");
+_Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descriptor size is NOT 8 byte(64 bit).");
 
 enum GDT_constants {
     /* 設定先アドレス */
@@ -109,7 +109,7 @@ struct gate_descriptor {
     uint16_t        offset_high;
 };
 typedef struct gate_descriptor Gate_descriptor;
-_Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.");
+_Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.(64 bit)");
 
 enum IDT_constants {
     IDT_ADDR                = 0x0026f800,
