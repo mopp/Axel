@@ -6,6 +6,8 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+/* page_table_entry -> page_table -> page_directory_entry -> page_directory_table */
+
 /* ページ一つに相当し、ページについての情報を保持する */
 /* 制御レジスタの値によってはCPUに無視されるフラグがある */
 struct page_table_entry {
@@ -34,5 +36,32 @@ struct page_table_entry {
 };
 typedef struct page_table_entry Page_table_entry;
 _Static_assert(sizeof(Page_table_entry) == 4, "Static ERROR : Page_table_entry size is NOT 4 byte(32 bit).");
+
+
+/* ページテーブル一つに相当する */
+struct page_directory_entry {
+    unsigned int preset_flag                    : 1;
+    unsigned int read_write_flag                : 1;
+    unsigned int user_supervisor_flag           : 1;
+    unsigned int page_level_write_throgh_flag   : 1;
+    unsigned int page_level_cache_disable_flag  : 1;
+    unsigned int access_flag                    : 1;
+    unsigned int reserved                       : 1;
+    /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
+    unsigned int page_size_flag                 : 1;
+    unsigned int global_flag                    : 1;
+    unsigned int usable_for_os                  : 3;
+    /* 管理対象のページテーブルアドレス */
+    unsigned int page_table_addr                : 20;
+};
+typedef struct page_directory_entry Page_directory_entry;
+_Static_assert(sizeof(Page_directory_entry) == 4, "Static ERROR : Page_directory_entry size is NOT 4 byte(32 bit).");
+
+enum paging_constants {
+    PAGE_TABLE_SIZE = 1024,
+};
+
+/* the page_table size is 1024(PAGE_TABLE_SIZE) * 4KB(1page) = 4MB */
+/* extern Page_table_entry page_table[PAGE_TABLE_SIZE]; */
 
 #endif
