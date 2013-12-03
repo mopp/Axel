@@ -19,8 +19,8 @@ BOOT_OBJ 			:= $(BOOT_DIR)multiboot.o
 GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
 KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
-# XXX 順序に注意
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_txt.o kernel.o
+# 順序に注意
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_txt.o memory.o kernel.o
 
 SUBDIRS 			:= $(BOOT_DIR)
 
