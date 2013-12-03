@@ -4,6 +4,7 @@
 # allow directors
 !boot
 !include
+!structure
 
 # allow files
 !.gitignore

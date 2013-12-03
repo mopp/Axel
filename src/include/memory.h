@@ -7,6 +7,7 @@
 #define MEMORY_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /* page_table_entry -> page_table -> page_directory_entry -> page_directory_table */
 
@@ -69,16 +70,31 @@ enum paging_constants {
 
 
 /* リンカスクリプトで設定される数値を取得 */
-uint32_t get_kernel_start_addr(void);
-uint32_t get_kernel_end_addr(void);
-uint32_t get_kernel_size(void);
+extern uint32_t get_kernel_start_addr(void);
+extern uint32_t get_kernel_end_addr(void);
+extern uint32_t get_kernel_size(void);
 
-/* メモリ管理を行う */
+extern void* memset(void*, const int, size_t);
+extern int memcmp(const void*, const void*, size_t);
+
+
+enum memory_manager_constants {
+    MAX_MEM_INFO_NUM = 4096,
+    MEM_INFO_STATE_LOST = -1,
+    MEM_INFO_STATE_FREE,
+    MEM_INFO_STATE_ALLOC,
+};
+
+/* 管理対象のメモリ情報 */
+struct memory_info {
+    uint32_t base_addr, size;
+    uint8_t state;
+};
+typedef struct memory_info Memory_info;
+
+/* メモリ管理を行うオブジェクト */
 struct memory_manager {
-    uint32_t frees, lost_size, lost_times;
-    struct  {
-        uint32_t base_addr, size;
-    } mem_info[1024];
+    uint32_t exist_info_num, lost_size, lost_times;
 };
 typedef struct memory_manager Memory_manager;
 
