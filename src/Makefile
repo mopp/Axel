@@ -20,7 +20,7 @@ GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
 KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 # 順序に注意
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_txt.o memory.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_txt.o doubly_linked_list.o memory.o kernel.o
 
 SUBDIRS 			:= $(BOOT_DIR)
 
@@ -59,6 +59,7 @@ string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
 graphic_txt.o			: graphic_txt.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
 kernel.o				: kernel.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot_constants.h $(AXEL_INCLUDE_PATH)multiboot_structs.h
 memory.o				: memory.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)memory.h
+doubly_linked_list.o	: doubly_linked_list.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)doubly_linked_list.h
 
 
 $(BOOT_OBJ) : $(MAKEFILE)
