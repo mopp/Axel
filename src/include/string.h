@@ -8,7 +8,7 @@
 
 #include <stddef.h>
 
-char* itoa(char*, char, int32_t);
-size_t strlen(const char*);
+extern char* itoa(char*, char, int32_t);
+extern size_t strlen(const char*);
 
 #endif

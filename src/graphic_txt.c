@@ -10,7 +10,6 @@
 
 static inline void newline(void);
 
-
 // text mode video ram
 static volatile uint16_t* vram = (uint16_t*)TEXTMODE_VRAM_ADDR;
 static int x_pos = 0, y_pos = 0;

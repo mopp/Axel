@@ -5,8 +5,7 @@
 
 #include <stdint.h>
 #include <string.h>
-
-extern int putchar(int c);
+#include <graphic_txt.h>
 
 /* 数字を文字に変換 TODO: 負の数に対応 */
 char* itoa(char* buf, char base, int32_t num) {
