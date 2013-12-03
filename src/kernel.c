@@ -15,11 +15,6 @@
 
 #define IS_FLAG_NOT_ZERO(x) ((x != 0) ? 1 : 0)
 
-/* &無しで参照させるためにここで別変数に格納 */
-extern uint32_t LD_KERNEL_SIZE;
-extern uint32_t LD_KERNEL_START;
-extern uint32_t LD_KERNEL_END;
-
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static inline void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void(*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
@@ -27,12 +22,7 @@ static inline void init_idt(void);
 static inline void init_pic(void);
 static inline void init_pit(void);
 
-
 _Noreturn void kernel_entry(Multiboot_info* boot_info) {
-    const uint32_t KERNEL_SIZE = (uint32_t)&LD_KERNEL_SIZE;
-    const uint32_t KERNEL_END_ADDR = (uint32_t)&LD_KERNEL_END;
-    const uint32_t KERNEL_START_ADDR = (uint32_t)&LD_KERNEL_START;
-
     io_cli();
     init_gdt();
     init_idt();
@@ -45,9 +35,9 @@ _Noreturn void kernel_entry(Multiboot_info* boot_info) {
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
-    printf("kernel size: %dKB\n",           KERNEL_SIZE / 1024);
-    printf("kernel start address: 0x%x\n",  KERNEL_START_ADDR);
-    printf("kernel end address: 0x%x\n\n",  KERNEL_END_ADDR);
+    printf("kernel size: %dKB\n",           get_kernel_size() / 1024);
+    printf("kernel start address: 0x%x\n",  get_kernel_start_addr());
+    printf("kernel end address: 0x%x\n\n",  get_kernel_end_addr());
 
     printf("PIC0 State: %x\n",  io_in8(PIC0_CMD_STATE_PORT));
     printf("PIC0 Data: %x\n",   io_in8(PIC0_IMR_DATA_PORT));
