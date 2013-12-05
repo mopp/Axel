@@ -19,10 +19,13 @@ char* itoa(char* buf, char base, int32_t num) {
             num *= -1;
             *local_buf++ = '-';
         }
-    } else if (base == 'x') {
-        *local_buf++ = '0';
-        *local_buf++ = 'x';
     }
+    /*
+     * else if (base == 'x') {
+     *     *local_buf++ = '0';
+     *     *local_buf++ = 'x';
+     * }
+     */
 
     int remainder;
     do {
