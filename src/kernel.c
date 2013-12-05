@@ -36,8 +36,8 @@ _Noreturn void kernel_entry(Multiboot_info* boot_info) {
     puts("-------------------- Start Axel ! --------------------\n\n");
 
     printf("kernel size: %dKB\n",           get_kernel_size() / 1024);
-    printf("kernel start address: 0x%x\n",  get_kernel_start_addr());
-    printf("kernel end address: 0x%x\n\n",  get_kernel_end_addr());
+    printf("kernel start address: %x\n",  get_kernel_start_addr());
+    printf("kernel end address: %x\n\n",  get_kernel_end_addr());
 
     printf("PIC0 State: %x\n",  io_in8(PIC0_CMD_STATE_PORT));
     printf("PIC0 Data: %x\n",   io_in8(PIC0_IMR_DATA_PORT));
@@ -56,12 +56,14 @@ _Noreturn void kernel_entry(Multiboot_info* boot_info) {
 
     /* nmap_*フィールドを確認 */
     if (boot_flags & 0x20) {
-        uint32_t mmap_length = boot_info->mmap_length;
-        uint32_t mmap_addr = boot_info->mmap_addr;
-
-        printf("nmap_length %d\n", mmap_length);
-        printf("nmap_addr %x\n", mmap_addr);
+        init_memory((Multiboot_memory_map*)(boot_info->mmap_addr), boot_info->mmap_length);
     }
+
+    char* str = (char*)malloc(sizeof(char) * 100);
+    for (int i = 0; i < 100; i++) {
+        str[i] = 0xAA;
+    }
+    free(str);
 
     for(;;) {
         puts("\n-------------------- hlt ! --------------------\n");
