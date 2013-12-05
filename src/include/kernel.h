@@ -189,8 +189,4 @@ enum PIT_constants {
     PIT_COUNTER_VALUE_LOW   = 0x9C,
 };
 
-extern uint32_t KERNEL_SIZE;
-extern uint32_t KERNEL_END_ADDR;
-extern uint32_t KERNEL_START_ADDR;
-
 #endif
