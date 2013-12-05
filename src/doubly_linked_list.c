@@ -2,210 +2,216 @@
  * File: src/doubly_linked_list.c
  * Description: DoublyLinkedList
  ************************************************************/
+/* #define DEBUG */
+
+#ifdef DEBUG
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
-#define MAX_COMMAND_SIZE 12
+#endif
 
-struct dlinked_list_node {
-    void* data;
-    struct dlinked_list_node* next;
-    struct dlinked_list_node* prev;
-};
-typedef struct dlinked_list_node* Dlinked_list_node;
+#include <doubly_linked_list.h>
 
-Dlinked_list_node dummy = {};
-
-/* リスト初期化 */
-void init();
-
-/* 未接続のノードを返す */
-NodePointer makeOneNode(unsigned int);
-
-/* 連結リストの先頭にキー x を持つ要素を継ぎ足す */
-void insert(unsigned int);
-
-/* キー x を持つ最初の要素を連結リストから削除する */
-void delete(unsigned int);
-
-/* リストの先頭の要素を削除する */
-void deleteFirst();
-
-/* リストの末尾の要素を削除する */
-void deleteLast();
-
-/* 先頭から順に全要素を出力 */
-void printLinkedList();
-
-/* 与えられたキーを持つノードを検索 */
-NodePointer searchNodeByKey(unsigned int key);
+/* 終端子 */
+static struct dlinked_list_node dummy = { .data = NULL, .head = NULL, .tail = NULL};
+const Dlinked_list_node DUMMY = &dummy;
 
 
-int main(void){
-    unsigned int i, cmdNum, inKey;
-    char cmdStr[MAX_COMMAND_SIZE];
+/* 新しいノードを確保しデータを設定 */
+Dlinked_list_node get_new_Dlinked_list_node(void* data){
+#ifdef DEBUG
+    /* TODO */
+    Dlinked_list_node n = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
+#else
+    Dlinked_list_node n = NULL;// = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
+#endif
 
-    init();
+    n->data = data;
+    n->head = DUMMY;
+    n->tail = DUMMY;
 
-    scanf(" %d", &cmdNum);
+    return n;
+}
 
-    for ( i = 0; i < cmdNum; i++ ){
-        scanf("%s", cmdStr);
 
-        switch (cmdStr[0]) {
-            case 'i':
-                scanf("%d", &inKey);
-                insert(inKey);
-                break;
-            case 'd':
-                if (strlen(cmdStr) > 6){
-                    switch (cmdStr[6]) {
-                        case 'F':
-                            deleteFirst();
-                            break;
-                        case 'L':
-                            deleteLast();
-                            break;
-                    }
-                } else {
-                    scanf("%d", &inKey);
-                    delete(inKey);
-                }
-                break;
+/* ダミーとデータを付加してリストを初期化 */
+Dlinked_list_node init(Dlinked_list_node dl, void* data) {
+    dl->data = data;
+    dl->head = DUMMY;
+    dl->tail = DUMMY;
+
+    return dl;
+}
+
+
+/*
+ * リストの先頭にノードを挿入
+ * @return 新しい先頭
+ */
+Dlinked_list_node insert_head(Dlinked_list_node target, Dlinked_list_node added){
+    added->head = target->head;
+    added->head->tail = added;
+
+    added->tail = target;
+    target->head = added;
+
+    return added;
+}
+
+
+/*
+ * リストの末尾にノードを挿入
+ * @return 新しい末尾
+ */
+Dlinked_list_node insert_tail(Dlinked_list_node target, Dlinked_list_node added){
+    added->tail = target->tail;
+    added->tail->head = added;
+
+    added->head = target;
+    target->tail = added;
+
+    return added;
+}
+
+
+/* 渡されたリストの削除 */
+void delete_node(Dlinked_list_node target) {
+    target->head->tail = target->tail;
+    target->tail->head = target->head;
+
+#ifdef DEBUG
+    /* TODO */
+    free(target);
+#endif
+}
+
+
+/* ノードを検索 */
+Dlinked_list_node search_node(Dlinked_list_node dl, void* data, bool (*comp_func)(void*, void*)) {
+    if (dl->head == NULL || dl->tail == NULL) {
+        return DUMMY;
+    }
+
+    while (dl->head != DUMMY) {
+        dl = dl->head;
+    }
+
+    while (comp_func(dl->data, data) == false) {
+        dl = dl->tail;
+
+        if (dl == DUMMY) {
+            return DUMMY;
         }
     }
 
-    printLinkedList();
+    return dl;
+}
+
+#ifdef DEBUG
+
+#define SIZE_OF_ADD 3
+
+typedef struct {
+    Dlinked_list_node dummy_addr;
+} test_struct;
+
+
+void print_one(Dlinked_list_node dl) {
+    printf("-----\n");
+    printf("addr: %p\n", dl);
+    printf("head: %p\n", dl->head);
+    printf("tail: %p\n", dl->tail);
+    if (dl != DUMMY) {
+        printf("data: %p\n", ((test_struct*)(dl->data))->dummy_addr);
+    }
+    printf("-----\n");
+}
+
+
+void print_all(Dlinked_list_node dl) {
+    while (dl->head != DUMMY) {
+        dl = dl->head;
+    }
+    dl = dl->tail;
+
+    printf("head\n");
+
+    while (dl != DUMMY) {
+        print_one(dl);
+
+        dl = dl->tail;
+    }
+    printf("tail\n");
+}
+
+bool comp(void* x, void* y) {
+    if (((test_struct*)x)->dummy_addr == ((test_struct*)y)->dummy_addr) {
+        return true;
+    }
+    return false;
+}
+
+int main(void){
+    test_struct ts = { .dummy_addr = DUMMY};
+    Dlinked_list_node t = get_new_Dlinked_list_node(&ts);
+
+    /* printf("DUMMY\n"); */
+    /* print_one(DUMMY); */
+
+    init(t, &ts);
+
+    /* printf("First Node\n"); */
+    /* print_one(t); */
+    assert(DUMMY == t->head);
+    assert(DUMMY == t->tail);
+
+    Dlinked_list_node tt = t;
+    for (int i = 0; i < SIZE_OF_ADD; i++) {
+        Dlinked_list_node target = tt;
+        Dlinked_list_node head = tt->head;
+        Dlinked_list_node tail = tt->tail;
+
+        tt = insert_tail(tt, get_new_Dlinked_list_node(&ts));
+
+        assert(target == tt->head);
+        assert(head == tt->head->head);
+        assert(tail == tt->tail);
+    }
+
+    for (int i = 0; i < SIZE_OF_ADD; i++) {
+        t = insert_head(t, get_new_Dlinked_list_node(&ts));
+        assert(DUMMY == t->head);
+    }
+
+    tt = t->tail;
+    for (int i = 0; i < SIZE_OF_ADD; i++) {
+        delete_node(t);
+        assert(DUMMY == tt->head);
+
+        t = tt;
+        tt = t->tail;
+    }
+
+    /* printf("\nPrint All Node\n\n"); */
+    /* print_all(t); */
+
+    Dlinked_list_node nt = get_new_Dlinked_list_node(&ts);
+    test_struct tn[10];
+    for (int i = 0; i < 10; i++) {
+        Dlinked_list_node nn = get_new_Dlinked_list_node(tn + i);
+        insert_tail(nt, nn);
+        tn[i].dummy_addr = nn;
+    }
+    /* printf("\n Searched Node\n\n"); */
+    /* print_one(search_node(nt, &ts, &comp)); */
+    assert(search_node(nt, &ts, &comp) == nt);
+    /* print_all(nt); */
+    printf("Test is Passed\n");
 
     return 0;
 }
 
-
-/* リスト初期化 */
-void init(){
-    head = makeOneNode(0);
-    tail = makeOneNode(0);
-
-    head->next = tail;
-    tail->prev = head;
-}
-
-
-/* 未接続のノードを返す */
-NodePointer makeOneNode(unsigned int key){
-    NodePointer new_Node = (NodePointer)malloc(sizeof(struct node));
-
-    new_Node->key = key;
-    new_Node->next = NULL;
-    new_Node->prev = NULL;
-
-    return new_Node;
-}
-
-
-/* 連結リストの先頭にキー x を持つ要素を継ぎ足す */
-void insert(unsigned int key){
-    NodePointer new_Node, t;
-
-    // 先頭要素退避
-    t = head->next;
-
-    // 新規ノード生成
-    new_Node = makeOneNode(key);
-    new_Node->next = t;
-    new_Node->prev = head;
-    head->next = new_Node;
-
-    // 退避したノードを設定
-    t->prev = new_Node;
-}
-
-
-/* キー x を持つ最初の要素を連結リストから削除する */
-void delete(unsigned int key){
-    NodePointer t, searched = searchNodeByKey(key);
-
-    if (searched == NULL) {
-        return;
-    }
-
-    // 再連結
-    t = searched->prev;
-    t->next = searched->next;
-    t->next->prev = t;
-
-    free(searched);
-}
-
-
-/* リストの先頭の要素を削除する */
-void deleteFirst(){
-    NodePointer forDelete = head->next;
-
-    head->next = forDelete->next;
-    forDelete->next->prev = head;
-
-    free(forDelete);
-}
-
-
-/* リストの末尾の要素を削除する */
-void deleteLast(){
-    NodePointer forDelete = tail->prev;
-
-    tail->prev = forDelete->prev;
-    forDelete->prev->next = tail;
-
-    free(forDelete);
-}
-
-
-/* 先頭から順に全要素を出力 */
-void printLinkedList(){
-    NodePointer t = head->next;
-
-    // 空
-    if (t == tail) {
-        return;
-    }
-
-    while(NULL != t->next->next){
-        printf("%d ", t->key);
-        t = t->next;
-    }
-    printf("%d\n", t->key);
-}
-
-
-/* 与えられたキーを持つノードを検索 */
-NodePointer searchNodeByKey(unsigned int key){
-    /* NodePointer h = head->next, t = tail->prev; */
-    NodePointer h = head->next;
-
-    /* この問題は下記のサーチ法ではダメなようで
-     *     // 先頭と末尾の双方から検索
-     *     while(t != h && h != NULL && t != NULL) {
-     *         if (h->key == key) {
-     *             return h;
-     *         }
-     *
-     *         if (t->key == key) {
-     *             return t;
-     *         }
-     *
-     *         h = h->next;
-     *         t = t->prev;
-     *     }
-     */
-
-    while (h->next != NULL) {
-        if (h->key == key) {
-            return h;
-        }
-        h = h->next;
-    }
-
-    return NULL;      // Dummy
-}
+#endif
