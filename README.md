@@ -1,16 +1,16 @@
 ## Axel
-
 Axel Accelerates All For Me !
 
 ## Setup Environment
-Please read [GCC Cross-Compiler](http://wiki.osdev.org/GCC_Cross-Compiler "OSDev")
-
-environment variable
-    export PREFIX="$HOME/.mopp/axel"
-    export TARGET=i686-elf
-    export PATH="$PREFIX/bin:$PATH"
-
-binutils
+Please read [GCC Cross-Compiler](http://wiki.osdev.org/GCC_Cross-Compiler "OSDev")  
+  
+environment variable  
+    # set install and target
+    export PREFIX="$HOME/.mopp/axel"  
+    export TARGET=i686-elf  
+    export PATH="$PREFIX/bin:$PATH"  
+  
+binutils  
     # Download Source
     git clone git://sourceware.org/git/binutils-gdb.git binutils
     cd binutils
@@ -19,14 +19,14 @@ binutils
     ../configure --target=$TARGET --prefix="$PREFIX"
     make
     make install
-
-GNU GMP, GNU MPFR, and GNU MPC
-    # Download Source
+  
+GNU GMP, GNU MPFR, and GNU MPC  
+    # Download Source for gcc
     wget https://ftp.gnu.org/gnu/gmp/gmp-5.1.3.tar.xz
     wget http://multiprecision.org/mpc/download/mpc-1.0.1.tar.gz
     wget http://www.mpfr.org/mpfr-current/mpfr-3.1.2.tar.xz
-
-gcc
+  
+gcc  
     # Download Source
     git clone git://gcc.gnu.org/git/gcc.git
 
