@@ -1,7 +1,12 @@
 # := で 代入時に展開
 
 # Path
-TOOL_PATH 			:= /home/mopp/.mopp/axel/
+hostname = $(shell uname -n)
+ifeq ($(shell uname -n), march)
+	TOOL_PATH 		:= /home/mopp/.mopp/axel/
+else
+	TOOL_PATH 		:= /home/mopp/.mopp/
+endif
 
 # command
 RM 					:= rm -rf
