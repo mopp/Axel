@@ -14,5 +14,5 @@ GCC					:= $(TOOL_PATH)bin/i686-elf-gcc
 NASM 				:= nasm -f elf32
 AR					:= $(TOOL_PATH)bin/i686-elf-ar
 RANLIB				:= $(TOOL_PATH)bin/i686-elf-ranlib
-QEMU 				:= qemu-system-x86_64 -monitor stdio
+QEMU 				:= qemu-system-x86_64 -monitor stdio -vga std
 BOCHS				:= bochs
