@@ -44,7 +44,7 @@ _Noreturn void kernel_entry(Multiboot_info* boot_info) {
     printf("PIC1 State: %x\n",  io_in8(PIC1_CMD_STATE_PORT));
     printf("PIC1 Data: %x\n\n",   io_in8(PIC1_IMR_DATA_PORT));
 
-    uint32_t boot_flags = boot_info->flags;
+    const uint32_t boot_flags = boot_info->flags;
 
     printf("BootInfo flags: %x\n", boot_flags); /* 0001 1010 0110 0111 */
 
@@ -64,6 +64,28 @@ _Noreturn void kernel_entry(Multiboot_info* boot_info) {
         str[i] = 0xAA;
     }
     free(str);
+
+    if ((boot_flags & MULTIBOOT_INFO_HAS_VIDEO_INFO) != 0) {
+        puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is enable !\n");
+        printf("Current Video Mode: %x\n", boot_info->vbe_mode);
+
+        Vbe_info_block *vbe_info = (Vbe_info_block*)boot_info->vbe_control_info;
+        Vbe_mode_info_block *vbe_mode_info = (Vbe_mode_info_block*)boot_info->vbe_mode_info;
+        printf("VBE Version: %x\n", vbe_info->vbe_version);
+        printf("VBE Signature: %s\n", vbe_info->vbe_signature);
+        printf("Video Mode Ptr: %x\n", vbe_info->video_mode_ptr);
+
+        printf("VBE Memory Model type: %x\n", vbe_mode_info->memory_model_type);
+        printf("VBE Physical base address: %x\n", vbe_mode_info->phys_base_ptr);
+        if (vbe_mode_info->phys_base_ptr != 0) {
+            const int size = vbe_mode_info->x_resolution * vbe_mode_info->y_resolution * (vbe_mode_info->bits_per_pixel / 8) - 1;
+            char* vram = (char*)vbe_mode_info->phys_base_ptr;
+            for (int i = 0; i < size; i++) {
+                vram[i] = 0x55;
+            }
+
+        }
+    }
 
     for(;;) {
         puts("\n-------------------- hlt ! --------------------\n");
