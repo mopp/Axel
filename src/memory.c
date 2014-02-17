@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <memory.h>
 #include <doubly_linked_list.h>
-#include <graphic_txt.h>
+/* #include <graphic_txt.h> */
 
 
 /* &をよく忘れるので関数で包む */
@@ -67,20 +67,22 @@ static inline void set_meminfo(Multiboot_memory_map* mmap, Memory_info* mi) {
     mi->state = (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) ? MEM_INFO_STATE_FREE : MEM_INFO_STATE_ALLOC;
 }
 
-
-static void print_memory_list(void) {
-    Dlinked_list_node t = mem_manager->mem_lst;
-    Memory_info* mi = t->data;
-
-    while (t->tail != DUMMY) {
-        printf("addr: 0x%x, ", mi->base_addr);
-        printf("size: 0x%x, ", mi->size);
-        printf("state: 0x%x\n", mi->state);
-
-        t = t->tail;
-        mi = t->data;
-    }
-}
+/*
+ *
+ * static void print_memory_list(void) {
+ *     Dlinked_list_node t = mem_manager->mem_lst;
+ *     Memory_info* mi = t->data;
+ *
+ *     while (t->tail != DUMMY) {
+ *         printf("addr: 0x%x, ", mi->base_addr);
+ *         printf("size: 0x%x, ", mi->size);
+ *         printf("state: 0x%x\n", mi->state);
+ *
+ *         t = t->tail;
+ *         mi = t->data;
+ *     }
+ * }
+ */
 
 
 void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
