@@ -1,6 +1,6 @@
 /************************************************************
  * File: include/vbe.h
- * Description: VBE Structures
+ * Description: VBE 2.0 Structures
  ************************************************************/
 
 #ifndef VBE_H
@@ -10,11 +10,11 @@
 #include <stdint.h>
 
 typedef struct {
-    uint8_t vbe_signature[4];   /* VBE Signature */
-    uint16_t vbe_version;       /* VBE Version */
-    uint32_t oem_string_ptr;
-    uint32_t capabilities;      /* the support of specific features */
-    uint32_t video_mode_ptr;    /* VbeFarPtr to VideoModeList */
+    uint8_t vbe_signature[4];   /* 'VESA' VBE Signature */
+    uint16_t vbe_version;       /* BCD value, VBE Version */
+    uint32_t oem_string_ptr;    /* Pointer to OME String. */
+    uint32_t capabilities;      /* indicate the support of specific features */
+    uint32_t video_mode_ptr;    /* VbeFarPtr to supported VideoModeList */
     uint16_t total_memory;      /* Number of 64KB memory blocks */
     uint16_t oem_software_rev;
     uint32_t oem_vendor_name_ptr;
