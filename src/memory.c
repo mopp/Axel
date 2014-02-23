@@ -227,7 +227,7 @@ int memcmp(const void* buf1, const void* buf2, size_t len) {
     int result = 0;
     ucb1 = buf1;
     ucb2 = buf2;
-    t = buf2 + len;
+    t = ucb2 + len;
 
     while (t != buf2 && result == 0) {
         result = *ucb1++ - *ucb2++;
@@ -238,7 +238,7 @@ int memcmp(const void* buf1, const void* buf2, size_t len) {
 
 
 void* memset(void* buf, const int ch, size_t len) {
-    char* end = buf + len;
+    char* end = (char*)buf + len;
     char* t = buf;
 
     while (t < end) {
