@@ -22,15 +22,10 @@ align 4
     dd $0
 
     ; Graphic field
-    dd 0
-    dd 800 ; width
-    dd 600 ; height
-    dd (64 * 1024)
-    ; dd 1
-    ; dd DISPLAY_MAX_X
-    ; dd DISPLAY_MAX_Y
-    ; dd DISPLAY_MAX_BIT
-
+    dd GRAPHIC_FIELD_MODE
+    dd DISPLAY_X_RESOLUTION
+    dd DISPLAY_Y_RESOLUTION
+    dd DISPLAY_BIT_SIZE
 
 section .kernel_init_stack
 stack_bottom:

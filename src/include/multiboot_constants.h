@@ -7,10 +7,23 @@
 #define MULTIBOOT_CONSTANTS_H 1
 
 /* XXX 以降はアセンブラで使うためenum化しないこと */
-#define DISPLAY_MAX_X      320
-#define DISPLAY_MAX_Y      200
-#define DISPLAY_MAX_BIT    8
-#define DISPLAY_MAX_XY     (DISPLAY_MAX_X * DISPLAY_MAX_Y)
+
+/* TODO: Makefileでビルド時に切り替え. */
+/* #define TEXT_MODE */
+#define GRAPHIC_MODE
+
+#ifdef TEXT_MODE
+    #define GRAPHIC_FIELD_MODE 1
+    #define DISPLAY_X_RESOLUTION    320
+    #define DISPLAY_Y_RESOLUTION    200
+    #define DISPLAY_BIT_SIZE        8
+#else
+    #define GRAPHIC_FIELD_MODE 0
+    #define DISPLAY_X_RESOLUTION    800
+    #define DISPLAY_Y_RESOLUTION    600
+    #define DISPLAY_BIT_SIZE        32
+#endif
+#define DISPLAY_NUMBER_OF_PIXEL (DISPLAY_X_RESOLUTION * DISPLAY_Y_RESOLUTION)
 
 /*
  * Multiboot Header Constants
