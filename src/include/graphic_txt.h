@@ -1,6 +1,6 @@
 /************************************************************
  * File: include/graphic_txt.h
- * Description:  TextMode Graphic Header.
+ * Description: TextMode Graphic Header.
  ************************************************************/
 
 #ifndef GRAPHIC_TXT
