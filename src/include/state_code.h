@@ -4,7 +4,7 @@
  ************************************************************/
 
 enum Axel_state_code {
-    SUCCESS,
-    FAILED,
+    AXEL_SUCCESS,
+    AXEL_FAILED,
 };
 typedef enum Axel_state_code Axel_state_code;
