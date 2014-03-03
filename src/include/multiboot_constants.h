@@ -13,12 +13,12 @@
 #define GRAPHIC_MODE
 
 #ifdef TEXT_MODE
-    #define GRAPHIC_FIELD_MODE 1
+    #define GRAPHIC_FIELD_MODE      1
     #define DISPLAY_X_RESOLUTION    320
     #define DISPLAY_Y_RESOLUTION    200
     #define DISPLAY_BIT_SIZE        8
 #else
-    #define GRAPHIC_FIELD_MODE 0
+    #define GRAPHIC_FIELD_MODE      0
     #define DISPLAY_X_RESOLUTION    800
     #define DISPLAY_Y_RESOLUTION    600
     #define DISPLAY_BIT_SIZE        32

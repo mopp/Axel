@@ -18,12 +18,13 @@
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static inline void init_gdt(void);
-static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void(*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
+static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void (*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
 static inline void init_idt(void);
 static inline void init_pic(void);
 static inline void init_pit(void);
 
-_Noreturn void kernel_entry(Multiboot_info* boot_info) {
+
+_Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     io_cli();
     init_gdt();
     init_idt();
@@ -36,14 +37,14 @@ _Noreturn void kernel_entry(Multiboot_info* boot_info) {
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
-    printf("kernel size: %dKB\n",           get_kernel_size() / 1024);
-    printf("kernel start address: %x\n",  get_kernel_start_addr());
-    printf("kernel end address: %x\n\n",  get_kernel_end_addr());
+    printf("kernel size: %dKB\n", get_kernel_size() / 1024);
+    printf("kernel start address: %x\n", get_kernel_start_addr());
+    printf("kernel end address: %x\n\n", get_kernel_end_addr());
 
-    printf("PIC0 State: %x\n",  io_in8(PIC0_CMD_STATE_PORT));
-    printf("PIC0 Data: %x\n",   io_in8(PIC0_IMR_DATA_PORT));
-    printf("PIC1 State: %x\n",  io_in8(PIC1_CMD_STATE_PORT));
-    printf("PIC1 Data: %x\n\n",   io_in8(PIC1_IMR_DATA_PORT));
+    printf("PIC0 State: %x\n", io_in8(PIC0_CMD_STATE_PORT));
+    printf("PIC0 Data: %x\n", io_in8(PIC0_IMR_DATA_PORT));
+    printf("PIC1 State: %x\n", io_in8(PIC1_CMD_STATE_PORT));
+    printf("PIC1 Data: %x\n\n", io_in8(PIC1_IMR_DATA_PORT));
 
     const uint32_t boot_flags = boot_info->flags;
 
@@ -111,7 +112,7 @@ _Noreturn void kernel_entry(Multiboot_info* boot_info) {
         puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is disable !\n");
     }
 
-    for(;;) {
+    for (;;) {
         puts("\n-------------------- hlt ! --------------------\n");
         io_hlt();
     }
@@ -122,12 +123,12 @@ static Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_
     /* セグメントのサイズを設定 */
     /* granularity_flagが1のときlimit * 4KBがセグメントのサイズになる */
     s->limit_low = (limit & 0x0000ffff);
-    s->limit_hi  = (limit >> 16);
+    s->limit_hi = (limit >> 16);
 
     /* セグメントの開始アドレスを設定 */
     s->base_addr_low = (base_addr & 0x0000ffff);
     s->base_addr_mid = (base_addr & 0x00ff0000) >> 16;
-    s->base_addr_hi  = (base_addr & 0xff000000) >> 24;
+    s->base_addr_hi = (base_addr & 0xff000000) >> 24;
 
     /* アクセス権エラー */
     if (0xf < type) {
@@ -166,7 +167,7 @@ static Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_
 
 
 static inline void init_gdt(void) {
-    Segment_descriptor *gdt = (Segment_descriptor*)GDT_ADDR;
+    Segment_descriptor* gdt = (Segment_descriptor*)GDT_ADDR;
 
     /* 全セグメントを初期化 */
     for (int i = 0; i < GDT_MAX_NUM; ++i) {
@@ -183,9 +184,9 @@ static inline void init_gdt(void) {
 }
 
 
-static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_type, void(*offset)(void), uint16_t selector_index, uint8_t gate_size, uint8_t pliv, uint8_t p_flag) {
-    g->offset_low   = ((uint32_t)offset & 0x0000ffff);
-    g->offset_high  = ((uint32_t)offset >> 16);
+static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_type, void (*offset)(void), uint16_t selector_index, uint8_t gate_size, uint8_t pliv, uint8_t p_flag) {
+    g->offset_low = ((uint32_t)offset & 0x0000ffff);
+    g->offset_high = ((uint32_t)offset >> 16);
 
     g->segment_selector = selector_index * GDT_ELEMENT_SIZE;
 
@@ -205,7 +206,7 @@ static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_typ
 
 
 static void init_idt(void) {
-    Gate_descriptor *idt = (Gate_descriptor*)IDT_ADDR;
+    Gate_descriptor* idt = (Gate_descriptor*)IDT_ADDR;
 
     /* 全ゲートディスクリプタ初期化を初期化 */
     for (int i = 0; i < IDT_MAX_NUM; ++i) {
@@ -224,15 +225,15 @@ static inline void init_pic(void) {
 
     /* Master */
     io_out8(PIC0_CMD_STATE_PORT, PIC0_ICW1);
-    io_out8(PIC0_IMR_DATA_PORT,  PIC0_ICW2);
-    io_out8(PIC0_IMR_DATA_PORT,  PIC0_ICW3);
-    io_out8(PIC0_IMR_DATA_PORT,  PIC0_ICW4);
+    io_out8(PIC0_IMR_DATA_PORT, PIC0_ICW2);
+    io_out8(PIC0_IMR_DATA_PORT, PIC0_ICW3);
+    io_out8(PIC0_IMR_DATA_PORT, PIC0_ICW4);
 
     /* Slave */
     io_out8(PIC1_CMD_STATE_PORT, PIC1_ICW1);
-    io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW2);
-    io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW3);
-    io_out8(PIC1_IMR_DATA_PORT,  PIC1_ICW4);
+    io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW2);
+    io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW3);
+    io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW4);
 
     /* IRQ2以外の割り込みを受け付けない */
     io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & (~PIC_IMR_MASK_IRQ2));
