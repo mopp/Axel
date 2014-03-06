@@ -1,10 +1,11 @@
 /************************************************************
  * File: include/graphic_txt.h
  * Description: TextMode Graphic Header.
+ *  global function in this file must be have suffix "txt"
  ************************************************************/
 
-#ifndef GRAPHIC_TXT
-#define GRAPHIC_TXT
+#ifndef GRAPHIC_TXT_H
+#define GRAPHIC_TXT_H
 
 #include <stdint.h>
 
