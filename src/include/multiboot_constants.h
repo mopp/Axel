@@ -3,14 +3,12 @@
  * Description: Multiboot Standerd Constants
  ************************************************************/
 
+#include <flag.h>
+
 #ifndef MULTIBOOT_CONSTANTS_H
 #define MULTIBOOT_CONSTANTS_H 1
 
 /* XXX 以降はアセンブラで使うためenum化しないこと */
-
-/* TODO: Makefileでビルド時に切り替え. */
-/* #define TEXT_MODE */
-#define GRAPHIC_MODE
 
 #ifdef TEXT_MODE
     #define GRAPHIC_FIELD_MODE      1
