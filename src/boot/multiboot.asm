@@ -29,6 +29,7 @@ align 4
 
 section .kernel_init_stack
 stack_bottom:
+    ; times 16384 db 0
     times 16384 db 0
 stack_top:
 
@@ -44,7 +45,7 @@ boot_kernel:
     cmp EAX, MULTIBOOT_BOOTLOADER_MAGIC
     jne .sleep
 
-    mov esp,  stack_top
+    mov esp, stack_top
 
     ; ブート情報構造体の格納アドレスを引数へ
     push EBX
