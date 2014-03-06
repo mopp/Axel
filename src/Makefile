@@ -21,7 +21,7 @@ KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 # 順序に注意
 # LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_vbe.o graphic_txt.o doubly_linked_list.o stack.o memory.o kernel.o
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o point.o graphic_txt.o graphic_vbe.o graphic.o doubly_linked_list.o stack.o memory.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o point.o graphic_txt.o graphic_vbe.o doubly_linked_list.o stack.o memory.o kernel.o
 
 SUBDIRS 			:= $(BOOT_DIR)
 
