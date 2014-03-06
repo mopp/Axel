@@ -24,9 +24,9 @@ enum Textmode_gpaphic_constants {
     TEXTMODE_DISPLAY_MAX_XY     = (TEXTMODE_DISPLAY_MAX_X * TEXTMODE_DISPLAY_MAX_Y),
 };
 
-extern int putchar(int);
-extern const char* puts(const char*);
-extern void clean_screen(void);
-extern void printf(const char*, ...);
+extern int putchar_txt(int);
+extern const char* puts_txt(const char*);
+extern void clean_screen_txt(void);
+extern void printf_txt(const char*, ...);
 
 #endif

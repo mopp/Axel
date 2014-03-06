@@ -28,7 +28,7 @@ static inline uint16_t get_one_pixel(uint16_t);
 
 
 
-void clean_screen(void) {
+void clean_screen_txt(void) {
     for (uint16_t i = 0; i < TEXTMODE_DISPLAY_MAX_XY; ++i) {
         vram[i] = get_one_pixel(SPACE_CHAR);
     }
@@ -38,7 +38,7 @@ void clean_screen(void) {
 }
 
 
-int putchar(int c) {
+int putchar_txt(int c) {
     if (c == '\n' || c == '\r') {
         newline();
         return c;
@@ -55,38 +55,38 @@ int putchar(int c) {
 }
 
 
-const char* puts(const char* str) {
+const char* puts_txt(const char* str) {
     while (*str != '\0') {
-        putchar(*str++);
+        putchar_txt(*str++);
     }
 
     return str;
 }
 
 
-void printf(const char* format, ...) {
+void printf_txt(const char* format, ...) {
     va_list args;
 
     va_start(args, format);
 
     for (const char* c = format; *c != '\0'; ++c) {
         if (*c != '%') {
-            putchar(*c);
+            putchar_txt(*c);
             continue;
         }
 
         ++c;
         switch (*c) {
             case '\n':
-                putchar('\n');
+                putchar_txt('\n');
             case 's':
-                puts(va_arg(args, const char*));
+                puts_txt(va_arg(args, const char*));
                 break;
             case 'd':
             case 'x': {  // add local scope
                 /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
                 char buf[10];
-                puts(itoa(buf, *c, va_arg(args, int)));
+                puts_txt(itoa(buf, *c, va_arg(args, int)));
                 break;
             }
         }

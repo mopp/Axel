@@ -8,12 +8,14 @@
 
 
 #include <flag.h>
+#include <graphic_txt.h>
+#include <graphic_vbe.h>
+#include <stdarg.h>
 
-#ifdef TEXT_MODE
-    #include <graphic_txt.h>
-#else
-    #include <graphic_vbe.h>
-#endif
 
+extern void clean_screen(void);
+extern int putchar(int);
+extern const char* puts(const char*);
+extern void printf(const char* , ...);
 
 #endif
