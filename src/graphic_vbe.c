@@ -5,9 +5,8 @@
 
 
 #include <graphic_vbe.h>
-#include <vbe.h>
-#include <memory.h>
 #include <state_code.h>
+#include <vbe.h>
 
 #define MAX_COLOR_RANGE 255
 
@@ -34,13 +33,13 @@ static uint8_t byte_per_pixel, x_resolution, y_resolution;
 static uint32_t max_xy;
 static uint32_t vram_size;
 static Color_bit_info bit_info;
+static void (*set_vram) (uint8_t const, uint8_t const, RGB8 const * const);
 static void set_vram8880(uint8_t const, uint8_t const, RGB8 const * const);
 static void set_vram8888(uint8_t const, uint8_t const, RGB8 const * const);
 static void set_vram5650(uint8_t const, uint8_t const, RGB8 const * const);
-static void (*set_vram) (uint8_t const, uint8_t const, RGB8 const * const);
 
 
-Axel_state_code init_graphic(Vbe_info_block const* const in, Vbe_mode_info_block const* const mi) {
+Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_block const* const mi) {
     if (m_info->phys_base_ptr == 0) {
         return AXEL_FAILED;
     }
@@ -85,7 +84,7 @@ Axel_state_code init_graphic(Vbe_info_block const* const in, Vbe_mode_info_block
 }
 
 
-void clean_screen_g(RGB8 const * const c) {
+void clean_screen_vbe(RGB8 const * const c) {
     for (int i = 0; i < x_resolution; ++i) {
         for (int j = 0; j < y_resolution; ++j) {
             set_vram(i, j, c);
