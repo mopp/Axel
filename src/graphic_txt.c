@@ -19,6 +19,7 @@ static Point2d pos;
 /* background and foreground color attribution. */
 static uint16_t disp_attribute = (TEXTMODE_ATTR_BACK_COLOR_B | TEXTMODE_ATTR_FORE_COLOR_G);
 
+/* space character code. */
 static uint16_t const SPACE_CHAR = 0x0020;
 
 

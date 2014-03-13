@@ -7,15 +7,16 @@
 #include <kernel.h>
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
-// TODO: GRAPHIC_MODE か TEXT_MODE で切り替える
-#include <graphic_txt.h>
+#include <graphic.h>
 #include <interrupt_handler.h>
 #include <stddef.h>
 #include <vbe.h>
 #include <memory.h>
+#include <state_code.h>
 
 #define IS_FLAG_NOT_ZERO(x) ((x != 0) ? 1 : 0)
 
+extern Axel_state_code init_graphic(Vbe_info_block const* const, Vbe_mode_info_block const* const);
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static inline void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void (*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
@@ -76,6 +77,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
         Vbe_info_block* vbe_info = (Vbe_info_block*)boot_info->vbe_control_info;
         Vbe_mode_info_block* vbe_mode_info = (Vbe_mode_info_block*)boot_info->vbe_mode_info;
 
+        init_graphic(vbe_info, vbe_mode_info);
         printf("VBE Version: %x\n", vbe_info->vbe_version);
         printf("VBE Signature: %s\n", vbe_info->vbe_signature);
         printf("Video Mode Ptr: %x\n", vbe_info->video_mode_ptr);
@@ -112,8 +114,13 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
         puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is disable !\n");
     }
 
+
     for (;;) {
         puts("\n-------------------- hlt ! --------------------\n");
+        puts("ABCABABABABABABCCCCCC\n");
+        puts("next line\n");
+        puts("more next line\n");
+        puts("more more next line\n");
         io_hlt();
     }
 }

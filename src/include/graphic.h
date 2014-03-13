@@ -8,14 +8,17 @@
 
 
 #include <flag.h>
-#include <graphic_txt.h>
-#include <graphic_vbe.h>
 #include <stdarg.h>
+#include <rgb8.h>
+
+
+// TODO: define color presets
 
 
 extern void clean_screen(void);
 extern int putchar(int);
 extern const char* puts(const char*);
 extern void printf(const char* , ...);
+
 
 #endif

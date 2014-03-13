@@ -8,6 +8,7 @@
 #define GRAPHIC_TXT_H
 
 #include <stdint.h>
+#include <rgb8.h>
 
 enum Textmode_gpaphic_constants {
     TEXTMODE_VRAM_ADDR          = 0x000B8000,
