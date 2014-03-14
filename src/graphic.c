@@ -32,7 +32,7 @@ int putchar(int c) {
 #ifdef TEXT_MODE
     return putchar_txt(c);
 #else
-    return 0;
+    return c;
 #endif
 }
 
@@ -41,7 +41,7 @@ const char* puts(const char* str) {
 #ifdef TEXT_MODE
     return puts_txt(str);
 #else
-    return 0;
+    return str;
 #endif
 }
 

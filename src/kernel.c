@@ -71,6 +71,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
      * free(str);
      */
 
+    goto halt;
     if ((boot_flags & MULTIBOOT_INFO_HAS_VIDEO_INFO) != 0) {
         puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is enable !\n");
         printf("Current Video Mode: %x\n", boot_info->vbe_mode);
@@ -86,7 +87,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
             int const byte_per_pixel = (vbe_mode_info->bits_per_pixel / 8);
             int const size = (vbe_mode_info->x_resolution) * vbe_mode_info->y_resolution * byte_per_pixel / sizeof(uint32_t);
 
-            uint32_t* const vram = (uint32_t*)vbe_mode_info->phys_base_ptr;
+            /* uint32_t* const vram = (uint32_t*)vbe_mode_info->phys_base_ptr; */
 
             uint32_t const rs = vbe_mode_info->red_mask_size;
             uint32_t const gs = vbe_mode_info->green_mask_size;
@@ -101,9 +102,9 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
 
             for (int i = 0; i < size; i++) {
                 if ((rs + gs + bs + rsvs) == 32) {
-                    vram[i] = (0xff << rp) + (0x00 << gp) + (0xff << bp) + (0 << rsvp);
+                    /* vram[i] = (0xff << rp) + (0x00 << gp) + (0xff << bp) + (0 << rsvp); */
                 } else {
-                    vram[i] = (0 << rp) + (0 << gp) + (0 << gp);
+                    /* vram[i] = (0 << rp) + (0 << gp) + (0 << gp); */
                 }
             }
         }
@@ -112,6 +113,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     }
 
 
+halt:
     for (;;) {
         puts("\n-------------------- hlt ! --------------------\n");
         io_hlt();
