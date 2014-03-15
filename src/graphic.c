@@ -20,9 +20,10 @@ void clean_screen(void) {
     clean_screen_txt();
 #else
     RGB8 c;
-    c.r = 0xFF;
+    c.r = 0x55;
     c.g = 0x00;
-    c.b = 0x1F;
+    c.b = 0xCC;
+    c.rsvd = 0x00;
     clean_screen_vbe(&c);
 #endif
 }
@@ -49,6 +50,8 @@ const char* puts(const char* str) {
 /* TODO: split printf to stdio */
 void printf(const char* format, ...) {
     va_list args;
+    /* DUMMY */
+    puts(format);
 
 #ifdef TEXT_MODE
 /* printf_txt(format, args); */

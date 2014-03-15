@@ -36,6 +36,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
 
     init_graphic(vbe_info, vbe_mode_info);
     clean_screen();
+    goto halt;
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
@@ -71,7 +72,6 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
      * free(str);
      */
 
-    goto halt;
     if ((boot_flags & MULTIBOOT_INFO_HAS_VIDEO_INFO) != 0) {
         puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is enable !\n");
         printf("Current Video Mode: %x\n", boot_info->vbe_mode);

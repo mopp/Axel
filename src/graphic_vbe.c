@@ -30,13 +30,14 @@ static Vbe_mode_info_block const* m_info;
 
 static volatile uint8_t* vram;
 static uint8_t byte_per_pixel;
-static uint32_t max_x_resolution, max_y_resolution, max_xmax_y_resolution;
 static uint32_t vram_size;
+static uint32_t max_x_resolution, max_y_resolution, max_xy_resolution;
 static Color_bit_info bit_info;
-static void (*set_vram) (uint8_t const, uint8_t const, RGB8 const * const);
-static void set_vram8880(uint8_t const, uint8_t const, RGB8 const * const);
-static void set_vram8888(uint8_t const, uint8_t const, RGB8 const * const);
-static void set_vram5650(uint8_t const, uint8_t const, RGB8 const * const);
+static void (*set_vram) (uint32_t const, uint32_t const, RGB8 const * const);
+static void set_vram8880(uint32_t const, uint32_t const, RGB8 const * const);
+static void set_vram8888(uint32_t const, uint32_t const, RGB8 const * const);
+static void set_vram5650(uint32_t const, uint32_t const, RGB8 const * const);
+static inline uint32_t get_vram_index(uint32_t const, uint32_t const);
 
 
 Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_block const* const mi) {
@@ -47,14 +48,15 @@ Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_b
     info = in;
     m_info = mi;
 
-    vram = (uint8_t*)m_info->phys_base_ptr;
+    // XXX:
+    vram = (uint8_t*)((intptr_t)m_info->phys_base_ptr);
 
     max_x_resolution = m_info->x_resolution;
     max_y_resolution = m_info->y_resolution;
-    max_xmax_y_resolution = max_x_resolution * max_y_resolution;
+    max_xy_resolution = max_x_resolution * max_y_resolution;
 
     byte_per_pixel = (m_info->bits_per_pixel / 8);
-    vram_size = max_xmax_y_resolution * byte_per_pixel;
+    vram_size = max_xy_resolution * byte_per_pixel;
 
     // store bit infomation.
     bit_info.r_size = m_info->red_mask_size;
@@ -88,17 +90,32 @@ Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_b
 
 
 void clean_screen_vbe(RGB8 const * const c) {
-    for (uint8_t i = 0; i < max_x_resolution; ++i) {
-        for (uint8_t j = 0; j < max_y_resolution; ++j) {
-            set_vram(i, j, c);
-            /* vram[i] = (0xff << bit_info.r_pos) + (0x00 << bit_info.b_pos) + (0xff << bit_info.g_pos); */
+    for (uint32_t i = 0; i < max_y_resolution; ++i) {
+        for (uint32_t j = 0; j < max_x_resolution; ++j) {
+            set_vram(j, i, c);
         }
     }
+
+    *(uint32_t*)0xA0010 = max_x_resolution;
+    *(uint32_t*)0xA0020 = max_y_resolution;
+    *(uint32_t*)0xA0030 = max_xy_resolution;
+    *(uint32_t*)0xA0040 = byte_per_pixel;
+
+    /* *(volatile uint32_t*)(vram + (max_xy_resolution * 4)) = ((uint32_t)c->r << bit_info.r_pos) | ((uint32_t)c->g << bit_info.g_pos) | ((uint32_t)c->b << bit_info.b_pos) | ((uint32_t)c->rsvd << bit_info.rsvd_pos); */
+    /* *(volatile uint32_t*)(vram + ((max_x_resolution + max_x_resolution * max_y_resolution) * 4)) = 0xFFFFFFFF; */
+
+    /* for (uint32_t i = 0; i < vram_size; i++) { */
+        /* vram[i] = 0xFF; */
+    /* } */
 }
 
 
-static void set_vram8880(uint8_t const x, uint8_t const y, RGB8 const * const c) {
-    uint32_t const base = (x + max_y_resolution * y) * byte_per_pixel;
+static inline uint32_t get_vram_index(uint32_t const x, uint32_t const y) {
+    return (x + max_x_resolution * y) * byte_per_pixel;
+}
+
+static void set_vram8880(uint32_t const x, uint32_t const y, RGB8 const * const c) {
+    uint32_t const base = get_vram_index(x, y);
 
     vram[base] = c->r;
     vram[base + 1] = c->g;
@@ -106,18 +123,19 @@ static void set_vram8880(uint8_t const x, uint8_t const y, RGB8 const * const c)
 }
 
 
-static void set_vram8888(uint8_t const x, uint8_t const y, RGB8 const * const c) {
-    uint32_t const base = (x + max_y_resolution * y) * byte_per_pixel;
+static void set_vram8888(uint32_t const x, uint32_t const y, RGB8 const * const c) {
 
-    vram[base] = c->r;
-    vram[base + 1] = c->g;
-    vram[base + 2] = c->b;
-    vram[base + 3] = c->rsvd;
+    *(volatile uint32_t*)(vram + get_vram_index(x, y)) = ((uint32_t)c->r << bit_info.r_pos) | ((uint32_t)c->g << bit_info.g_pos) | ((uint32_t)c->b << bit_info.b_pos) | ((uint32_t)c->rsvd << bit_info.rsvd_pos);
+
+    /* vram[base    ] = c->r; */
+    /* vram[base + 1] = c->g; */
+    /* vram[base + 2] = c->b; */
+    /* vram[base + 3] = c->rsvd; */
 }
 
 
-static void set_vram5650(uint8_t const x, uint8_t const y, RGB8 const * const c) {
-    uint32_t const base = (x + max_y_resolution * y) * byte_per_pixel;
+static void set_vram5650(uint32_t const x, uint32_t const y, RGB8 const * const c) {
+    uint32_t const base = get_vram_index(x, y);
 
     /* convert to 5, 6 and 5 bit */
     vram[base] = c->r << 3;
