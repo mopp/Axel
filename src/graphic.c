@@ -20,9 +20,9 @@ void clean_screen(void) {
     clean_screen_txt();
 #else
     RGB8 c;
-    c.r = 0x55;
+    c.r = 0xCD;
     c.g = 0x00;
-    c.b = 0xCC;
+    c.b = 0xAA;
     c.rsvd = 0x00;
     clean_screen_vbe(&c);
 #endif
