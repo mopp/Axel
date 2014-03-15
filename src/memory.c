@@ -11,34 +11,34 @@
 
 
 /* &をよく忘れるので関数で包む */
-extern const uint32_t LD_KERNEL_SIZE;
-extern const uint32_t LD_KERNEL_START;
-extern const uint32_t LD_KERNEL_END;
+extern const uintptr_t LD_KERNEL_SIZE;
+extern const uintptr_t LD_KERNEL_START;
+extern const uintptr_t LD_KERNEL_END;
 
 static Memory_manager* mem_manager;
 static struct dlinked_list_node* dlst_nodes;
 static Memory_info* mem_info;
 
 
-uint32_t get_kernel_start_addr(void) {
-    return (uint32_t)&LD_KERNEL_START;
+uintptr_t get_kernel_start_addr(void) {
+    return (uintptr_t)&LD_KERNEL_START;
 }
 
 
-uint32_t get_kernel_end_addr(void) {
-    return (uint32_t)&LD_KERNEL_END;
+uintptr_t get_kernel_end_addr(void) {
+    return (uintptr_t)&LD_KERNEL_END;
 }
 
 
-uint32_t get_kernel_size(void) {
-    return (uint32_t)&LD_KERNEL_SIZE;
+uintptr_t get_kernel_size(void) {
+    return (uintptr_t)&LD_KERNEL_SIZE;
 }
 
 
 static Dlinked_list_node get_new_memory_list_node(void) {
     static int lst_counter = 0;
 
-    // empty
+    /* empty */
     if (lst_counter == MAX_MEM_NODE_NUM) {
         return NULL;
     }
@@ -62,8 +62,8 @@ static inline void init_memory_list(void) {
 
 
 static inline void set_meminfo(Multiboot_memory_map* mmap, Memory_info* mi) {
-    mi->base_addr = mmap->addr;
-    mi->size = mmap->len;
+    mi->base_addr = (uintptr_t)mmap->addr;
+    mi->size = (uintptr_t)mmap->len;
     mi->state = (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) ? MEM_INFO_STATE_FREE : MEM_INFO_STATE_ALLOC;
 }
 
@@ -86,12 +86,13 @@ static inline void set_meminfo(Multiboot_memory_map* mmap, Memory_info* mi) {
 
 
 void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
-    Multiboot_memory_map* limit = (Multiboot_memory_map*)((uint32_t)mmap + mmap_len);
+    Multiboot_memory_map* limit = (Multiboot_memory_map*)((uintptr_t)mmap + mmap_len);
 
     init_memory_list();
 
     // マネージャにカーネル領域末尾を使用
-    mem_manager = (Memory_manager*)get_kernel_end_addr();
+    uintptr_t t = get_kernel_end_addr();
+    mem_manager = (Memory_manager*)t;
     mem_manager->mem_lst = &dlst_nodes[0];
     mem_manager->exist_info_num = 1;
     mem_manager->lost_times = 0;
@@ -103,7 +104,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
 
     while (mmap < limit) {
         // 次の要素へ
-        mmap = (Multiboot_memory_map*)((uint32_t)mmap + sizeof(mmap->size) + mmap->size);
+        mmap = (Multiboot_memory_map*)((uintptr_t)mmap + sizeof(mmap->size) + mmap->size);
 
         Dlinked_list_node dl = get_new_memory_list_node();
         Memory_info* mi = dl->data;
@@ -116,9 +117,9 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
     // allocate kernel area
     Dlinked_list_node ka_node = mem_manager->mem_lst;
     Memory_info* ka_mi = ka_node->data;
-    const uint32_t ka_start_addr = get_kernel_start_addr();
-    const uint32_t ka_end_addr = get_kernel_end_addr() + (uint32_t)mem_info + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
-    const uint32_t ka_size = ka_end_addr - ka_start_addr;
+    const uintptr_t ka_start_addr = get_kernel_start_addr();
+    const uintptr_t ka_end_addr = get_kernel_end_addr() + (uintptr_t)mem_info + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
+    const uintptr_t ka_size = ka_end_addr - ka_start_addr;
 
     while (ka_node->tail != DUMMY) {
         if (ka_mi->base_addr <= ka_start_addr && ka_end_addr <= (ka_mi->base_addr + ka_mi->size)) {
@@ -186,7 +187,7 @@ void* malloc(size_t size_byte) {
 
 
 void free(void* object) {
-    uint32_t allocated_addr = (uint32_t)object;
+    uintptr_t allocated_addr = (uintptr_t)object;
     Dlinked_list_node lst = mem_manager->mem_lst;
     Memory_info* mi = lst->data;
 
@@ -238,11 +239,11 @@ int memcmp(const void* buf1, const void* buf2, size_t len) {
 
 
 void* memset(void* buf, const int ch, size_t len) {
-    char* end = (char*)buf + len;
-    char* t = buf;
+    uintptr_t end = (uintptr_t)buf + len;
+    uintptr_t t = (uintptr_t)buf;
 
     while (t < end) {
-        *t++ = ch;
+        *(uint8_t*)t++ = (uint8_t)ch;
     }
 
     return buf;

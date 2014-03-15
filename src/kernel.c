@@ -31,12 +31,11 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     init_pit();
     io_sti();
 
-    const Vbe_info_block const* vbe_info = (Vbe_info_block*)boot_info->vbe_control_info;
-    const Vbe_mode_info_block const* vbe_mode_info = (Vbe_mode_info_block*)boot_info->vbe_mode_info;
+    const Vbe_info_block const* vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
+    const Vbe_mode_info_block const* vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
 
     init_graphic(vbe_info, vbe_mode_info);
     clean_screen();
-    goto halt;
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
@@ -61,59 +60,22 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
 
     /* nmap_*フィールドを確認 */
     if (boot_flags & 0x20) {
-        init_memory((Multiboot_memory_map*)(boot_info->mmap_addr), boot_info->mmap_length);
+        init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
     }
 
-    /*
-     * char* str = (char*)malloc(sizeof(char) * 100);
-     * for (int i = 0; i < 100; i++) {
-     *     str[i] = 0xAA;
-     * }
-     * free(str);
-     */
+    char* str = (char*)malloc(sizeof(char) * 100);
+    for (int i = 0; i < 100; i++) {
+        str[i] = (char)0xAA;
+    }
+    free(str);
+
 
     if ((boot_flags & MULTIBOOT_INFO_HAS_VIDEO_INFO) != 0) {
         puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is enable !\n");
-        printf("Current Video Mode: %x\n", boot_info->vbe_mode);
-
-        printf("VBE Version: %x\n", vbe_info->vbe_version);
-        printf("VBE Signature: %s\n", vbe_info->vbe_signature);
-        printf("Video Mode Ptr: %x\n", vbe_info->video_mode_ptr);
-
-        printf("VBE Memory Model type: %x\n", vbe_mode_info->memory_model_type);
-        printf("VBE Physical base address: %x\n", vbe_mode_info->phys_base_ptr);
-
-        if (vbe_mode_info->phys_base_ptr != 0) {
-            int const byte_per_pixel = (vbe_mode_info->bits_per_pixel / 8);
-            int const size = (vbe_mode_info->x_resolution) * vbe_mode_info->y_resolution * byte_per_pixel / sizeof(uint32_t);
-
-            /* uint32_t* const vram = (uint32_t*)vbe_mode_info->phys_base_ptr; */
-
-            uint32_t const rs = vbe_mode_info->red_mask_size;
-            uint32_t const gs = vbe_mode_info->green_mask_size;
-            uint32_t const bs = vbe_mode_info->blue_mask_size;
-            uint32_t const rsvs = vbe_mode_info->rsvd_mask_size;
-            // all 8bit
-
-            uint32_t const rp = vbe_mode_info->red_field_position;
-            uint32_t const gp = vbe_mode_info->green_field_position;
-            uint32_t const bp = vbe_mode_info->blue_field_position;
-            uint32_t const rsvp = vbe_mode_info->rsvd_field_position;
-
-            for (int i = 0; i < size; i++) {
-                if ((rs + gs + bs + rsvs) == 32) {
-                    /* vram[i] = (0xff << rp) + (0x00 << gp) + (0xff << bp) + (0 << rsvp); */
-                } else {
-                    /* vram[i] = (0 << rp) + (0 << gp) + (0 << gp); */
-                }
-            }
-        }
     } else {
         puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is disable !\n");
     }
 
-
-halt:
     for (;;) {
         puts("\n-------------------- hlt ! --------------------\n");
         io_hlt();
@@ -125,36 +87,36 @@ static Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_
     /* セグメントのサイズを設定 */
     /* granularity_flagが1のときlimit * 4KBがセグメントのサイズになる */
     s->limit_low = (limit & 0x0000ffff);
-    s->limit_hi = (limit >> 16);
+    s->limit_hi = (uint8_t)((limit >> 16) & 0xf);
 
     /* セグメントの開始アドレスを設定 */
-    s->base_addr_low = (base_addr & 0x0000ffff);
-    s->base_addr_mid = (base_addr & 0x00ff0000) >> 16;
-    s->base_addr_hi = (base_addr & 0xff000000) >> 24;
+    s->base_addr_low = (uint16_t)(base_addr & 0x0000ffff);
+    s->base_addr_mid = (uint8_t)((base_addr & 0x00ff0000) >> 16);
+    s->base_addr_hi = (uint8_t)((base_addr & 0xff000000) >> 24);
 
     /* アクセス権エラー */
     if (0xf < type) {
         return NULL;
     }
     /* アクセス権を設定 */
-    s->type = type & 0x0f;
+    s->type = (uint8_t)(type & 0x0f);
 
     /* セグメントタイプエラー */
     if (0x1 < type_flag) {
         return NULL;
     }
     /* 0でシステム用, 1でコードかデータ用のセグメントとなる */
-    s->segment_type = type_flag;
+    s->segment_type = (uint8_t)(type_flag & 0x01);
 
     /* 特権レベルエラー */
     if (0x3 < pliv) {
         return NULL;
     }
     /* 特権レベルを設定 */
-    s->plivilege_level = pliv;
+    s->plivilege_level = (uint8_t)(pliv & 0x03);
 
     /* メモリに存在する */
-    s->present_flag = p_flag;
+    s->present_flag = (uint8_t)(p_flag & 0x01);
     /* OSが任意に使用できる */
     s->available = 0;
     /* 0で予約されている */
@@ -187,19 +149,19 @@ static inline void init_gdt(void) {
 
 
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_type, void (*offset)(void), uint16_t selector_index, uint8_t gate_size, uint8_t pliv, uint8_t p_flag) {
-    g->offset_low = ((uint32_t)offset & 0x0000ffff);
-    g->offset_high = ((uint32_t)offset >> 16);
+    g->offset_low = ((uintptr_t)offset & 0x0000ffff);
+    g->offset_high = (uint16_t)(((uintptr_t)offset >> 16) & 0x0000ffff);
 
-    g->segment_selector = selector_index * GDT_ELEMENT_SIZE;
+    g->segment_selector = (uint16_t)(selector_index * GDT_ELEMENT_SIZE);
 
-    g->type = gate_type;
-    g->size = gate_size;
+    g->type = (uint8_t)(gate_type & 0x07);
+    g->size = (uint8_t)(gate_size & 0x01);
 
     g->unused_zero = 0x00;
     g->zero_reserved = 0x0;
 
     /* 特権レベルを設定 */
-    g->plivilege_level = pliv;
+    g->plivilege_level = (uint8_t)(pliv & 0x01);
 
     g->present_flag = IS_FLAG_NOT_ZERO(p_flag);
 

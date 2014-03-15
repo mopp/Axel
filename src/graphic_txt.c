@@ -20,12 +20,12 @@ static Point2d pos;
 static uint16_t disp_attribute = (TEXTMODE_ATTR_BACK_COLOR_B | TEXTMODE_ATTR_FORE_COLOR_G);
 
 /* space character code. */
-static uint16_t const SPACE_CHAR = 0x0020;
+static uint8_t const SPACE_CHAR = 0x20;
 
 
 static inline void newline(void);
 static void scroll_up_screen(void);
-static inline uint16_t get_one_pixel(uint16_t);
+static inline uint16_t get_one_pixel(uint8_t);
 
 
 
@@ -45,7 +45,7 @@ int putchar_txt(int c) {
         return c;
     }
 
-    vram[pos.x + pos.y * TEXTMODE_DISPLAY_MAX_X] = get_one_pixel(c);
+    vram[pos.x + pos.y * TEXTMODE_DISPLAY_MAX_X] = get_one_pixel((uint8_t)c);
 
     ++pos.x;
     if (TEXTMODE_DISPLAY_MAX_X <= pos.x) {
@@ -97,10 +97,11 @@ void printf_txt(const char* format, ...) {
 }
 
 
-static inline uint16_t get_one_pixel(uint16_t c) {
+static inline uint16_t get_one_pixel(uint8_t c) {
     /* 上1バイトが属性 */
     /* 下1バイトが文字 */
-    return (disp_attribute | c);
+    uint16_t t = 0x00FF & (uint16_t)c;
+    return (disp_attribute | t);
 }
 
 

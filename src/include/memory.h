@@ -79,8 +79,8 @@ enum memory_manager_constants {
 
 /* 管理対象のメモリ情報 */
 struct memory_info {
-    uint32_t base_addr, size;
-    uint8_t state;
+    uintptr_t base_addr, size;
+    uint32_t state;
 };
 typedef struct memory_info Memory_info;
 
@@ -93,9 +93,9 @@ typedef struct memory_manager Memory_manager;
 
 
 /* リンカスクリプトで設定される数値を取得 */
-extern uint32_t get_kernel_start_addr(void);
-extern uint32_t get_kernel_end_addr(void);
-extern uint32_t get_kernel_size(void);
+extern uintptr_t get_kernel_start_addr(void);
+extern uintptr_t get_kernel_end_addr(void);
+extern uintptr_t get_kernel_size(void);
 
 extern void* memset(void*, const int, size_t);
 extern int memcmp(const void*, const void*, size_t);

@@ -53,8 +53,7 @@ Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_b
     info = in;
     m_info = mi;
 
-    // XXX:
-    vram = (uint8_t*)((intptr_t)m_info->phys_base_ptr);
+    vram = (uint8_t*)((uintptr_t)m_info->phys_base_ptr);
 
     max_x_resolution = m_info->x_resolution;
     max_y_resolution = m_info->y_resolution;

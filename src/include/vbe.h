@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 
+#pragma GCC diagnostic ignored "-Wpadded"
 typedef struct {
     uint8_t vbe_signature[4];   /* 'VESA' VBE Signature */
     uint16_t vbe_version;       /* BCD value, VBE Version */

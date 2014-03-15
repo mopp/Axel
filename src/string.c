@@ -30,7 +30,7 @@ char* itoa(char* buf, char base, int32_t num) {
     int remainder;
     do {
         remainder = num % divisor;
-        local_buf[i++] = (remainder < 10) ? ('0' + remainder) : ('A' + remainder - 10);
+        local_buf[i++] = (remainder < 10) ? (char)('0' + remainder) : (char)('A' + remainder - 10);
     } while (num /= divisor);
 
     /* 終端子追加 */
