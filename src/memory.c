@@ -21,17 +21,17 @@ static Memory_info* mem_info;
 
 
 uintptr_t get_kernel_start_addr(void) {
-    return (uintptr_t)&LD_KERNEL_START;
+    return (uintptr_t) & LD_KERNEL_START;
 }
 
 
 uintptr_t get_kernel_end_addr(void) {
-    return (uintptr_t)&LD_KERNEL_END;
+    return (uintptr_t) & LD_KERNEL_END;
 }
 
 
 uintptr_t get_kernel_size(void) {
-    return (uintptr_t)&LD_KERNEL_SIZE;
+    return (uintptr_t) & LD_KERNEL_SIZE;
 }
 
 
@@ -201,7 +201,7 @@ void free(void* object) {
     }
 
     Dlinked_list_node head = lst->head, tail = lst->tail;
-    Memory_info *head_mi = (Memory_info*)head->data, *tail_mi = (Memory_info*)tail->data;
+    Memory_info* head_mi = (Memory_info*)head->data, *tail_mi = (Memory_info*)tail->data;
 
     if (head_mi->state == MEM_INFO_STATE_FREE) {
         // merge head
@@ -209,7 +209,7 @@ void free(void* object) {
         delete_node(lst);
     } else if (tail_mi->state == MEM_INFO_STATE_FREE) {
         if (lst == mem_manager->mem_lst) {
-           mem_manager->mem_lst = lst->tail;
+            mem_manager->mem_lst = lst->tail;
         }
 
         // merge tail
@@ -224,7 +224,7 @@ void free(void* object) {
 
 
 int memcmp(const void* buf1, const void* buf2, size_t len) {
-    const unsigned char *ucb1, *ucb2, *t;
+    const unsigned char* ucb1, *ucb2, *t;
     int result = 0;
     ucb1 = buf1;
     ucb2 = buf2;

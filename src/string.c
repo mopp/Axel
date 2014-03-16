@@ -37,7 +37,7 @@ char* itoa(char* buf, char base, int32_t num) {
     local_buf[i] = '\0';
 
     /* 反転 */
-    char *p1, *p2;
+    char* p1, *p2;
     char tmp;
     p1 = local_buf;
     p2 = local_buf + i - 1;
@@ -53,7 +53,7 @@ char* itoa(char* buf, char base, int32_t num) {
     return buf;
 }
 
-size_t strlen(const char *str){
+size_t strlen(const char* str) {
     size_t i = 0;
 
     while (*str++ != '\0') {

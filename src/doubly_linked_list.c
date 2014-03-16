@@ -16,17 +16,17 @@
 #include <doubly_linked_list.h>
 
 /* 終端子 */
-static struct dlinked_list_node dummy = { .data = NULL, .head = NULL, .tail = NULL};
+static struct dlinked_list_node dummy = {.data = NULL, .head = NULL, .tail = NULL};
 const Dlinked_list_node DUMMY = &dummy;
 
 
 /* 新しいノードを確保しデータを設定 */
-Dlinked_list_node get_new_Dlinked_list_node(void* data){
+Dlinked_list_node get_new_Dlinked_list_node(void* data) {
 #ifdef DEBUG
     /* TODO */
     Dlinked_list_node n = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
 #else
-    Dlinked_list_node n = NULL;// = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
+    Dlinked_list_node n = NULL;  // = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
 #endif
 
     n->data = data;
@@ -51,7 +51,7 @@ Dlinked_list_node init(Dlinked_list_node dl, void* data) {
  * リストの先頭にノードを挿入
  * @return 新しい先頭
  */
-Dlinked_list_node insert_head(Dlinked_list_node target, Dlinked_list_node added){
+Dlinked_list_node insert_head(Dlinked_list_node target, Dlinked_list_node added) {
     added->head = target->head;
     added->head->tail = added;
 
@@ -66,7 +66,7 @@ Dlinked_list_node insert_head(Dlinked_list_node target, Dlinked_list_node added)
  * リストの末尾にノードを挿入
  * @return 新しい末尾
  */
-Dlinked_list_node insert_tail(Dlinked_list_node target, Dlinked_list_node added){
+Dlinked_list_node insert_tail(Dlinked_list_node target, Dlinked_list_node added) {
     added->tail = target->tail;
     added->tail->head = added;
 
@@ -154,8 +154,8 @@ bool comp(void* x, void* y) {
     return false;
 }
 
-int main(void){
-    test_struct ts = { .dummy_addr = DUMMY};
+int main(void) {
+    test_struct ts = {.dummy_addr = DUMMY};
     Dlinked_list_node t = get_new_Dlinked_list_node(&ts);
 
     /* printf("DUMMY\n"); */
