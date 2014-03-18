@@ -17,7 +17,6 @@ extern Axel_state_code init_graphic(Vbe_info_block const* const, Vbe_mode_info_b
 extern void clean_screen(void);
 extern int putchar(int);
 extern const char* puts(const char*);
-extern void printf(const char*, ...);
 
 #ifdef TEXT_MODE
 // TODO: define color presets

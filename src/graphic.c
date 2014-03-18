@@ -45,18 +45,3 @@ const char* puts(const char* str) {
     return str;
 #endif
 }
-
-
-/* TODO: split printf to stdio */
-void printf(const char* format, ...) {
-    va_list args;
-    /* DUMMY */
-    puts(format);
-
-#ifdef TEXT_MODE
-/* printf_txt(format, args); */
-#else
-#endif
-
-    va_end(args);
-}
