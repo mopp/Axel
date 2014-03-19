@@ -36,7 +36,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     const Vbe_mode_info_block const* vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
 
     init_graphic(vbe_info, vbe_mode_info);
-    clean_screen();
+    clean_screen(&(RGB8) {r : 0xAC, g : 0x00, b : 0xB0});
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 

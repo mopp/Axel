@@ -13,7 +13,8 @@
 #include <vbe.h>
 
 extern Axel_state_code init_graphic(Vbe_info_block const* const, Vbe_mode_info_block const* const);
-extern void clean_screen(void);
+extern void clean_screen(RGB8 const* const);
+
 extern int putchar(int);
 extern const char* puts(const char*);
 
@@ -22,7 +23,6 @@ extern const char* puts(const char*);
 #else
 // TODO: define color presets
 #endif
-
 
 
 #endif

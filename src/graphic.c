@@ -15,16 +15,12 @@ Axel_state_code init_graphic(Vbe_info_block const* const in, Vbe_mode_info_block
 }
 
 
-void clean_screen(void) {
+void clean_screen(RGB8 const* const c) {
 #ifdef TEXT_MODE
+    c;
     clean_screen_txt();
 #else
-    RGB8 c;
-    c.r = 0xCD;
-    c.g = 0x00;
-    c.b = 0xAA;
-    c.rsvd = 0x00;
-    clean_screen_vbe(&c);
+    clean_screen_vbe(c);
 #endif
 }
 
