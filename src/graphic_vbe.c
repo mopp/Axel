@@ -50,19 +50,17 @@ Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_b
         return AXEL_FAILED;
     }
 
+    /* store to file local variable */
     info = in;
     m_info = mi;
-
-    vram = (uint8_t*)((uintptr_t)m_info->phys_base_ptr);
-
     max_x_resolution = m_info->x_resolution;
     max_y_resolution = m_info->y_resolution;
     max_xy_resolution = max_x_resolution * max_y_resolution;
-
     byte_per_pixel = (m_info->bits_per_pixel / 8);
     vram_size = max_xy_resolution * byte_per_pixel;
+    vram = (uint8_t*)((uintptr_t)m_info->phys_base_ptr);
 
-    // store bit infomation.
+    /* store bit infomation. */
     bit_info.r_size = m_info->red_mask_size;
     bit_info.g_size = m_info->green_mask_size;
     bit_info.b_size = m_info->blue_mask_size;
@@ -72,6 +70,7 @@ Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_b
     bit_info.b_pos = m_info->blue_field_position;
     bit_info.rsvd_pos = m_info->rsvd_field_position;
 
+    /* In order to determine function, check display color mode. */
     switch (bit_info.serialised_size) {
         case 0x08080800:
             /* 8:8:8:0 */
