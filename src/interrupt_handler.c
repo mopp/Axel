@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <kernel.h>
 #include <asm_functions.h>
-#include <graphic.h>
+#include <stdio.h>
 
 
 void interrupt_handler0x20(uint32_t* esp) {

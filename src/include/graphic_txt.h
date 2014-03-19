@@ -28,6 +28,5 @@ enum Textmode_gpaphic_constants {
 extern int putchar_txt(int);
 extern const char* puts_txt(const char*);
 extern void clean_screen_txt(void);
-extern void printf_txt(const char*, ...);
 
 #endif

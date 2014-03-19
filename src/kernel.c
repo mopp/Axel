@@ -5,6 +5,7 @@
 
 #include <asm_functions.h>
 #include <graphic.h>
+#include <stdio.h>
 #include <interrupt_handler.h>
 #include <kernel.h>
 #include <memory.h>

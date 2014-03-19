@@ -21,7 +21,7 @@ KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 # 順序に注意
 # LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_vbe.o graphic_txt.o doubly_linked_list.o stack.o memory.o kernel.o
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o point.o rgb8.o graphic_txt.o graphic_vbe.o graphic.o doubly_linked_list.o stack.o memory.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o point.o rgb8.o graphic_txt.o graphic_vbe.o graphic.o stdio.o doubly_linked_list.o stack.o memory.o kernel.o
 
 SUBDIRS 			:= $(BOOT_DIR)
 
@@ -68,6 +68,7 @@ stack.o					: stack.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)stack.h
 string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
 point.o					: point.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)point.h
 rgb8.o					: rgb8.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)rgb8.h
+stdio.o					: stdio.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)stdio.h
 
 
 $(BOOT_OBJ) : $(MAKEFILE)

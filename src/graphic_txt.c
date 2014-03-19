@@ -7,7 +7,6 @@
 #include <graphic_txt.h>
 #include <point.h>
 #include <stdarg.h>
-#include <string.h>
 
 
 /* text mode video ram */
@@ -62,38 +61,6 @@ const char* puts_txt(const char* str) {
     }
 
     return str;
-}
-
-
-void printf_txt(const char* format, ...) {
-    va_list args;
-
-    va_start(args, format);
-
-    for (const char* c = format; *c != '\0'; ++c) {
-        if (*c != '%') {
-            putchar_txt(*c);
-            continue;
-        }
-
-        ++c;
-        switch (*c) {
-            case '\n':
-                putchar_txt('\n');
-            case 's':
-                puts_txt(va_arg(args, const char*));
-                break;
-            case 'd':
-            case 'x': {  // add local scope
-                /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
-                char buf[10];
-                puts_txt(itoa(buf, *c, va_arg(args, int)));
-                break;
-            }
-        }
-    }
-
-    va_end(args);
 }
 
 
