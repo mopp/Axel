@@ -9,6 +9,7 @@
 #include <interrupt_handler.h>
 #include <kernel.h>
 #include <memory.h>
+#include <point.h>
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
 #include <stddef.h>
@@ -25,18 +26,39 @@ static inline void init_pit(void);
 
 
 _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
+    const Vbe_info_block const* vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
+    const Vbe_mode_info_block const* vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
+
     io_cli();
     init_gdt();
     init_idt();
     init_pic();
     init_pit();
     io_sti();
-
-    const Vbe_info_block const* vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
-    const Vbe_mode_info_block const* vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
-
     init_graphic(vbe_info, vbe_mode_info);
-    clean_screen(&(RGB8) {r : 0xAC, g : 0x00, b : 0xB0});
+
+    Point2d p0, p1;
+    RGB8 c;
+    uint32_t const max_x = get_max_x_resolution() - 1;
+    uint32_t const max_y = get_max_y_resolution() - 1;
+
+    clean_screen(set_rgb_by_color(&c, 0x3A6EA5));
+
+    fill_rectangle(set_point2d(&p0,  0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
+    fill_rectangle(set_point2d(&p0,  0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0,  0, max_y - 25), set_point2d(&p1, max_x, max_y     ), set_rgb_by_color(&c, 0xC6C6C6));
+
+    fill_rectangle(set_point2d(&p0,  3, max_y - 23), set_point2d(&p1,    59, max_y - 23), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0,  2, max_y - 23), set_point2d(&p1,     2, max_y -  3), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0,  3, max_y -  3), set_point2d(&p1,    59, max_y -  3), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, 59, max_y - 22), set_point2d(&p1,    59, max_y -  4), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0,  2, max_y -  2), set_point2d(&p1,    59, max_y -  2), set_rgb_by_color(&c, 0x000000));
+    fill_rectangle(set_point2d(&p0, 60, max_y - 23), set_point2d(&p1,    60, max_y -  2), set_rgb_by_color(&c, 0x000000));
+
+    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 23), set_point2d(&p1,max_x -  3, max_y - 23), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 22), set_point2d(&p1,max_x - 46, max_y -  3), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, max_x - 46, max_y -  2), set_point2d(&p1,max_x -  3, max_y -  2), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, max_x -  2, max_y - 23), set_point2d(&p1,max_x -  2, max_y -  2), set_rgb_by_color(&c, 0xFFFFFF));
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 

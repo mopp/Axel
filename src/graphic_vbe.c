@@ -3,12 +3,10 @@
  * Description: some output functions for vbe Graphic.
  ************************************************************/
 
-
 #include <graphic_vbe.h>
 #include <state_code.h>
 #include <vbe.h>
-
-#define MAX_COLOR_RANGE 255
+#include <point.h>
 
 /* This represents bit size and position infomation from VBE. */
 struct Color_bit_info {
@@ -101,6 +99,25 @@ void clean_screen_vbe(RGB8 const* const c) {
 }
 
 
+void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const* const c) {
+    for (uint32_t y = p0->y; y <= p1->y; ++y) {
+        for (uint32_t x = p0->x; x <= p1->x; ++x) {
+            set_vram(x, y, c);
+        }
+    }
+}
+
+
+uint32_t get_max_x_resolution(void) {
+    return max_x_resolution;
+}
+
+
+uint32_t get_max_y_resolution(void) {
+    return max_y_resolution;
+}
+
+
 static inline uint32_t get_vram_index(uint32_t const x, uint32_t const y) {
     return (x + max_x_resolution * y) * byte_per_pixel;
 }
@@ -126,7 +143,7 @@ static inline uint32_t get_shift_rsvd(uint8_t rsvd) {
 }
 
 
-static void set_vram8880(uint32_t const x, uint32_t const y, RGB8 const* const c) {
+static inline void set_vram8880(uint32_t const x, uint32_t const y, RGB8 const* const c) {
     volatile uint32_t* target = (volatile uint32_t*)(vram + get_vram_index(x, y));
 
     /* clear */
@@ -136,12 +153,12 @@ static void set_vram8880(uint32_t const x, uint32_t const y, RGB8 const* const c
 }
 
 
-static void set_vram8888(uint32_t const x, uint32_t const y, RGB8 const* const c) {
+static inline void set_vram8888(uint32_t const x, uint32_t const y, RGB8 const* const c) {
     *(volatile uint32_t*)(vram + get_vram_index(x, y)) = get_shift_red(c->r) | get_shift_green(c->g) | get_shift_blue(c->b) | get_shift_rsvd(c->rsvd);
 }
 
 
-static void set_vram5650(uint32_t const x, uint32_t const y, RGB8 const* const c) {
+static inline void set_vram5650(uint32_t const x, uint32_t const y, RGB8 const* const c) {
     volatile uint32_t* target = (volatile uint32_t*)(vram + get_vram_index(x, y));
 
     /* clear */
