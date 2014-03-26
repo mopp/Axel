@@ -14,9 +14,7 @@ struct point2d {
 typedef struct point2d Point2d;
 
 
-static inline Point2d make_point2d(uint32_t init_x, uint32_t init_y) {
-    return (Point2d) {x : init_x, y : init_y};
-}
+#define make_point2d(ix, iy) (Point2d) {x : ix, y : iy}
 
 
 static inline Point2d* clear_point2d(Point2d* const p) {

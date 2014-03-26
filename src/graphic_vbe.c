@@ -32,15 +32,164 @@ static uint32_t vram_size;
 static uint32_t max_x_resolution, max_y_resolution, max_xy_resolution;
 static Color_bit_info bit_info;
 
+static uint32_t const font_mo[] = {
+    0x0200, /* ......@.........*/
+    0x0200, /* ......@.........*/
+    0x0200, /* ......@.........*/
+    0x1fc0, /* ...@@@@@@@@.....*/
+    0x0200, /* ......@.........*/
+    0x0200, /* ......@.........*/
+    0x0460, /* .....@...@@.....*/
+    0x3f80, /* ..@@@@@@@.......*/
+    0x0400, /* .....@..........*/
+    0x0404, /* .....@.......@..*/
+    0x0404, /* .....@.......@..*/
+    0x0404, /* .....@.......@..*/
+    0x0208, /* ......@.....@...*/
+    0x0110, /* .......@...@....*/
+    0x00e0, /* ........@@@.....*/
+    0x0000, /* ................*/
+};
+static uint32_t const font_pu[] = {
+    0x000c,
+    0x0212,
+    0x01d2,
+    0x004c,
+    0x0080,
+    0x0100,
+    0x0100,
+    0x0088,
+    0x1044,
+    0x1042,
+    0x2021,
+    0x2021,
+    0x4020,
+    0x0440,
+    0x0380,
+    0x0000,
+};
+static uint32_t const font_ri[] = {
+    0x0020,
+    0x0410,
+    0x0410,
+    0x0410,
+    0x0810,
+    0x0810,
+    0x0810,
+    0x0810,
+    0x0a10,
+    0x0410,
+    0x0020,
+    0x0020,
+    0x0040,
+    0x0080,
+    0x0300,
+    0x0000,
+};
+static uint32_t const font_n[] = {
+    0x0080,
+    0x0080,
+    0x0100,
+    0x0100,
+    0x0200,
+    0x0200,
+    0x0200,
+    0x0580,
+    0x0640,
+    0x0c40,
+    0x0840,
+    0x1041,
+    0x1042,
+    0x2024,
+    0x2018,
+    0x0000,
+};
+static uint32_t const font_o[] = {
+    0x0000,
+    0x03c0,
+    0x0c30,
+    0x1818,
+    0x1008,
+    0x2004,
+    0x2004,
+    0x2004,
+    0x2004,
+    0x2004,
+    0x1008,
+    0x1818,
+    0x0c30,
+    0x03c0,
+    0x0000,
+    0x0000,
+};
+static uint32_t const font_s[] = {
+    0x0000,
+    0x03d0,
+    0x0430,
+    0x0810,
+    0x0800,
+    0x0800,
+    0x0400,
+    0x03c0,
+    0x0030,
+    0x0008,
+    0x1008,
+    0x1808,
+    0x1410,
+    0x03e0,
+    0x0000,
+    0x0000,
+};
+
+#define font_color { r : 240, g : 96, b : 173, rsvd : 0 }
+static Drawable_bitmap test_str[] = {
+    {
+        height : 16,
+        width : 16,
+        color : font_color,
+        data : font_mo
+    },
+    {
+        height : 16,
+        width : 16,
+        color : font_color,
+        data : font_pu
+    },
+    {
+        height : 16,
+        width : 16,
+        color : font_color,
+        data : font_ri
+    },
+    {
+        height : 16,
+        width : 16,
+        color : font_color,
+        data : font_n
+    },
+    {
+        height : 16,
+        width : 16,
+        color : font_color,
+        data : font_o
+    },
+    {
+        height : 16,
+        width : 16,
+        color : font_color,
+        data : font_s
+    },
+};
+
 static inline uint32_t get_vram_index(uint32_t const, uint32_t const);
 static inline uint32_t get_shift_red(uint8_t);
 static inline uint32_t get_shift_green(uint8_t);
 static inline uint32_t get_shift_blue(uint8_t);
 static inline uint32_t get_shift_rsvd(uint8_t);
 static void (*set_vram)(uint32_t const, uint32_t const, RGB8 const* const);
-static void set_vram8880(uint32_t const, uint32_t const, RGB8 const* const);
-static void set_vram8888(uint32_t const, uint32_t const, RGB8 const* const);
-static void set_vram5650(uint32_t const, uint32_t const, RGB8 const* const);
+static inline void set_vram8880(uint32_t const, uint32_t const, RGB8 const* const);
+static inline void set_vram8888(uint32_t const, uint32_t const, RGB8 const* const);
+static inline void set_vram5650(uint32_t const, uint32_t const, RGB8 const* const);
 
 
 Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_block const* const mi) {
@@ -96,6 +245,32 @@ void clean_screen_vbe(RGB8 const* const c) {
             set_vram(j, i, c);
         }
     }
+
+    /* TODO: move other place. */
+    uint32_t b_x = 0;
+    uint32_t b_y = 0;
+    for (int j = 0; j < max_y_resolution / 16; j++) {
+        for (int i = 0; i < max_x_resolution / 16; i++) {
+            draw_bitmap(test_str + (j % 2), &make_point2d(b_x, b_y));
+            b_x += test_str->width;
+        }
+        b_y += test_str->height;
+    }
+
+    b_x = 16 * 10;
+    b_y = 16 * 15;
+    for (uint32_t i = b_y; i < max_y_resolution - b_y; ++i) {
+        for (uint32_t j = b_x; j < max_x_resolution - b_x; ++j) {
+            set_vram(j, i, c);
+        }
+    }
+
+    /* もぷりんOS */
+    uint32_t x = (max_x_resolution / 2) - (16 * 3);
+    for (uint8_t i = 0; i < 6; i++) {
+        draw_bitmap(test_str + i, &make_point2d(x, max_y_resolution / 2 + 8));
+        x += test_str[i].width;
+    }
 }
 
 
@@ -103,6 +278,17 @@ void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const
     for (uint32_t y = p0->y; y <= p1->y; ++y) {
         for (uint32_t x = p0->x; x <= p1->x; ++x) {
             set_vram(x, y, c);
+        }
+    }
+}
+
+
+void draw_bitmap(Drawable_bitmap const* const dbmp, Point2d const* const p) {
+    for (uint32_t i = 0; i < dbmp->height; i++) {
+        for (uint32_t j = 0; j < dbmp->width; j++) {
+            if (1 == (0x01 & (dbmp->data[i] >> (dbmp->width - j - 1)))) {
+                set_vram(p->x + j, p->y + i, &dbmp->color);
+            }
         }
     }
 }
