@@ -11,10 +11,12 @@
         push FS
         push GS
         pushad
+        pushfd
 %endmacro
 
 
 %macro pop_all 0
+        pushfd
         popad
         pop GS
         pop FS

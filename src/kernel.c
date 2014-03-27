@@ -43,6 +43,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     uint32_t const max_y = get_max_y_resolution() - 1;
 
     clean_screen(set_rgb_by_color(&c, 0x3A6EA5));
+    test_draw(set_rgb_by_color(&c, 0x3A6EA5));
 
     fill_rectangle(set_point2d(&p0,  0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
     fill_rectangle(set_point2d(&p0,  0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
@@ -232,6 +233,6 @@ static inline void init_pit(void) {
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_LOW);
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
 
-    /* PITはタイマーでIRQ0なのでPICのIRQ0を解除 */
+    /* PITはタイマーでIRQ0なのでMaster PICのIRQ0を解除 */
     /* io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (~PIC_IMR_MASK_IRQ0)); */
 }

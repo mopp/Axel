@@ -7,6 +7,7 @@
 #include <state_code.h>
 #include <vbe.h>
 #include <point.h>
+#include <drawable.h>
 
 /* This represents bit size and position infomation from VBE. */
 struct Color_bit_info {
@@ -245,7 +246,30 @@ void clean_screen_vbe(RGB8 const* const c) {
             set_vram(j, i, c);
         }
     }
+}
 
+
+void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const* const c) {
+    for (uint32_t y = p0->y; y <= p1->y; ++y) {
+        for (uint32_t x = p0->x; x <= p1->x; ++x) {
+            set_vram(x, y, c);
+        }
+    }
+}
+
+
+void draw_bitmap(Drawable_bitmap const* const dbmp, Point2d const* const p) {
+    for (uint32_t i = 0; i < dbmp->height; i++) {
+        for (uint32_t j = 0; j < dbmp->width; j++) {
+            if (1 == (0x01 & (dbmp->data[i] >> (dbmp->width - j - 1)))) {
+                set_vram(p->x + j, p->y + i, &dbmp->color);
+            }
+        }
+    }
+}
+
+
+void test_draw(RGB8 const* const c) {
     /* TODO: move other place. */
     uint32_t b_x = 0;
     uint32_t b_y = 0;
@@ -270,26 +294,6 @@ void clean_screen_vbe(RGB8 const* const c) {
     for (uint8_t i = 0; i < 6; i++) {
         draw_bitmap(test_str + i, &make_point2d(x, max_y_resolution / 2 + 8));
         x += test_str[i].width;
-    }
-}
-
-
-void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const* const c) {
-    for (uint32_t y = p0->y; y <= p1->y; ++y) {
-        for (uint32_t x = p0->x; x <= p1->x; ++x) {
-            set_vram(x, y, c);
-        }
-    }
-}
-
-
-void draw_bitmap(Drawable_bitmap const* const dbmp, Point2d const* const p) {
-    for (uint32_t i = 0; i < dbmp->height; i++) {
-        for (uint32_t j = 0; j < dbmp->width; j++) {
-            if (1 == (0x01 & (dbmp->data[i] >> (dbmp->width - j - 1)))) {
-                set_vram(p->x + j, p->y + i, &dbmp->color);
-            }
-        }
     }
 }
 
