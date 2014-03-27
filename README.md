@@ -1,6 +1,13 @@
 ## Axel
 Axel Accelerates All For Me !
 
+
+## How to use ISO file
+```shell:variable
+qemu-system-x86_64 -monitor stdio -vga std -cdrom axel.iso
+```
+
+
 ## Setup Environment
 Please read [GCC Cross-Compiler](http://wiki.osdev.org/GCC_Cross-Compiler "OSDev")  
   
