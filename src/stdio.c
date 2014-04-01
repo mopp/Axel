@@ -10,6 +10,43 @@
 #include <stdarg.h>
 #include <string.h>
 
+
+static inline char* utoa(unsigned int value, char* s, int const radix) {
+    char* s1 = s;
+    char* s2 = s;
+
+    do {
+        *s2++ = "0123456789abcdefghijklmnopqrstuvwxyz"[value % (unsigned int)radix];
+        value /= (unsigned int)radix;
+    } while (value > 0);
+
+    *s2-- = '\0';
+
+    while (s1 < s2) {
+        char const c = *s1;
+        *s1++ = *s2;
+        *s2-- = c;
+    }
+
+    return s;
+}
+
+
+char* itoa(int value, char* s, int radix) {
+    unsigned int t = (unsigned int)value;
+    char* ss = s;
+
+    if (value < 0 && radix == 10) {
+        *ss++ = '-';
+        t = -t;
+    }
+
+    utoa(t, ss, radix);
+
+    return s;
+}
+
+
 void printf(const char* format, ...) {
     va_list args;
 
@@ -35,10 +72,10 @@ void printf(const char* format, ...) {
             case 'x': {  // add local scope
                 /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
                 char buf[10];
-                puts(itoa(buf, *c, va_arg(args, int)));
+                puts(itoa(va_arg(args, int), buf, (*c == 'x' ? 16 : 10)));
                 break;
-            case '%':
-                putchar('%');
+                case '%':
+                    putchar('%');
             }
         }
     }

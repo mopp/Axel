@@ -9,9 +9,19 @@
 #include <stdio.h>
 
 
-void interrupt_handler0x20(uint32_t* esp) {
+static inline void send_done_interrupt_master(void) {
     io_out8(PIC0_CMD_STATE_PORT, PIC_OCW2_EOI);
+}
 
-    printf("Call interrupt_handler0x20\n");
-    printf("esp is %x\n", esp);
+
+static inline void send_done_interrupt_slave(void) {
+    io_out8(PIC1_CMD_STATE_PORT, PIC_OCW2_EOI);
+}
+
+
+void interrupt_handler0x20(uint32_t* esp) {
+    /* printf("Call interrupt_handler0x20\n"); */
+    /* printf("esp is %x\n", esp); */
+
+    send_done_interrupt_master();
 }

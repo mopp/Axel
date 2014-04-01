@@ -8,14 +8,13 @@
 #include <stdio.h>
 #include <interrupt_handler.h>
 #include <kernel.h>
+#include <macros.h>
 #include <memory.h>
 #include <point.h>
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
 #include <stddef.h>
 #include <vbe.h>
-
-#define IS_FLAG_NOT_ZERO(x) ((x != 0) ? 1 : 0)
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static inline void init_gdt(void);
@@ -234,5 +233,5 @@ static inline void init_pit(void) {
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
 
     /* PITはタイマーでIRQ0なのでMaster PICのIRQ0を解除 */
-    /* io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (~PIC_IMR_MASK_IRQ0)); */
+    /* io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (0xFF & ~PIC_IMR_MASK_IRQ0)); */
 }

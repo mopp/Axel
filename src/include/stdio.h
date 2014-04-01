@@ -13,6 +13,7 @@
 #include <graphic.h>
 
 extern void printf(const char*, ...);
+extern char* itoa(int, char*, int);
 
 
 #endif

@@ -182,6 +182,22 @@ static Drawable_bitmap test_str[] = {
     },
 };
 
+
+static const Drawable_multi_bitmap tes = {
+    height : 16,
+    width : 16,
+    size : 6,
+    color : font_color,
+    data : {
+        font_mo,
+        font_pu,
+        font_ri,
+        font_n,
+        font_o,
+        font_s,
+    }
+};
+
 static inline uint32_t get_vram_index(uint32_t const, uint32_t const);
 static inline uint32_t get_shift_red(uint8_t);
 static inline uint32_t get_shift_green(uint8_t);
@@ -261,10 +277,24 @@ void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const
 void draw_bitmap(Drawable_bitmap const* const dbmp, Point2d const* const p) {
     for (uint32_t i = 0; i < dbmp->height; i++) {
         for (uint32_t j = 0; j < dbmp->width; j++) {
-            if (1 == (0x01 & (dbmp->data[i] >> (dbmp->width - j - 1)))) {
+            if (1 == (0x01u & (dbmp->data[i] >> (dbmp->width - j - 1)))) {
                 set_vram(p->x + j, p->y + i, &dbmp->color);
             }
         }
+    }
+}
+
+
+void draw_multi_bitmap(Drawable_multi_bitmap const* const dmbmp, Point2d const* const p) {
+    static Drawable_bitmap tb;
+    static Point2d tp;
+    tb.color = dmbmp->color;
+    tb.height = dmbmp->height;
+    tb.width = dmbmp->width;
+
+    for (uint8_t i = 0; i < dmbmp->size; i++) {
+        tb.data = dmbmp->data[i];
+        draw_bitmap(&tb, set_point2d(&tp, p->x + (i * dmbmp->width), p->y));
     }
 }
 
@@ -289,12 +319,9 @@ void test_draw(RGB8 const* const c) {
         }
     }
 
-    /* もぷりんOS */
     uint32_t x = (max_x_resolution / 2) - (16 * 3);
-    for (uint8_t i = 0; i < 6; i++) {
-        draw_bitmap(test_str + i, &make_point2d(x, max_y_resolution / 2 + 8));
-        x += test_str[i].width;
-    }
+    /* もぷりんOS */
+    draw_multi_bitmap(&tes, &make_point2d(x, max_y_resolution / 2 + 8));
 }
 
 
