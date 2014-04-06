@@ -8,6 +8,10 @@ else
 	TOOL_PATH 		:= /home/mopp/.mopp/
 endif
 
+ifeq ($(shell uname -n), march_pro)
+	TOOL_PATH 		:= /home/mopp/.mopp/axel/
+endif
+
 # command
 RM 					:= rm -rf
 GCC					:= $(TOOL_PATH)bin/i686-elf-gcc
