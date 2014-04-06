@@ -33,8 +33,8 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     init_idt();
     init_pic();
     init_pit();
-    io_sti();
     init_graphic(vbe_info, vbe_mode_info);
+    io_sti();
 
     Point2d p0, p1;
     RGB8 c;
@@ -233,5 +233,5 @@ static inline void init_pit(void) {
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
 
     /* PITはタイマーでIRQ0なのでMaster PICのIRQ0を解除 */
-    /* io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (0xFF & ~PIC_IMR_MASK_IRQ0)); */
+    io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (0xFF & ~PIC_IMR_MASK_IRQ0));
 }

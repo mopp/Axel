@@ -16,7 +16,7 @@
 
 
 %macro pop_all 0
-        pushfd
+        popfd
         popad
         pop GS
         pop FS
