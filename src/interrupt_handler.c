@@ -20,18 +20,23 @@ static inline void send_done_interrupt_slave(void) {
 }
 
 
-void interrupt_handler0x20(uint32_t* esp) {
+void interrupt_handler0x20(uint32_t* esp){
     /* printf("Call interrupt_handler0x20\n"); */
     /* printf("esp is %x\n", esp); */
-    uint8_t cnt = 0;
+    static uint16_t t = 0xff;
+    uint32_t cnt = 100;
     static RGB8 rgb = {1, 1, 1, 1};
     rgb.r = 0x10;
     rgb.g = 0x20;
     rgb.b = 0x00;
 
-    fill_rectangle(&make_point2d(0, 0), &make_point2d(cnt, cnt), &rgb);
+    if (t % 10 == 0) {
+        fill_rectangle(&make_point2d(0, 0), &make_point2d(cnt + t, cnt + t), &rgb);
+    }
 
-    cnt += 1;
+    /* cnt += 32; */
+    *(uint32_t*)((uintptr_t)0xA0000) = ++t;
+
 
     send_done_interrupt_master();
 }
