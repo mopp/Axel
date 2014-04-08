@@ -235,3 +235,7 @@ static inline void init_pit(void) {
     /* PITはタイマーでIRQ0なのでMaster PICのIRQ0を解除 */
     io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (0xFF & ~PIC_IMR_MASK_IRQ0));
 }
+
+
+static inline void init_keyboard(void) {
+}
