@@ -26,10 +26,13 @@ extern const char* puts(const char*);
 
 #ifdef GRAPHIC_MODE
 /* functions in graphic mode only. */
-extern void fill_rectangle(Point2d const* const, Point2d const* const, RGB8 const* const);
 extern uint32_t get_max_x_resolution(void);
 extern uint32_t get_max_y_resolution(void);
+extern void fill_rectangle(Point2d const* const, Point2d const* const, RGB8 const* const);
 extern void draw_bitmap(Drawable_bitmap const* const, Point2d const* const);
+extern void draw_nmulti_bitmap(Drawable_multi_bitmap const* const, Point2d const* const, uint32_t);
+extern void draw_multi_bitmap(Drawable_multi_bitmap const* const, Point2d const* const);
+extern void put_ascii_font(char const *, Point2d const* const);
 extern void test_draw(RGB8 const* const);
 #endif
 

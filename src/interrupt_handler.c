@@ -22,16 +22,16 @@ static inline void send_done_interrupt_slave(void) {
 
 void interrupt_handler0x20(uint32_t* esp){
     static uint16_t t = 0xff;
-    static RGB8 rgb = {1, 1, 1, 1};
-    rgb.r = 0x10;
-    rgb.g = 0x20;
-    rgb.b = 0x00;
-    static Point2d p = {0, 0};
+    /* static RGB8 rgb = {1, 1, 1, 1}; */
+    /* rgb.r = 0x10; */
+    /* rgb.g = 0x20; */
+    /* rgb.b = 0x00; */
+    /* static Point2d p = {0, 0}; */
 
     ++t;
     if (t % 100 == 0) {
-        add_point2d(&p, 1, 1);
-        fill_rectangle(&make_point2d(0, 0), &p, &rgb);
+        /* add_point2d(&p, 1, 1); */
+        /* fill_rectangle(&make_point2d(0, 0), &p, &rgb); */
     }
 
     send_done_interrupt_master();
