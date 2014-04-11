@@ -5,15 +5,16 @@
 
 #include <asm_functions.h>
 #include <graphic.h>
-#include <stdio.h>
 #include <interrupt_handler.h>
 #include <kernel.h>
+#include <keyboard.h>
 #include <macros.h>
 #include <memory.h>
-#include <point.h>
 #include <multiboot_constants.h>
 #include <multiboot_structs.h>
+#include <point.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <vbe.h>
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
@@ -34,7 +35,12 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     init_pic();
     init_pit();
     init_graphic(vbe_info, vbe_mode_info);
+    Axel_state_code t = init_keyboard();
     io_sti();
+
+    if (t == AXEL_FAILED) {
+        put_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
+    }
 
     Point2d p0, p1;
     RGB8 c;
@@ -202,6 +208,7 @@ static void init_idt(void) {
     load_idtr(IDT_LIMIT, IDT_ADDR);
 
     set_gate_descriptor(idt + 0x20, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x20, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
+    set_gate_descriptor(idt + 0x21, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x21, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
 }
 
 
@@ -234,8 +241,4 @@ static inline void init_pit(void) {
 
     /* PITはタイマーでIRQ0なのでMaster PICのIRQ0を解除 */
     io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (0xFF & ~PIC_IMR_MASK_IRQ0));
-}
-
-
-static inline void init_keyboard(void) {
 }

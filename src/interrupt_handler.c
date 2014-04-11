@@ -36,3 +36,11 @@ void interrupt_handler0x20(uint32_t* esp){
 
     send_done_interrupt_master();
 }
+
+
+void interrupt_handler0x21(uint32_t* esp){
+    static Point2d p = {0, 0};
+    put_ascii_font("Get Keyboard Interrupt", &p);
+
+    send_done_interrupt_master();
+}

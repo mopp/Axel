@@ -7,5 +7,6 @@
 #define INTERRUPT_HANDLER_H
 
 extern void asm_interrupt_handler0x20(void);
+extern void asm_interrupt_handler0x21(void);
 
 #endif

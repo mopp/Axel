@@ -8,8 +8,8 @@
 
 
 enum Axel_state_code {
-    AXEL_SUCCESS,
-    AXEL_FAILED,
+    AXEL_SUCCESS    = 0x01,
+    AXEL_FAILED     = 0x02,
 };
 typedef enum Axel_state_code Axel_state_code;
 

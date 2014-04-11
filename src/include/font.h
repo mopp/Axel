@@ -1,3 +1,11 @@
+/**
+ * @file font.h
+ * @brief font header.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-04-11
+ */
+
 #ifndef FONT_H
 #define FONT_H
 

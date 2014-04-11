@@ -45,3 +45,4 @@ section .text
 
 ; 割り込みハンドラを作成
 asm_interrupt_handler 0x20
+asm_interrupt_handler 0x21

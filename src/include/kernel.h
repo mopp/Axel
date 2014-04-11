@@ -1,12 +1,12 @@
 /************************************************************
  * File: include/kernel.h
  * Description: kernel header
+ *              TODO: Add comment
  ************************************************************/
-
-/* TODO: Add comment */
 
 #ifndef KERNEL_H
 #define KERNEL_H
+
 
 #include <stdint.h>
 
@@ -111,6 +111,7 @@ struct gate_descriptor {
 typedef struct gate_descriptor Gate_descriptor;
 _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.(64 bit)");
 
+
 enum IDT_constants {
     IDT_ADDR                = 0x0026f800,
     IDT_MAX_NUM             = 256,
@@ -190,5 +191,6 @@ enum PIT_constants {
     PIT_COUNTER_VALUE_HIGH  = 0x2E,
     PIT_COUNTER_VALUE_LOW   = 0x9C,
 };
+
 
 #endif

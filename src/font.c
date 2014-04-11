@@ -1,3 +1,10 @@
+/**
+ * @file font.c
+ * @brief font data implementation.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-04-11
+ */
 #include <rgb8.h>
 #include <font.h>
 #include <drawable.h>
