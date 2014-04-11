@@ -61,10 +61,13 @@ Axel_state_code init_keyboard(void) {
     if (write_keyboard_command(KEYBOARD_CONTROL_COMMAND_SELF_TEST) == AXEL_FAILED) {
         return AXEL_FAILED;
     }
+
+    /* FIXME: add complete error checking. */
     wait_write_ready();
-    if (read_keyboard_data() == AXEL_FAILED) {
-        return AXEL_FAILED;
-    }
+    uint8_t test_result = read_keyboard_data();
+    /* if (test_result == hoge) { */
+    /* return AXEL_FAILED; */
+    /* } */
 
     wait_write_ready();
     io_out8(KEYBOARD_CONTROL_PORT, KEYBOARD_CONTROL_COMMAND_WRITE_MODE);

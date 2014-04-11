@@ -1,6 +1,6 @@
 /****************************************************************************************
  * @file stdio.c
- * @brief standard io functions in stl of C.
+ * @brief standard io functions in stl of C by mopp.
  * @author mopp
  * @version 0.1
  * @date 2014-03-17
@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <graphic.h>
 
 
 static inline char* utoa(unsigned int value, char* s, int const radix) {
@@ -44,6 +45,15 @@ char* itoa(int value, char* s, int radix) {
     utoa(t, ss, radix);
 
     return s;
+}
+
+
+int puts(const char* s) {
+    while (*s != '\0') {
+        putchar(*s++);
+    }
+
+    return 1;
 }
 
 

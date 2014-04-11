@@ -39,7 +39,7 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     io_sti();
 
     if (t == AXEL_FAILED) {
-        put_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
+        puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
     }
 
     Point2d p0, p1;
@@ -50,21 +50,21 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     clean_screen(set_rgb_by_color(&c, 0x3A6EA5));
     test_draw(set_rgb_by_color(&c, 0x3A6EA5));
 
-    fill_rectangle(set_point2d(&p0,  0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
-    fill_rectangle(set_point2d(&p0,  0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
-    fill_rectangle(set_point2d(&p0,  0, max_y - 25), set_point2d(&p1, max_x, max_y     ), set_rgb_by_color(&c, 0xC6C6C6));
+    fill_rectangle(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
+    fill_rectangle(set_point2d(&p0, 0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, 0, max_y - 25), set_point2d(&p1, max_x, max_y), set_rgb_by_color(&c, 0xC6C6C6));
 
-    fill_rectangle(set_point2d(&p0,  3, max_y - 23), set_point2d(&p1,    59, max_y - 23), set_rgb_by_color(&c, 0xFFFFFF));
-    fill_rectangle(set_point2d(&p0,  2, max_y - 23), set_point2d(&p1,     2, max_y -  3), set_rgb_by_color(&c, 0xFFFFFF));
-    fill_rectangle(set_point2d(&p0,  3, max_y -  3), set_point2d(&p1,    59, max_y -  3), set_rgb_by_color(&c, 0x848484));
-    fill_rectangle(set_point2d(&p0, 59, max_y - 22), set_point2d(&p1,    59, max_y -  4), set_rgb_by_color(&c, 0x848484));
-    fill_rectangle(set_point2d(&p0,  2, max_y -  2), set_point2d(&p1,    59, max_y -  2), set_rgb_by_color(&c, 0x000000));
-    fill_rectangle(set_point2d(&p0, 60, max_y - 23), set_point2d(&p1,    60, max_y -  2), set_rgb_by_color(&c, 0x000000));
+    fill_rectangle(set_point2d(&p0, 3, max_y - 23), set_point2d(&p1, 59, max_y - 23), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, 2, max_y - 23), set_point2d(&p1, 2, max_y - 3), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, 3, max_y - 3), set_point2d(&p1, 59, max_y - 3), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, 59, max_y - 22), set_point2d(&p1, 59, max_y - 4), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, 2, max_y - 2), set_point2d(&p1, 59, max_y - 2), set_rgb_by_color(&c, 0x000000));
+    fill_rectangle(set_point2d(&p0, 60, max_y - 23), set_point2d(&p1, 60, max_y - 2), set_rgb_by_color(&c, 0x000000));
 
-    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 23), set_point2d(&p1,max_x -  3, max_y - 23), set_rgb_by_color(&c, 0x848484));
-    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 22), set_point2d(&p1,max_x - 46, max_y -  3), set_rgb_by_color(&c, 0x848484));
-    fill_rectangle(set_point2d(&p0, max_x - 46, max_y -  2), set_point2d(&p1,max_x -  3, max_y -  2), set_rgb_by_color(&c, 0xFFFFFF));
-    fill_rectangle(set_point2d(&p0, max_x -  2, max_y - 23), set_point2d(&p1,max_x -  2, max_y -  2), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 23), set_point2d(&p1, max_x - 3, max_y - 23), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 22), set_point2d(&p1, max_x - 46, max_y - 3), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 2), set_point2d(&p1, max_x - 3, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
@@ -105,8 +105,24 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
         puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is disable !\n");
     }
 
-    for (;;) {
-        puts("\n-------------------- hlt ! --------------------\n");
+    const uint32_t base_y = 5;
+    const uint32_t base_x = get_max_x_resolution();
+    enum {
+        BUF_SIZE = 20,
+    };
+    char buf[BUF_SIZE];
+    Point2d const p_num_start = {base_x - (BUF_SIZE * 8), base_y};
+    Point2d const p_num_end = {base_x, base_y + 13};
+
+    puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
+
+    for (int i = 1;; ++i) {
+        /* clean drawing area */
+        fill_rectangle(&p_num_start, &p_num_end, set_rgb_by_color(&c, 0x3A6EA5));
+
+        itoa(i, buf, 10);
+        puts_ascii_font(buf, &p_num_start);
+
         io_hlt();
     }
 }
@@ -198,7 +214,7 @@ static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_typ
 }
 
 
-static void init_idt(void) {
+static inline void init_idt(void) {
     Gate_descriptor* idt = (Gate_descriptor*)IDT_ADDR;
 
     /* 全ゲートディスクリプタ初期化を初期化 */

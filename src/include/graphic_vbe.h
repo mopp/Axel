@@ -15,6 +15,7 @@
 
 extern void clean_screen_vbe(RGB8 const* const);
 extern Axel_state_code init_graphic_vbe(Vbe_info_block const* const, Vbe_mode_info_block const* const);
+extern int putchar_vbe(int);
 
 
 #endif

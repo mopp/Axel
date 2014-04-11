@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <kernel.h>
 #include <graphic.h>
+#include <keyboard.h>
 #include <asm_functions.h>
 #include <stdio.h>
 
@@ -39,8 +40,20 @@ void interrupt_handler0x20(uint32_t* esp){
 
 
 void interrupt_handler0x21(uint32_t* esp){
-    static Point2d p = {0, 0};
-    put_ascii_font("Get Keyboard Interrupt", &p);
+    static Point2d const start = {300, 500};
+    static Point2d const sstart = {300 - 10 * 8, 500};
+    static char buf[20] = {0};
+
+    uint8_t const key_code = io_in8(KEYBOARD_DATA_PORT);
+    itoa(key_code, buf, 10);
+
+    /* clear drawing area. */
+    static RGB8 c;
+    fill_rectangle(&start, &make_point2d(300 + 20, 500 + 13), set_rgb_by_color(&c, 0x3A6EA5));
+
+    /* draw key code */
+    puts_ascii_font("Key code: ", &sstart);
+    puts_ascii_font(buf, &start);
 
     send_done_interrupt_master();
 }

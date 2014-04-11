@@ -25,13 +25,16 @@
 %endmacro
 
 
-; 割り込みハンドラのひな形
+; macro of interrupt handler.
 %macro asm_interrupt_handler 1
     global asm_interrupt_handler%1
     extern interrupt_handler%1
 
 asm_interrupt_handler%1:
     push_all
+
+    ; set stack pointer as function argument.
+    mov EAX, ESP
 
     call interrupt_handler%1
 
@@ -43,6 +46,7 @@ asm_interrupt_handler%1:
 
 section .text
 
-; 割り込みハンドラを作成
+; making interrupt handler.
+; first argument shows interrupt vector number.
 asm_interrupt_handler 0x20
 asm_interrupt_handler 0x21

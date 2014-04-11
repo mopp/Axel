@@ -10,10 +10,10 @@
 #ifndef STDIO_H
 #define STDIO_H
 
-#include <graphic.h>
 
 extern void printf(const char*, ...);
 extern char* itoa(int, char*, int);
+extern int puts(const char *s);
 
 
 #endif

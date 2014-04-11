@@ -55,15 +55,6 @@ int putchar_txt(int c) {
 }
 
 
-const char* puts_txt(const char* str) {
-    while (*str != '\0') {
-        putchar_txt(*str++);
-    }
-
-    return str;
-}
-
-
 static inline uint16_t get_one_pixel(uint8_t c) {
     /* 上1バイトが属性 */
     /* 下1バイトが文字 */

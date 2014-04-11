@@ -34,6 +34,9 @@ static uint8_t byte_per_pixel;
 static uint32_t vram_size;
 static uint32_t max_x_resolution, max_y_resolution, max_xy_resolution;
 static Color_bit_info bit_info;
+/* current position in display. */
+/* FIXME: make this detect appropriate draw position. */
+static Point2d pos;
 
 static inline uint32_t get_vram_index(uint32_t const, uint32_t const);
 static inline uint32_t get_shift_red(uint8_t);
@@ -88,6 +91,8 @@ Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_b
         default:
             return AXEL_FAILED;
     }
+
+    set_point2d(&pos, 0, 0);
 
     return AXEL_SUCCESS;
 }
@@ -157,19 +162,49 @@ void draw_multi_bitmap(Drawable_multi_bitmap const* const dmbmp, Point2d const* 
 }
 
 
-void put_ascii_font(char const *c, Point2d const* const p) {
+int put_ascii_font(int const c, Point2d const* const p) {
+    draw_nmulti_bitmap(&mplus_fonts, p, (uint32_t)c);
+    return c;
+}
+
+
+void puts_ascii_font(char const *c, Point2d const* const p) {
     static Point2d tp;
     uint32_t cnt = 0;
 
     while (*c!= '\0') {
-        draw_nmulti_bitmap(&mplus_fonts, set_point2d(&tp, p->x + (cnt * mplus_fonts.width), p->y), (uint32_t)*c);
+        put_ascii_font(*c, set_point2d(&tp, p->x + (cnt * mplus_fonts.width), p->y));
         ++c;
         ++cnt;
     }
 }
 
-#define font_color { r : 240, g : 96, b : 173, rsvd : 0 }
 
+int putchar_vbe(int c) {
+    uint32_t const fwidth = mplus_fonts.width;
+    uint32_t const fheight = mplus_fonts.height;
+
+    if (c == '\n' || c == '\r') {
+        set_point2d(&pos, 0, pos.y + fheight);
+        return c;
+    }
+
+    if (max_x_resolution <= (pos.x + fwidth)) {
+        set_point2d(&pos, 0, pos.y + fheight);
+    }
+
+    if (max_y_resolution <= (pos.y + fheight)) {
+        set_point2d(&pos, 0, 0);
+    }
+
+    put_ascii_font(c, &pos);
+    add_point2d(&pos, fwidth, 0);
+
+    return c;
+}
+
+
+#define font_color { r : 240, g : 96, b : 173, rsvd : 0 }
 void test_draw(RGB8 const* const c) {
     /* TODO: move other place. */
     static uint32_t const font_mo[] = {
@@ -301,14 +336,14 @@ void test_draw(RGB8 const* const c) {
     draw_multi_bitmap(&tes, &make_point2d(x, max_y_resolution / 2 + 8));
 
     uint32_t y = 100;
-    put_ascii_font(" __  __ ",                      &make_point2d(x, y += 13));
-    put_ascii_font("|  \\/  |",                     &make_point2d(x, y += 13));
-    put_ascii_font("| \\  / | ___  _ __  _ __",     &make_point2d(x, y += 13));
-    put_ascii_font("| |\\/| |/ _ \\| '_ \\| '_ \\", &make_point2d(x, y += 13));
-    put_ascii_font("| |  | | (_) | |_) | |_) |",    &make_point2d(x, y += 13));
-    put_ascii_font("|_|  |_|\\___/| .__/| .__/",    &make_point2d(x, y += 13));
-    put_ascii_font("             | |   | |",        &make_point2d(x, y += 13));
-    put_ascii_font("             |_|   |_|",        &make_point2d(x, y += 13));
+    puts_ascii_font(" __  __ ",                      &make_point2d(x, y += 13));
+    puts_ascii_font("|  \\/  |",                     &make_point2d(x, y += 13));
+    puts_ascii_font("| \\  / | ___  _ __  _ __",     &make_point2d(x, y += 13));
+    puts_ascii_font("| |\\/| |/ _ \\| '_ \\| '_ \\", &make_point2d(x, y += 13));
+    puts_ascii_font("| |  | | (_) | |_) | |_) |",    &make_point2d(x, y += 13));
+    puts_ascii_font("|_|  |_|\\___/| .__/| .__/",    &make_point2d(x, y += 13));
+    puts_ascii_font("             | |   | |",        &make_point2d(x, y += 13));
+    puts_ascii_font("             |_|   |_|",        &make_point2d(x, y += 13));
 }
 
 
