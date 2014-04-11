@@ -2,6 +2,10 @@
 Axel Accelerates All For Me !
 
 
+## Requirement
+Cross-Compiler, nasm, qemu, grub
+
+
 ## How to use ISO file
 ```shell:variable
 qemu-system-x86_64 -monitor stdio -vga std -cdrom axel.iso
@@ -10,6 +14,9 @@ qemu-system-x86_64 -monitor stdio -vga std -cdrom axel.iso
 
 ## Setup Environment
 Please read [GCC Cross-Compiler](http://wiki.osdev.org/GCC_Cross-Compiler "OSDev")  
+If you cannot build below, you should NOT use source by repository.  
+So, Please get and try to build each snapshot.  
+  
   
 environment variable  
 ```shell:variable
@@ -63,6 +70,5 @@ gcc
     make install-target-libgcc
 
     cd $PREFIX
-    cd include
     ln -s ../lib/gcc/i686-elf/4.9.0/include/* ./include 
 ```
