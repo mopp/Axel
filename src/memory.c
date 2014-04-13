@@ -55,7 +55,7 @@ static inline void init_memory_list(void) {
     for (int i = 0; i < MAX_MEM_NODE_NUM; ++i) {
         // 各ノードにメモリ情報を付加
         // この時点でメモリの先頭と末尾は何も指していない
-        init(&dlst_nodes[i], mem_info + i);
+        init(&dlst_nodes[i], (uintptr_t)(mem_info + i));
         memset(mem_info + i, 0, sizeof(Memory_info));
     }
 }
@@ -98,7 +98,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
     mem_manager->lost_times = 0;
     mem_manager->lost_size = 0;
 
-    set_meminfo(mmap, mem_manager->mem_lst->data);
+    set_meminfo(mmap, (Memory_info*)mem_manager->mem_lst->data);
 
     Dlinked_list_node tdl = mem_manager->mem_lst;
 
@@ -107,7 +107,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
         mmap = (Multiboot_memory_map*)((uintptr_t)mmap + sizeof(mmap->size) + mmap->size);
 
         Dlinked_list_node dl = get_new_memory_list_node();
-        Memory_info* mi = dl->data;
+        Memory_info* mi = (Memory_info*)dl->data;
 
         set_meminfo(mmap, mi);
 
@@ -116,7 +116,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
 
     // allocate kernel area
     Dlinked_list_node ka_node = mem_manager->mem_lst;
-    Memory_info* ka_mi = ka_node->data;
+    Memory_info* ka_mi = (Memory_info*)ka_node->data;
     const uintptr_t ka_start_addr = get_kernel_start_addr();
     const uintptr_t ka_end_addr = get_kernel_end_addr() + (uintptr_t)mem_info + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
     const uintptr_t ka_size = ka_end_addr - ka_start_addr;
@@ -127,7 +127,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
         }
 
         ka_node = ka_node->tail;
-        ka_mi = ka_node->data;
+        ka_mi = (Memory_info*)ka_node->data;
     }
 
     if (ka_mi->base_addr == ka_start_addr && (ka_mi->base_addr + ka_mi->size) == ka_end_addr) {
@@ -140,7 +140,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
         ka_mi->state = MEM_INFO_STATE_ALLOC;
 
         Dlinked_list_node ka_new_node = get_new_memory_list_node();
-        Memory_info* ka_new_mi = ka_new_node->data;
+        Memory_info* ka_new_mi = (Memory_info*)ka_new_node->data;
 
         ka_new_mi->base_addr = ka_mi->base_addr + ka_size;
         ka_new_mi->size = ka_mi->size - ka_size;
@@ -157,7 +157,7 @@ void* malloc(size_t size_byte) {
     size_t size = size_byte * 8;
 
     Dlinked_list_node lst = mem_manager->mem_lst;
-    Memory_info* mi = lst->data;
+    Memory_info* mi = (Memory_info*)lst->data;
 
     while (lst->tail != DUMMY) {
         if (mi->state == MEM_INFO_STATE_FREE && size < mi->size) {
@@ -165,14 +165,14 @@ void* malloc(size_t size_byte) {
         }
 
         lst = lst->tail;
-        mi = lst->data;
+        mi = (Memory_info*)lst->data;
     }
 
     Dlinked_list_node new = get_new_memory_list_node();
     if (new == NULL) {
         return NULL;
     }
-    Memory_info* new_mi = new->data;
+    Memory_info* new_mi = (Memory_info*)new->data;
     new_mi->base_addr = mi->base_addr + size;
     new_mi->size = mi->size - size;
     new_mi->state = MEM_INFO_STATE_FREE;
@@ -189,7 +189,7 @@ void* malloc(size_t size_byte) {
 void free(void* object) {
     uintptr_t allocated_addr = (uintptr_t)object;
     Dlinked_list_node lst = mem_manager->mem_lst;
-    Memory_info* mi = lst->data;
+    Memory_info* mi = (Memory_info*)lst->data;
 
     while (lst->tail != DUMMY) {
         if (mi->base_addr == allocated_addr) {
@@ -197,7 +197,7 @@ void free(void* object) {
         }
 
         lst = lst->tail;
-        mi = lst->data;
+        mi = (Memory_info*)lst->data;
     }
 
     Dlinked_list_node head = lst->head, tail = lst->tail;

@@ -16,12 +16,12 @@
 #include <doubly_linked_list.h>
 
 /* 終端子 */
-static struct dlinked_list_node dummy = {.data = NULL, .head = NULL, .tail = NULL};
+static struct dlinked_list_node dummy = {.data = 0, .head = NULL, .tail = NULL};
 const Dlinked_list_node DUMMY = &dummy;
 
 
 /* 新しいノードを確保しデータを設定 */
-Dlinked_list_node get_new_Dlinked_list_node(void* data) {
+Dlinked_list_node get_new_Dlinked_list_node(uintptr_t data) {
 #ifdef DEBUG
     /* TODO */
     Dlinked_list_node n = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
@@ -38,7 +38,7 @@ Dlinked_list_node get_new_Dlinked_list_node(void* data) {
 
 
 /* ダミーとデータを付加してリストを初期化 */
-Dlinked_list_node init(Dlinked_list_node dl, void* data) {
+Dlinked_list_node init(Dlinked_list_node dl, uintptr_t data) {
     dl->data = data;
     dl->head = DUMMY;
     dl->tail = DUMMY;
@@ -90,7 +90,7 @@ void delete_node(Dlinked_list_node target) {
 
 
 /* ノードを検索 */
-Dlinked_list_node search_node(Dlinked_list_node dl, void* data, bool (*comp_func)(void*, void*)) {
+Dlinked_list_node search_node(Dlinked_list_node dl, uintptr_t data, bool (*comp_func)(uintptr_t,  uintptr_t)) {
     if (dl->head == NULL || dl->tail == NULL) {
         return DUMMY;
     }
@@ -147,7 +147,7 @@ void print_all(Dlinked_list_node dl) {
     printf("tail\n");
 }
 
-bool comp(void* x, void* y) {
+bool comp(uintptr_t x, uintptr_t y) {
     if (((test_struct*)x)->dummy_addr == ((test_struct*)y)->dummy_addr) {
         return true;
     }
