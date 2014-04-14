@@ -1,5 +1,4 @@
-/**
- * @file keyboard.h
+/** @file keyboard.h
  * @brief keyboard header.
  * @author mopp
  * @version 0.1
@@ -10,8 +9,18 @@
 
 
 #include <state_code.h>
+#include <stdint.h>
 
-enum Keyboard_constants {
+struct keyboard {
+    uint8_t enable_calps_lock;
+    uint8_t enable_num_lock;
+    uint8_t enable_scroll_lock;
+    // Queue8 buffer;
+};
+typedef struct keyboard  Keyboard;
+
+
+enum keyboard_constants {
     /*
      * Read: Status register
      * Write: Command register

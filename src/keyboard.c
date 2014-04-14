@@ -6,7 +6,6 @@
  * @date 2014-04-11
  */
 #include <keyboard.h>
-#include <stdint.h>
 #include <asm_functions.h>
 #include <kernel.h>
 
@@ -48,6 +47,7 @@ static inline Axel_state_code set_keyboard_led(uint8_t led) {
 
     return state;
 }
+
 
 static inline void wait_write_ready(void) {
     while ((KEYBOARD_STATUS_IBF & io_in8(KEYBOARD_CONTROL_PORT)) != 0)
