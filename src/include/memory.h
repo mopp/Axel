@@ -88,7 +88,7 @@ typedef struct memory_info Memory_info;
 /* メモリ管理を行うオブジェクト */
 struct memory_manager {
     uint32_t exist_info_num, lost_size, lost_times;
-    Dlinked_list_node mem_lst;
+    Dlinked_list_node* mem_lst;
 };
 typedef struct memory_manager Memory_manager;
 

@@ -19,9 +19,9 @@ extern const uintptr_t LD_KERNEL_END;
 
 /* variable order in memory is mem_manager, dlst_nodes, mem_info. */
 static Memory_manager* mem_manager;
-static struct dlinked_list_node* dlst_nodes;
+static Dlinked_list_node* dlst_nodes;
 static Memory_info* mem_info;
-static bool node_used[MAX_MEM_NODE_NUM];    // TODO: use memory allocate
+static bool node_used[MAX_MEM_NODE_NUM];  // TODO: use memory allocate
 
 
 uintptr_t get_kernel_start_addr(void) {
@@ -39,7 +39,7 @@ uintptr_t get_kernel_size(void) {
 }
 
 
-static Dlinked_list_node get_new_memory_list_node(void) {
+static Dlinked_list_node* get_new_memory_list_node(void) {
     /* counter for nextfix */
     static int cnt = -1;
     /* for already checking all node. */
@@ -63,8 +63,8 @@ static Dlinked_list_node get_new_memory_list_node(void) {
 }
 
 
-static void delete_memory_list_node(Dlinked_list_node del) {
-    node_used[((uintptr_t)del - (uintptr_t)dlst_nodes) / sizeof(struct dlinked_list_node)] = false;
+static void delete_memory_list_node(Dlinked_list_node* del) {
+    node_used[((uintptr_t)del - (uintptr_t)dlst_nodes) / sizeof(Dlinked_list_node)] = false;
     delete_node(del);
 }
 
@@ -99,8 +99,8 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
     uintptr_t const t = get_kernel_end_addr();
 
     /* allocate dlst_nodes after kernel_end + memory_manager addres */
-    dlst_nodes = (Dlinked_list_node)(t + sizeof(Memory_manager));
-    mem_info = (Memory_info*)(dlst_nodes + (sizeof(struct dlinked_list_node) * MAX_MEM_NODE_NUM));
+    dlst_nodes = (Dlinked_list_node*)(t + sizeof(Memory_manager));
+    mem_info = (Memory_info*)(dlst_nodes + (sizeof(Dlinked_list_node) * MAX_MEM_NODE_NUM));
 
     for (int i = 0; i < MAX_MEM_NODE_NUM; ++i) {
         /* 各ノードにメモリ情報を付加 */
@@ -121,14 +121,14 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
 
     set_meminfo(mmap, (Memory_info*)mem_manager->mem_lst->data);
 
-    Dlinked_list_node tdl = mem_manager->mem_lst;
+    Dlinked_list_node* tdl = mem_manager->mem_lst;
 
-    Multiboot_memory_map const * const limit = (Multiboot_memory_map*)((uintptr_t)mmap + mmap_len);
+    Multiboot_memory_map const* const limit = (Multiboot_memory_map*)((uintptr_t)mmap + mmap_len);
     while (mmap < limit) {
         /* 次の要素へ */
         mmap = (Multiboot_memory_map*)((uintptr_t)mmap + sizeof(mmap->size) + mmap->size);
 
-        Dlinked_list_node dl = get_new_memory_list_node();
+        Dlinked_list_node* dl = get_new_memory_list_node();
         Memory_info* mi = (Memory_info*)dl->data;
 
         set_meminfo(mmap, mi);
@@ -137,7 +137,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
     }
 
     /* allocate kernel area node */
-    Dlinked_list_node ka_node = mem_manager->mem_lst;
+    Dlinked_list_node* ka_node = mem_manager->mem_lst;
     Memory_info* ka_mi = (Memory_info*)ka_node->data;
 
     /* kernel area start address */
@@ -166,7 +166,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
         ka_mi->size = ka_size;
         ka_mi->state = MEM_INFO_STATE_ALLOC;
 
-        Dlinked_list_node ka_new_node = get_new_memory_list_node();
+        Dlinked_list_node* ka_new_node = get_new_memory_list_node();
         Memory_info* ka_new_mi = (Memory_info*)ka_new_node->data;
 
         ka_new_mi->base_addr = ka_mi->base_addr + ka_size;
@@ -183,7 +183,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
 void* malloc(size_t size_byte) {
     size_t size = size_byte * 8;
 
-    Dlinked_list_node lst = mem_manager->mem_lst;
+    Dlinked_list_node* lst = mem_manager->mem_lst;
     Memory_info* mi = (Memory_info*)lst->data;
 
     /* search enough size node */
@@ -197,7 +197,7 @@ void* malloc(size_t size_byte) {
     }
 
     /* get new node */
-    Dlinked_list_node new = get_new_memory_list_node();
+    Dlinked_list_node* new = get_new_memory_list_node();
     if (new == NULL) {
         return NULL;
     }
@@ -218,7 +218,7 @@ void* malloc(size_t size_byte) {
 
 void free(void* object) {
     uintptr_t allocated_addr = (uintptr_t)object;
-    Dlinked_list_node lst = mem_manager->mem_lst;
+    Dlinked_list_node* lst = mem_manager->mem_lst;
     Memory_info* mi = (Memory_info*)lst->data;
 
     while (lst->tail != DUMMY) {
@@ -230,7 +230,8 @@ void free(void* object) {
         mi = (Memory_info*)lst->data;
     }
 
-    Dlinked_list_node head = lst->head, tail = lst->tail;
+    Dlinked_list_node* head = lst->head;
+    Dlinked_list_node* tail = lst->tail;
     Memory_info* head_mi = (Memory_info*)head->data, *tail_mi = (Memory_info*)tail->data;
 
     if (head_mi->state == MEM_INFO_STATE_FREE) {
