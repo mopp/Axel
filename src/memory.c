@@ -1,13 +1,15 @@
 /************************************************************
  * File: graphic_txt.c
  * Description: some memory functions.
+ *      You MUST NOT use get_new_Dlinked_list_node().
+ *      bacause get_new_Dlinked_list_node() include malloc.
  ************************************************************/
 
 #include <stdint.h>
 #include <stddef.h>
 #include <memory.h>
 #include <doubly_linked_list.h>
-/* #include <graphic_txt.h> */
+#include <stdbool.h>
 
 
 /* &をよく忘れるので関数で包む */
@@ -15,9 +17,11 @@ extern const uintptr_t LD_KERNEL_SIZE;
 extern const uintptr_t LD_KERNEL_START;
 extern const uintptr_t LD_KERNEL_END;
 
+/* variable order in memory is mem_manager, dlst_nodes, mem_info. */
 static Memory_manager* mem_manager;
 static struct dlinked_list_node* dlst_nodes;
 static Memory_info* mem_info;
+static bool node_used[MAX_MEM_NODE_NUM];    // TODO: use memory allocate
 
 
 uintptr_t get_kernel_start_addr(void) {
@@ -36,28 +40,32 @@ uintptr_t get_kernel_size(void) {
 
 
 static Dlinked_list_node get_new_memory_list_node(void) {
-    static int lst_counter = 0;
+    /* counter for nextfix */
+    static int cnt = -1;
+    /* for already checking all node. */
+    bool is_one_round = false;
 
-    /* empty */
-    if (lst_counter == MAX_MEM_NODE_NUM) {
-        return NULL;
-    }
+    do {
+        ++cnt;
+        if (MAX_MEM_NODE_NUM <= cnt) {
+            cnt = 0;
+            if (is_one_round == true) {
+                /* All node is already used. */
+                return NULL;
+            }
+            is_one_round = true;
+        }
+    } while (node_used[cnt] == true);
 
-    // FIXME
-    return &dlst_nodes[++lst_counter];
+    node_used[cnt] = true;
+
+    return &dlst_nodes[cnt];
 }
 
 
-static inline void init_memory_list(void) {
-    dlst_nodes = (struct dlinked_list_node*)(get_kernel_end_addr() + sizeof(Memory_manager));
-    mem_info = (Memory_info*)(dlst_nodes + sizeof(struct dlinked_list_node) * MAX_MEM_NODE_NUM);
-
-    for (int i = 0; i < MAX_MEM_NODE_NUM; ++i) {
-        // 各ノードにメモリ情報を付加
-        // この時点でメモリの先頭と末尾は何も指していない
-        init(&dlst_nodes[i], (uintptr_t)(mem_info + i));
-        memset(mem_info + i, 0, sizeof(Memory_info));
-    }
+static void delete_memory_list_node(Dlinked_list_node del) {
+    node_used[((uintptr_t)del - (uintptr_t)dlst_nodes) / sizeof(struct dlinked_list_node)] = false;
+    delete_node(del);
 }
 
 
@@ -67,43 +75,57 @@ static inline void set_meminfo(Multiboot_memory_map* mmap, Memory_info* mi) {
     mi->state = (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) ? MEM_INFO_STATE_FREE : MEM_INFO_STATE_ALLOC;
 }
 
-/*
- *
- * static void print_memory_list(void) {
- *     Dlinked_list_node t = mem_manager->mem_lst;
- *     Memory_info* mi = t->data;
- *
- *     while (t->tail != DUMMY) {
- *         printf("addr: 0x%x, ", mi->base_addr);
- *         printf("size: 0x%x, ", mi->size);
- *         printf("state: 0x%x\n", mi->state);
- *
- *         t = t->tail;
- *         mi = t->data;
- *     }
- * }
- */
+
+#ifdef DEBUG
+
+static void print_memory_list(void) {
+    Dlinked_list_node t = mem_manager->mem_lst;
+    Memory_info* mi = t->data;
+
+    while (t->tail != DUMMY) {
+        printf("addr: 0x%x, ", mi->base_addr);
+        printf("size: 0x%x, ", mi->size);
+        printf("state: 0x%x\n", mi->state);
+
+        t = t->tail;
+        mi = t->data;
+    }
+}
+
+#endif
 
 
 void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
-    Multiboot_memory_map* limit = (Multiboot_memory_map*)((uintptr_t)mmap + mmap_len);
+    uintptr_t const t = get_kernel_end_addr();
 
-    init_memory_list();
+    /* allocate dlst_nodes after kernel_end + memory_manager addres */
+    dlst_nodes = (Dlinked_list_node)(t + sizeof(Memory_manager));
+    mem_info = (Memory_info*)(dlst_nodes + (sizeof(struct dlinked_list_node) * MAX_MEM_NODE_NUM));
 
-    // マネージャにカーネル領域末尾を使用
-    uintptr_t t = get_kernel_end_addr();
+    for (int i = 0; i < MAX_MEM_NODE_NUM; ++i) {
+        /* 各ノードにメモリ情報を付加 */
+        /* この時点でノードの先頭と末尾は何も指していない */
+        init_list(&dlst_nodes[i], (uintptr_t)(mem_info + i));
+
+        /* meminfo 初期化 */
+        memset(mem_info + i, 0, sizeof(Memory_info));
+    }
+
+    /* memory_manager is allocated at kernel_end address. */
     mem_manager = (Memory_manager*)t;
     mem_manager->mem_lst = &dlst_nodes[0];
     mem_manager->exist_info_num = 1;
     mem_manager->lost_times = 0;
     mem_manager->lost_size = 0;
+    node_used[0] = true;
 
     set_meminfo(mmap, (Memory_info*)mem_manager->mem_lst->data);
 
     Dlinked_list_node tdl = mem_manager->mem_lst;
 
+    Multiboot_memory_map const * const limit = (Multiboot_memory_map*)((uintptr_t)mmap + mmap_len);
     while (mmap < limit) {
-        // 次の要素へ
+        /* 次の要素へ */
         mmap = (Multiboot_memory_map*)((uintptr_t)mmap + sizeof(mmap->size) + mmap->size);
 
         Dlinked_list_node dl = get_new_memory_list_node();
@@ -114,13 +136,18 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
         tdl = insert_tail(tdl, dl);
     }
 
-    // allocate kernel area
+    /* allocate kernel area node */
     Dlinked_list_node ka_node = mem_manager->mem_lst;
     Memory_info* ka_mi = (Memory_info*)ka_node->data;
-    const uintptr_t ka_start_addr = get_kernel_start_addr();
-    const uintptr_t ka_end_addr = get_kernel_end_addr() + (uintptr_t)mem_info + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
-    const uintptr_t ka_size = ka_end_addr - ka_start_addr;
 
+    /* kernel area start address */
+    uintptr_t const ka_start_addr = get_kernel_start_addr();
+    /* kernel area end address */
+    uintptr_t const ka_end_addr = t + (uintptr_t)mem_info + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
+    /* kernel area size */
+    uintptr_t const ka_size = ka_end_addr - ka_start_addr;
+
+    /* search karnel area contain node */
     while (ka_node->tail != DUMMY) {
         if (ka_mi->base_addr <= ka_start_addr && ka_end_addr <= (ka_mi->base_addr + ka_mi->size)) {
             break;
@@ -159,6 +186,7 @@ void* malloc(size_t size_byte) {
     Dlinked_list_node lst = mem_manager->mem_lst;
     Memory_info* mi = (Memory_info*)lst->data;
 
+    /* search enough size node */
     while (lst->tail != DUMMY) {
         if (mi->state == MEM_INFO_STATE_FREE && size < mi->size) {
             break;
@@ -168,10 +196,12 @@ void* malloc(size_t size_byte) {
         mi = (Memory_info*)lst->data;
     }
 
+    /* get new node */
     Dlinked_list_node new = get_new_memory_list_node();
     if (new == NULL) {
         return NULL;
     }
+
     Memory_info* new_mi = (Memory_info*)new->data;
     new_mi->base_addr = mi->base_addr + size;
     new_mi->size = mi->size - size;
@@ -206,7 +236,7 @@ void free(void* object) {
     if (head_mi->state == MEM_INFO_STATE_FREE) {
         // merge head
         head_mi->size += mi->size;
-        delete_node(lst);
+        delete_memory_list_node(lst);
     } else if (tail_mi->state == MEM_INFO_STATE_FREE) {
         if (lst == mem_manager->mem_lst) {
             mem_manager->mem_lst = lst->tail;
@@ -215,7 +245,7 @@ void free(void* object) {
         // merge tail
         tail_mi->base_addr -= mi->size;
         tail_mi->size += mi->size;
-        delete_node(lst);
+        delete_memory_list_node(lst);
     } else {
         mi->state = MEM_INFO_STATE_FREE;
     }

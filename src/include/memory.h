@@ -6,6 +6,7 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+
 #include <stdint.h>
 #include <stddef.h>
 #include <doubly_linked_list.h>
@@ -103,5 +104,6 @@ extern int memcmp(const void*, const void*, size_t);
 extern void init_memory(Multiboot_memory_map*, size_t);
 extern void* malloc(size_t);
 extern void free(void*);
+
 
 #endif

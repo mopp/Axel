@@ -14,6 +14,7 @@
 #endif
 
 #include <doubly_linked_list.h>
+#include <memory.h>
 
 /* 終端子 */
 static struct dlinked_list_node dummy = {.data = 0, .head = NULL, .tail = NULL};
@@ -22,12 +23,7 @@ const Dlinked_list_node DUMMY = &dummy;
 
 /* 新しいノードを確保しデータを設定 */
 Dlinked_list_node get_new_Dlinked_list_node(uintptr_t data) {
-#ifdef DEBUG
-    /* TODO */
     Dlinked_list_node n = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
-#else
-    Dlinked_list_node n = NULL;  // = (Dlinked_list_node)malloc(sizeof(struct dlinked_list_node));
-#endif
 
     n->data = data;
     n->head = DUMMY;
@@ -38,7 +34,7 @@ Dlinked_list_node get_new_Dlinked_list_node(uintptr_t data) {
 
 
 /* ダミーとデータを付加してリストを初期化 */
-Dlinked_list_node init(Dlinked_list_node dl, uintptr_t data) {
+Dlinked_list_node init_list(Dlinked_list_node dl, uintptr_t data) {
     dl->data = data;
     dl->head = DUMMY;
     dl->tail = DUMMY;

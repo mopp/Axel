@@ -20,7 +20,7 @@ typedef struct dlinked_list_node* Dlinked_list_node;
 
 extern const Dlinked_list_node DUMMY;
 
-extern Dlinked_list_node init(Dlinked_list_node, uintptr_t);
+extern Dlinked_list_node init_list(Dlinked_list_node, uintptr_t);
 extern Dlinked_list_node get_new_Dlinked_list_node(uintptr_t);
 extern Dlinked_list_node insert_head(Dlinked_list_node, Dlinked_list_node);
 extern Dlinked_list_node insert_tail(Dlinked_list_node, Dlinked_list_node);
