@@ -1,0 +1,4 @@
+[ ] fix file comments.
+[ ] add function comments.
+[ ] fix data structure(use generic macro).
+[ ] make console.
