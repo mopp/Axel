@@ -18,10 +18,10 @@ struct dlinked_list_node {
 };
 typedef struct dlinked_list_node Dlinked_list_node;
 
-extern Dlinked_list_node* const DUMMY;
+extern Dlinked_list_node* const DUMMY_NODE;
 
 extern Dlinked_list_node* init_list(Dlinked_list_node*, uintptr_t);
-extern Dlinked_list_node* get_new_Dlinked_list_node(uintptr_t);
+extern Dlinked_list_node* get_new_dlinked_list_node(uintptr_t);
 extern Dlinked_list_node* insert_head(Dlinked_list_node*, Dlinked_list_node*);
 extern Dlinked_list_node* insert_tail(Dlinked_list_node*, Dlinked_list_node*);
 extern void delete_node(Dlinked_list_node*);

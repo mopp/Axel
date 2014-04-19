@@ -25,5 +25,7 @@
 #define ARRAY_SIZE_OF(a) (sizeof(a) / sizeof(a[0]))
 #define ARRAY_LAST_ELEM(a) ((a) + (ARRAY_SIZE_OF(a) - (size_t)1))
 
+#define NULL_INTPTR_T 0
+
 
 #endif

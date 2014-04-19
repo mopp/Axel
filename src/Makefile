@@ -21,7 +21,7 @@ KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 # 順序に注意
 # LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o graphic_vbe.o graphic_txt.o doubly_linked_list.o stack.o memory.o kernel.o
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o doubly_linked_list.o stack.o memory.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o doubly_linked_list.o queue.o stack.o memory.o kernel.o
 SUBDIRS 			:= $(BOOT_DIR)
 
 # CC          C compiler command
@@ -64,6 +64,7 @@ interrupt_handler_asm.o : interrupt_handler_asm.asm $(MAKEFILE) $(AXEL_INCLUDE_P
 kernel.o				: kernel.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot_constants.h $(AXEL_INCLUDE_PATH)multiboot_structs.h
 memory.o				: memory.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)memory.h
 stack.o					: stack.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)stack.h
+queue.o					: queue.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)queue.h
 string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
 stdio.o					: stdio.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)stdio.h
 font.o					: font.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)font.h

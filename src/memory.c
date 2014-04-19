@@ -1,8 +1,9 @@
 /************************************************************
  * File: graphic_txt.c
  * Description: some memory functions.
- *      You MUST NOT use get_new_Dlinked_list_node().
- *      bacause get_new_Dlinked_list_node() include malloc.
+ *      You MUST NOT use get_new_dlinked_list_node().
+ *      bacause get_new_dlinked_list_node() include malloc.
+ *      So, You MUST use get_new_memory_list_node().
  ************************************************************/
 
 #include <stdint.h>
@@ -82,7 +83,7 @@ static void print_memory_list(void) {
     Dlinked_list_node t = mem_manager->mem_lst;
     Memory_info* mi = t->data;
 
-    while (t->tail != DUMMY) {
+    while (t->tail != DUMMY_NODE) {
         printf("addr: 0x%x, ", mi->base_addr);
         printf("size: 0x%x, ", mi->size);
         printf("state: 0x%x\n", mi->state);
@@ -148,7 +149,7 @@ void init_memory(Multiboot_memory_map* mmap, size_t mmap_len) {
     uintptr_t const ka_size = ka_end_addr - ka_start_addr;
 
     /* search karnel area contain node */
-    while (ka_node->tail != DUMMY) {
+    while (ka_node->tail != DUMMY_NODE) {
         if (ka_mi->base_addr <= ka_start_addr && ka_end_addr <= (ka_mi->base_addr + ka_mi->size)) {
             break;
         }
@@ -187,7 +188,7 @@ void* malloc(size_t size_byte) {
     Memory_info* mi = (Memory_info*)lst->data;
 
     /* search enough size node */
-    while (lst->tail != DUMMY) {
+    while (lst->tail != DUMMY_NODE) {
         if (mi->state == MEM_INFO_STATE_FREE && size < mi->size) {
             break;
         }
@@ -221,7 +222,7 @@ void free(void* object) {
     Dlinked_list_node* lst = mem_manager->mem_lst;
     Memory_info* mi = (Memory_info*)lst->data;
 
-    while (lst->tail != DUMMY) {
+    while (lst->tail != DUMMY_NODE) {
         if (mi->base_addr == allocated_addr) {
             break;
         }

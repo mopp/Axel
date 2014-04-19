@@ -20,16 +20,16 @@
 
 
 /* 終端子 */
-Dlinked_list_node * const DUMMY = &(Dlinked_list_node){.data = 0, .head = NULL, .tail = NULL};
+Dlinked_list_node * const DUMMY_NODE = &(Dlinked_list_node){.data = 0, .head = NULL, .tail = NULL};
 
 
 /* 新しいノードを確保しデータを設定 */
-Dlinked_list_node* get_new_Dlinked_list_node(uintptr_t data) {
+Dlinked_list_node* get_new_dlinked_list_node(uintptr_t data) {
     Dlinked_list_node* n = (Dlinked_list_node*)malloc(sizeof(Dlinked_list_node));
 
     n->data = data;
-    n->head = DUMMY;
-    n->tail = DUMMY;
+    n->head = DUMMY_NODE;
+    n->tail = DUMMY_NODE;
 
     return n;
 }
@@ -38,8 +38,8 @@ Dlinked_list_node* get_new_Dlinked_list_node(uintptr_t data) {
 /* ダミーとデータを付加してリストを初期化 */
 Dlinked_list_node* init_list(Dlinked_list_node* dl, uintptr_t data) {
     dl->data = data;
-    dl->head = DUMMY;
-    dl->tail = DUMMY;
+    dl->head = DUMMY_NODE;
+    dl->tail = DUMMY_NODE;
 
     return dl;
 }
@@ -87,18 +87,18 @@ void delete_node(Dlinked_list_node* target) {
 /* ノードを検索 */
 Dlinked_list_node* search_node(Dlinked_list_node* dl, uintptr_t data, bool (*comp_func)(uintptr_t,  uintptr_t)) {
     if (dl->head == NULL || dl->tail == NULL) {
-        return DUMMY;
+        return DUMMY_NODE;
     }
 
-    while (dl->head != DUMMY) {
+    while (dl->head != DUMMY_NODE) {
         dl = dl->head;
     }
 
     while (comp_func(dl->data, data) == false) {
         dl = dl->tail;
 
-        if (dl == DUMMY) {
-            return DUMMY;
+        if (dl == DUMMY_NODE) {
+            return DUMMY_NODE;
         }
     }
 
@@ -120,7 +120,7 @@ void print_one(Dlinked_list_node* dl) {
     printf("addr: %p\n", dl);
     printf("head: %p\n", dl->head);
     printf("tail: %p\n", dl->tail);
-    if (dl != DUMMY) {
+    if (dl != DUMMY_NODE) {
         printf("data: %p\n", ((test_struct*)(dl->data))->dummy_addr);
     }
     printf("-----\n");
@@ -128,14 +128,14 @@ void print_one(Dlinked_list_node* dl) {
 
 
 void print_all(Dlinked_list_node* dl) {
-    while (dl->head != DUMMY) {
+    while (dl->head != DUMMY_NODE) {
         dl = dl->head;
     }
     dl = dl->tail;
 
     printf("head\n");
 
-    while (dl != DUMMY) {
+    while (dl != DUMMY_NODE) {
         print_one(dl);
 
         dl = dl->tail;
@@ -151,18 +151,18 @@ bool comp(uintptr_t x, uintptr_t y) {
 }
 
 int main(void) {
-    test_struct ts = {.dummy_addr = DUMMY};
-    Dlinked_list_node* t = get_new_Dlinked_list_node((uintptr_t)&ts);
+    test_struct ts = {.dummy_addr = DUMMY_NODE};
+    Dlinked_list_node* t = get_new_dlinked_list_node((uintptr_t)&ts);
 
-    /* printf("DUMMY\n"); */
-    /* print_one(DUMMY); */
+    /* printf("DUMMY_NODE\n"); */
+    /* print_one(DUMMY_NODE); */
 
     init_list(t, (uintptr_t)&ts);
 
     /* printf("First Node\n"); */
     /* print_one(t); */
-    assert(DUMMY == t->head);
-    assert(DUMMY == t->tail);
+    assert(DUMMY_NODE == t->head);
+    assert(DUMMY_NODE == t->tail);
 
     Dlinked_list_node* tt = t;
     for (int i = 0; i < SIZE_OF_ADD; i++) {
@@ -170,7 +170,7 @@ int main(void) {
         Dlinked_list_node* head = tt->head;
         Dlinked_list_node* tail = tt->tail;
 
-        tt = insert_tail(tt, get_new_Dlinked_list_node((uintptr_t)&ts));
+        tt = insert_tail(tt, get_new_dlinked_list_node((uintptr_t)&ts));
 
         assert(target == tt->head);
         assert(head == tt->head->head);
@@ -178,14 +178,14 @@ int main(void) {
     }
 
     for (int i = 0; i < SIZE_OF_ADD; i++) {
-        t = insert_head(t, get_new_Dlinked_list_node((uintptr_t)&ts));
-        assert(DUMMY == t->head);
+        t = insert_head(t, get_new_dlinked_list_node((uintptr_t)&ts));
+        assert(DUMMY_NODE == t->head);
     }
 
     tt = t->tail;
     for (int i = 0; i < SIZE_OF_ADD; i++) {
         delete_node(t);
-        assert(DUMMY == tt->head);
+        assert(DUMMY_NODE == tt->head);
 
         t = tt;
         tt = t->tail;
@@ -194,10 +194,10 @@ int main(void) {
     /* printf("\nPrint All Node\n\n"); */
     /* print_all(t); */
 
-    Dlinked_list_node* nt = get_new_Dlinked_list_node((uintptr_t)&ts);
+    Dlinked_list_node* nt = get_new_dlinked_list_node((uintptr_t)&ts);
     test_struct tn[10];
     for (int i = 0; i < 10; i++) {
-        Dlinked_list_node* nn = get_new_Dlinked_list_node((uintptr_t)(tn + i));
+        Dlinked_list_node* nn = get_new_dlinked_list_node((uintptr_t)(tn + i));
         insert_tail(nt, nn);
         tn[i].dummy_addr = nn;
     }

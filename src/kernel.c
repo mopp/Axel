@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <vbe.h>
 #include <doubly_linked_list.h>
+#include <queue.h>
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static inline void init_gdt(void);
@@ -117,9 +118,20 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
 
     puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
 
-    Dlinked_list_node* node = get_new_Dlinked_list_node(0);
-    insert_head(node, get_new_Dlinked_list_node(0));
-    node = node->head;
+    /* test */
+    Dlinked_list_node* node = get_new_dlinked_list_node(0);
+    node = insert_head(node, get_new_dlinked_list_node(0));
+    Queue q;
+    init_queue(&q);
+    enqueue(&q, 100);
+    enqueue(&q, 101);
+    enqueue(&q, 102);
+    enqueue(&q, 103);
+
+    size_t size = q.size;
+    for (int i = 0; i < size; i++) {
+        printf("%d\n", dequeue(&q));
+    }
 
     for (int i = 1;; ++i) {
         /* clean drawing area */
