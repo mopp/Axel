@@ -25,7 +25,53 @@
 #define ARRAY_SIZE_OF(a) (sizeof(a) / sizeof(a[0]))
 #define ARRAY_LAST_ELEM(a) ((a) + (ARRAY_SIZE_OF(a) - (size_t)1))
 
+
 #define NULL_INTPTR_T 0
+
+
+#define printf_dec_format(x) _Generic((x), \
+    char: "%c", \
+    signed char: "%hhd", \
+    unsigned char: "%hhu", \
+    signed short: "%hd", \
+    unsigned short: "%hu", \
+    signed int: "%d", \
+    unsigned int: "%u", \
+    long int: "%ld", \
+    unsigned long int: "%lu", \
+    long long int: "%lld", \
+    unsigned long long int: "%llu", \
+    float: "%f", \
+    double: "%f", \
+    long double: "%Lf", \
+    char *: "%s", \
+    void *: "%p")
+
+#define print(x) printf(printf_dec_format(x), x)
+// #define printnl(x) printf(printf_dec_format(x), x), printf("\n");
+#define printnl(x) printf(printf_dec_format(x) "\n", x);
+
+
+/* Get the name of a type */
+#define typename(x) _Generic((x), _Bool: "_Bool", \
+    char: "char", \
+    signed char: "signed char", \
+    unsigned char: "unsigned char", \
+    short int: "short int", \
+    unsigned short int: "unsigned short int", \
+    int: "int", \
+    unsigned int: "unsigned int", \
+    long int: "long int", \
+    unsigned long int: "unsigned long int", \
+    long long int: "long long int", \
+    unsigned long long int: "unsigned long long int", \
+    float: "float", \
+    double: "double", \
+    long double: "long double", \
+    char *: "pointer to char", \
+    void *: "pointer to void", \
+    int *: "pointer to int", \
+    default: "unknown type")
 
 
 #endif

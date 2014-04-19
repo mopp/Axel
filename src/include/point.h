@@ -48,4 +48,5 @@ static inline Point2d* subs_point2d(Point2d* const p, uint32_t x, uint32_t y) {
     return p;
 }
 
+
 #endif
