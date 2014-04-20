@@ -15,6 +15,7 @@ endif
 # command
 RM 					:= rm -rf
 GCC					:= $(TOOL_PATH)bin/i686-elf-gcc
+CLANG				:= clang
 NASM 				:= nasm -f elf32
 AR					:= $(TOOL_PATH)bin/i686-elf-ar
 RANLIB				:= $(TOOL_PATH)bin/i686-elf-ranlib
