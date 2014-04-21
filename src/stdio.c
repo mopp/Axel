@@ -57,7 +57,7 @@ int puts(const char* s) {
 }
 
 
-void printf(const char* format, ...) {
+int printf(const char* format, ...) {
     va_list args;
 
     va_start(args, format);
@@ -91,4 +91,7 @@ void printf(const char* format, ...) {
     }
 
     va_end(args);
+
+    // TODO
+    return 0;
 }

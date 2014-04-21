@@ -28,8 +28,8 @@ static inline void init_pit(void);
 
 
 _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
-    const Vbe_info_block const* vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
-    const Vbe_mode_info_block const* vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
+    Vbe_info_block const* const vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
+    Vbe_mode_info_block const* const vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
 
     io_cli();
     init_gdt();

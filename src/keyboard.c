@@ -36,7 +36,7 @@ static inline uint8_t read_keyboard_data(void) {
 }
 
 
-static inline Axel_state_code set_keyboard_led(uint8_t led) {
+Axel_state_code set_keyboard_led(uint8_t led) {
     if ((led | KEYBOARD_LED_SCROLL | KEYBOARD_LED_NUM | KEYBOARD_LED_CAPS) == 0) {
         return AXEL_FAILED;
     }
@@ -64,7 +64,7 @@ Axel_state_code init_keyboard(void) {
 
     /* FIXME: add complete error checking. */
     wait_write_ready();
-    uint8_t test_result = read_keyboard_data();
+    read_keyboard_data();
     /* if (test_result == hoge) { */
     /* return AXEL_FAILED; */
     /* } */

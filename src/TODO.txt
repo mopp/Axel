@@ -2,5 +2,3 @@
 [ ] add function comments.
 [ ] fix data structure(use generic macro).
 [ ] make console.
-
--mcpu=x86 -target x86-pc-none-elf -ffreestanding -fno-builtin -nostdlib -nostdinc -nostdinc++

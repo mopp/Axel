@@ -14,7 +14,10 @@ struct point2d {
 typedef struct point2d Point2d;
 
 
-#define make_point2d(ix, iy) (Point2d) {x : ix, y : iy}
+#define make_point2d(ix, iy) \
+    (Point2d) {              \
+        .x = ix, .y = iy     \
+    }
 
 
 static inline Point2d* clear_point2d(Point2d* const p) {

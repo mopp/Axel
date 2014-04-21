@@ -116,6 +116,7 @@ enum keyboard_constants {
 
 
 extern Axel_state_code init_keyboard(void);
+extern Axel_state_code set_keyboard_led(uint8_t);
 
 
 #endif

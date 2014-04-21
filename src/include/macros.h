@@ -25,9 +25,11 @@
 #define ARRAY_SIZE_OF(a) (sizeof(a) / sizeof(a[0]))
 #define ARRAY_LAST_ELEM(a) ((a) + (ARRAY_SIZE_OF(a) - (size_t)1))
 
-
 #define NULL_INTPTR_T 0
 
+#define ECAST_UINT8(n) ((uint8_t)(0xffu & n))
+#define ECAST_UINT16(n) ((uint16_t)(0xffffu & n))
+#define ECAST_UINT32(n) ((uint32_t)(0xffffffffu & n))
 
 #define printf_dec_format(x) _Generic((x), \
     char: "%c", \
@@ -53,7 +55,7 @@
 
 
 /* Get the name of a type */
-#define typename(x) _Generic((x), _Bool: "_Bool", \
+#define TYPE_NAME_OF(x) _Generic((x), _Bool: "_Bool", \
     char: "char", \
     signed char: "signed char", \
     unsigned char: "unsigned char", \

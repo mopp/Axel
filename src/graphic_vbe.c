@@ -29,7 +29,7 @@ typedef struct Color_bit_info Color_bit_info;
 static Vbe_info_block const* info;
 static Vbe_mode_info_block const* m_info;
 
-static volatile uint8_t* vram;
+static volatile uintptr_t vram;
 static uint8_t byte_per_pixel;
 static uint32_t vram_size;
 static uint32_t max_x_resolution, max_y_resolution, max_xy_resolution;
@@ -38,11 +38,6 @@ static Color_bit_info bit_info;
 /* FIXME: make this detect appropriate draw position. */
 static Point2d pos;
 
-static inline uint32_t get_vram_index(uint32_t const, uint32_t const);
-static inline uint32_t get_shift_red(uint8_t);
-static inline uint32_t get_shift_green(uint8_t);
-static inline uint32_t get_shift_blue(uint8_t);
-static inline uint32_t get_shift_rsvd(uint8_t);
 static void (*set_vram)(uint32_t const, uint32_t const, RGB8 const* const);
 static inline void set_vram8880(uint32_t const, uint32_t const, RGB8 const* const);
 static inline void set_vram8888(uint32_t const, uint32_t const, RGB8 const* const);
@@ -62,7 +57,7 @@ Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_b
     max_xy_resolution = max_x_resolution * max_y_resolution;
     byte_per_pixel = (m_info->bits_per_pixel / 8);
     vram_size = max_xy_resolution * byte_per_pixel;
-    vram = (uint8_t*)((uintptr_t)m_info->phys_base_ptr);
+    vram = (uintptr_t)m_info->phys_base_ptr;
 
     /* store bit infomation. */
     bit_info.r_size = m_info->red_mask_size;
@@ -204,7 +199,7 @@ int putchar_vbe(int c) {
 }
 
 
-#define font_color { r : 240, g : 96, b : 173, rsvd : 0 }
+#define font_color (RGB8){ .r = 240, .g = 96, .b = 173, .rsvd = 0 }
 void test_draw(RGB8 const* const c) {
     /* TODO: move other place. */
     static uint32_t const font_mo[] = {
@@ -317,11 +312,11 @@ void test_draw(RGB8 const* const c) {
     };
 
     static const Drawable_multi_bitmap tes = {
-        height : 16,
-        width : 16,
-        size : 6,
-        color : font_color,
-        data : {
+        .height = 16,
+        .width = 16,
+        .size = 6,
+        .color = font_color,
+        .data = {
             font_mo,
             font_pu,
             font_ri,
@@ -347,7 +342,7 @@ void test_draw(RGB8 const* const c) {
 }
 
 
-static inline uint32_t get_vram_index(uint32_t const x, uint32_t const y) {
+static inline uintptr_t get_vram_index(uint32_t const x, uint32_t const y) {
     return (x + max_x_resolution * y) * byte_per_pixel;
 }
 

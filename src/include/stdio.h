@@ -11,7 +11,7 @@
 #define STDIO_H
 
 
-extern void printf(const char*, ...);
+extern int printf(const char*, ...);
 extern char* itoa(int, char*, int);
 extern int puts(const char *s);
 
