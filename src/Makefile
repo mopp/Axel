@@ -2,7 +2,29 @@
 # File: src/Makefile
 # Description: Build Managing file
 #############################################################
-include globals.mk
+# := で 代入時に展開
+
+# Path
+hostname = $(shell uname -n)
+ifeq ($(shell uname -n), march)
+	export TOOL_PATH 		:= /home/mopp/.mopp/axel/
+else
+	export TOOL_PATH 		:= /home/mopp/.mopp/
+endif
+
+ifeq ($(shell uname -n), march_pro)
+	export TOOL_PATH 		:= /home/mopp/.mopp/axel/
+endif
+
+# command
+export RM 					:= rm -rf
+export GCC					:= $(TOOL_PATH)bin/i686-elf-gcc
+export CLANG				:= clang
+export NASM 				:= nasm -f elf32
+export AR					:= $(TOOL_PATH)bin/i686-elf-ar
+export RANLIB				:= $(TOOL_PATH)bin/i686-elf-ranlib
+export QEMU 				:= qemu-system-x86_64 -monitor stdio -vga std
+export BOCHS				:= bochs
 
 AXEL_ROOT_DIR		:= $(shell pwd)/
 AXEL_INCLUDE_PATH 	:= $(AXEL_ROOT_DIR)include/
@@ -38,8 +60,9 @@ W_FLAGS 			:= -Wgnu-designator -Wall -Wextra -Winit-self -Wconversion -Wno-unuse
 CFLAGS				:= -g -std=c11 -m32 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
 LIBS				:=
 LDFLAGS				:= -g -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
-CC 					:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
-LD 					:= $(GCC)
+export CC 					:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
+# TODO: change linker.
+export LD 					:= $(GCC)
 
 
 # 一般生成規則

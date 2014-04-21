@@ -1,8 +1,6 @@
-include ../globals.mk
-
 CPPFLAGS	:= -I../include/
 CFLAGS		:=  -x c -E
-CC 			:= $(GCC) $(CFLAGS) $(CPPFLAGS)
+CC 			:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
 
 BOOT_SRC 	:= multiboot.asm
 BOOT_OBJ 	:= multiboot.o
