@@ -14,7 +14,7 @@
 Queue* init_queue(Queue* const q) {
     q->size = 0;
 
-    // first is dummy node.
+    /* first is dummy node. */
     init_list(q->first, NULL_INTPTR_T);
     q->last = q->first;
 

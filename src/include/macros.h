@@ -31,49 +31,51 @@
 #define ECAST_UINT16(n) ((uint16_t)(0xffffu & n))
 #define ECAST_UINT32(n) ((uint32_t)(0xffffffffu & n))
 
-#define printf_dec_format(x) _Generic((x), \
-    char: "%c", \
-    signed char: "%hhd", \
-    unsigned char: "%hhu", \
-    signed short: "%hd", \
-    unsigned short: "%hu", \
-    signed int: "%d", \
-    unsigned int: "%u", \
-    long int: "%ld", \
-    unsigned long int: "%lu", \
-    long long int: "%lld", \
-    unsigned long long int: "%llu", \
-    float: "%f", \
-    double: "%f", \
-    long double: "%Lf", \
-    char *: "%s", \
+#define PRINTF_DEC_FORMAT(x) _Generic((x),  \
+    char: "%c",                             \
+    signed char: "%hhd",                    \
+    unsigned char: "%hhu",                  \
+    signed short: "%hd",                    \
+    unsigned short: "%hu",                  \
+    signed int: "%d",                       \
+    unsigned int: "%u",                     \
+    long int: "%ld",                        \
+    unsigned long int: "%lu",               \
+    long long int: "%lld",                  \
+    unsigned long long int: "%llu",         \
+    float: "%f",                            \
+    double: "%f",                           \
+    long double: "%Lf",                     \
+    char *: "%s",                           \
     void *: "%p")
 
-#define print(x) printf(printf_dec_format(x), x)
+#define PRINT(x) printf(PRINTF_DEC_FORMAT(x), x)
 // #define printnl(x) printf(printf_dec_format(x), x), printf("\n");
-#define printnl(x) printf(printf_dec_format(x) "\n", x);
+#define PRINTNL(x) printf(PRINTF_DEC_FORMAT(x) "\n", x);
 
 
 /* Get the name of a type */
-#define TYPE_NAME_OF(x) _Generic((x), _Bool: "_Bool", \
-    char: "char", \
-    signed char: "signed char", \
-    unsigned char: "unsigned char", \
-    short int: "short int", \
-    unsigned short int: "unsigned short int", \
-    int: "int", \
-    unsigned int: "unsigned int", \
-    long int: "long int", \
-    unsigned long int: "unsigned long int", \
-    long long int: "long long int", \
-    unsigned long long int: "unsigned long long int", \
-    float: "float", \
-    double: "double", \
-    long double: "long double", \
-    char *: "pointer to char", \
-    void *: "pointer to void", \
-    int *: "pointer to int", \
-    default: "unknown type")
+#define TYPE_NAME_OF(x) _Generic((x),                   \
+    _Bool                   : "_Bool",                  \
+    char                    : "char",                   \
+    signed char             : "signed char",            \
+    unsigned char           : "unsigned char",          \
+    short int               : "short int",              \
+    unsigned short int      : "unsigned short int",     \
+    int                     : "int",                    \
+    unsigned int            : "unsigned int",           \
+    long int                : "long int",               \
+    unsigned long int       : "unsigned long int",      \
+    long long int           : "long long int",          \
+    unsigned long long int  : "unsigned long long int", \
+    float                   : "float",                  \
+    double                  : "double",                 \
+    long double             : "long double",            \
+    char*                   : "char*",                  \
+    void*                   : "void*",                  \
+    int*                    : "int*",                   \
+    default                 : "unknown type")
+
 
 
 #endif

@@ -5,6 +5,7 @@
 !boot
 !include
 !structure
+!t
 
 # allow files
 !.gitignore
