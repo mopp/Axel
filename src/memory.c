@@ -280,3 +280,15 @@ void* memset(void* buf, const int ch, size_t len) {
 
     return buf;
 }
+
+
+void memcpy(void* buf1, const void * buf2, size_t len) {
+    uint8_t* p1 = buf1;
+    uint8_t const * p2 = buf2;
+
+    while (0 < len--) {
+        *p1 = *p2;
+        ++p1;
+        ++p2;
+    }
+}
