@@ -57,9 +57,11 @@ CPPFLAGS			:= -I$(AXEL_INCLUDE_PATH)
 W_FLAGS 			:= -Wgnu-designator -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
 # CFLAGS				:= -fdiagnostics-color=always -g -std=c11 -fno-builtin -nostdlib -mno-red-zone -ffreestanding -nostdinc -fno-stack-protector $(W_FLAGS)
 # -nostdinc cause error(macro redifine)
-CFLAGS				:= -g -std=c11 -m32 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
+# for debug option --analyze -g
+# CFLAGS				:= --analyze --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
+CFLAGS				:= --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
 LIBS				:=
-LDFLAGS				:= -g -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
+LDFLAGS				:= -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
 export CC 					:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
 # TODO: change linker.
 export LD 					:= $(GCC)
