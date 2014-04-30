@@ -3,7 +3,7 @@ Axel Accelerates All For Me !
 
 
 ## Requirement
-Cross-Compiler, nasm, qemu, grub
+clang, nasm, qemu, grub
 
 
 ## How to use ISO file
@@ -11,8 +11,14 @@ Cross-Compiler, nasm, qemu, grub
 qemu-system-x86_64 -monitor stdio -vga std -cdrom axel.iso
 ```
 
+## Setup Environment (NEW)
+Please install Requirement by package manager or build from source.
+If your clang is NOT enable cross-compiling, Please enable it.  
+And If your host architecture is 64bit environment, You should install 32bit libc.  
+Because, Axel is 32bit yet :(
 
-## Setup Environment
+
+## Setup Environment (OLD)
 Please read [GCC Cross-Compiler](http://wiki.osdev.org/GCC_Cross-Compiler "OSDev")  
 If you cannot build below, you should NOT use source by repository.  
 So, Please get and try to build each snapshot.  
@@ -72,3 +78,7 @@ gcc
     cd $PREFIX
     ln -s ../lib/gcc/i686-elf/4.9.0/include/* ./include 
 ```
+
+
+## ScreenShot
+![ss](./ss.png)
