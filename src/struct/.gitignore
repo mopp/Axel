@@ -1,0 +1,10 @@
+# All ignore
+*
+
+# allow directors
+
+# allow files
+!.gitignore
+!Makefile
+!*.c
+!*.h

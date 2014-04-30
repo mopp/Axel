@@ -4,22 +4,13 @@
 #############################################################
 # := で 代入時に展開
 
-# Path
-HOSTNAME = $(shell uname -n)
-ifeq ($(HOSTNAME), march_pro)
-	export TOOL_PATH 		:= /home/mopp/.mopp/axel/
-else
-	export TOOL_PATH 		:= /home/mopp/.mopp/
-endif
-
 # command
 export RM 		:= rm -rf
-export GCC		:= $(TOOL_PATH)bin/i686-elf-gcc
-export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
 export CLANG	:= clang
+export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
 export NASM 	:= nasm -f elf32
 export AR_R		:= ar r --target elf32-i386
-export QEMU 	:= qemu-system-x86_64 -monitor stdio -vga std
+export QEMU 	:= qemu-system-i386 -monitor stdio -vga std
 export BOCHS	:= bochs
 
 export AXEL_ROOT_DIR		:= $(shell pwd)/
@@ -142,6 +133,6 @@ run_qemu_kernel: $(MAKEFILE) $(AXEL_BIN)
 	$(QEMU) -m 32 -kernel $(AXEL_BIN)
 
 
-.PHONY: run_bochs
-run_bochs: $(MAKEFILE) $(ISO_NAME)
-	$(BOCHS)
+# .PHONY: run_bochs
+# run_bochs: $(MAKEFILE) $(ISO_NAME)
+# 	$(BOCHS)
