@@ -16,7 +16,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <vbe.h>
-#include <doubly_linked_list.h>
+#include <list.h>
 #include <queue.h>
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
@@ -30,6 +30,7 @@ static inline void init_pit(void);
 _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     Vbe_info_block const* const vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
     Vbe_mode_info_block const* const vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
+    uint32_t const boot_flags = boot_info->flags;
 
     io_cli();
     init_gdt();
@@ -68,6 +69,11 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 2), set_point2d(&p1, max_x - 3, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
     fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
 
+    if (boot_flags & 0x20) {
+        /* checking nmap_* field */
+        init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
+    }
+
     puts("-------------------- Start Axel ! --------------------\n\n");
 
     printf("kernel size: %dKB\n", get_kernel_size() / 1024);
@@ -79,8 +85,6 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     printf("PIC1 State: %x\n", io_in8(PIC1_CMD_STATE_PORT));
     printf("PIC1 Data: %x\n\n", io_in8(PIC1_IMR_DATA_PORT));
 
-    const uint32_t boot_flags = boot_info->flags;
-
     printf("BootInfo flags: %x\n", boot_flags); /* 0001 1010 0110 0111 */
 
     /* mem_*フィールドを確認 */
@@ -89,23 +93,13 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
         printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
     }
 
-    /* nmap_*フィールドを確認 */
-    if (boot_flags & 0x20) {
-        init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
-    }
-
-    char* str = (char*)malloc(sizeof(char) * 100);
-    for (int i = 0; i < 100; i++) {
+    size_t size = 83200;
+    char* str = (char*)malloc(sizeof(char) * size);
+    for (int i = 0; i < size; i++) {
         str[i] = (char)0xAA;
     }
     free(str);
-
-
-    if ((boot_flags & MULTIBOOT_INFO_HAS_VIDEO_INFO) != 0) {
-        puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is enable !\n");
-    } else {
-        puts("\nMULTIBOOT_INFO_HAS_VIDEO_INFO is disable !\n");
-    }
+    printf("test malloc %x\n", (uintptr_t)str);
 
     const uint32_t base_y = 5;
     const uint32_t base_x = get_max_x_resolution();
@@ -117,21 +111,6 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     Point2d const p_num_end = {base_x, base_y + 13};
 
     puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
-
-    /* test */
-    Dlinked_list_node* node = get_new_dlinked_list_node(0);
-    node = insert_head(node, get_new_dlinked_list_node(0));
-    Queue q;
-    init_queue(&q);
-    enqueue(&q, 100);
-    enqueue(&q, 101);
-    enqueue(&q, 102);
-    enqueue(&q, 103);
-
-    size_t size = q.size;
-    for (int i = 0; i < size; i++) {
-        printf("%d\n", dequeue(&q));
-    }
 
     for (int i = 1;; ++i) {
         /* clean drawing area */

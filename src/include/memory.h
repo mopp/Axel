@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <doubly_linked_list.h>
+#include <list.h>
 #include <multiboot_structs.h>
 
 /* page_table_entry -> page_table -> page_directory_entry -> page_directory_table */
@@ -71,24 +71,28 @@ enum paging_constants {
 /* the page_table size is 1024(PAGE_TABLE_SIZE) * 4KB(1page) = 4MB */
 /* extern Page_table_entry page_table[PAGE_TABLE_SIZE]; */
 
-enum memory_manager_constants {
-    MAX_MEM_NODE_NUM = 4096,
-    MEM_INFO_STATE_LOST = -1,
-    MEM_INFO_STATE_FREE,
-    MEM_INFO_STATE_ALLOC,
-};
 
-/* 管理対象のメモリ情報 */
+enum memory_manager_constants {
+    MAX_MEM_NODE_NUM = 4096, /* MAX_MEM_NODE_NUM must be a power of 2 for below modulo. */
+    MEM_INFO_STATE_FREE = 0, /* this shows that we can use its memory. */
+    MEM_INFO_STATE_ALLOC,    /* this shows that we cannot use its memory. */
+};
+#define MOD_MAX_MEM_NODE_NUM(n) (n & 0x0ffffu)
+
+
+/* memory infomation structure to managed. */
 struct memory_info {
-    uintptr_t base_addr, size;
-    uint32_t state;
+    uintptr_t base_addr; /* base address */
+    uint32_t state;       /* managed area state */
+    size_t size;         /* allocated size */
 };
 typedef struct memory_info Memory_info;
 
-/* メモリ管理を行うオブジェクト */
+
+/* structure for storing memory infomation. */
 struct memory_manager {
-    uint32_t exist_info_num, lost_size, lost_times;
-    Dlinked_list_node* mem_lst;
+    /* this list store memory infomation using Memory_info structure. */
+    List list;
 };
 typedef struct memory_manager Memory_manager;
 
@@ -98,11 +102,7 @@ extern uintptr_t get_kernel_start_addr(void);
 extern uintptr_t get_kernel_end_addr(void);
 extern uintptr_t get_kernel_size(void);
 
-extern void* memset(void*, const int, size_t);
-extern int memcmp(const void*, const void*, size_t);
-extern void memcpy(void*, const void*, size_t);
-
-extern void init_memory(Multiboot_memory_map*, size_t);
+extern void init_memory(Multiboot_memory_map const* , size_t);
 extern void* malloc(size_t);
 extern void free(void*);
 

@@ -1,67 +1,60 @@
 /**
  * @file queue.c
- * @brief Queue First in first out structure.
+ * @brief queue by list.
  * @author mopp
  * @version 0.1
- * @date 2014-04-13
+ * @date 2014-04-24
  */
 
+#include <stdlib.h>
+#include <string.h>
 #include <queue.h>
-#include <stdint.h>
-#include <macros.h>
 
+Queue* queue_init(Queue* q, size_t size, release_func f) {
+    q->list = (List*)malloc(sizeof(List));
 
-Queue* init_queue(Queue* const q) {
-    q->size = 0;
-
-    /* first is dummy node. */
-    init_list(q->first, NULL_INTPTR_T);
-    q->last = q->first;
+    list_init(q->list, size, f);
 
     return q;
 }
 
 
-bool is_empty_queue(Queue const* const q) {
-    return (q->size == 0) ? true : false;
+bool queue_is_empty(Queue const* q) {
+    return (list_get_size(q->list) == 0) ? true : false;
 }
 
 
-uintptr_t get_first(Queue* const q) {
-    if (q->size <= 0) {
-        return NULL_INTPTR_T;
+void* queue_get_first(Queue* q) {
+    if (true == queue_is_empty(q)) {
+        return NULL;
     }
 
-    return q->first->tail->data;
+    return q->list->node->data;
 }
 
 
-void remove_first(Queue* const q) {
-    if (q->size <= 0) {
+void queue_delete_first(Queue* q) {
+    if (true == queue_is_empty(q)) {
         return;
     }
 
-    Dlinked_list_node* t = q->first->tail;
-    q->first->tail = q->first->tail->tail;
-
-    delete_node(t);
-
-    --(q->size);
+    list_delete_node(q->list, q->list->node);
 }
 
 
-uintptr_t enqueue(Queue* const q, uintptr_t data) {
-    q->last = insert_tail(q->last, get_new_dlinked_list_node(data));
-    ++(q->size);
+void* queue_insert(Queue* q, void* data) {
+    list_insert_data_last(q->list, data);
 
     return data;
 }
 
 
-uintptr_t dequeue(Queue* const q) {
-    uintptr_t t = get_first(q);
+void queue_destruct(Queue* q) {
+    list_destruct(q->list);
+    free(q->list);
+}
 
-    remove_first(q);
 
-    return t;
+size_t queue_get_size(Queue const* q) {
+    return list_get_size(q->list);
 }

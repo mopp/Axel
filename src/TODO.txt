@@ -1,4 +1,7 @@
+[ ] add handling error.
 [ ] fix file comments.
 [ ] add function comments.
-[ ] fix data structure(use generic macro).
 [ ] make console.
+
+clang option for cross compile
+lib32-glibc-2.14-4

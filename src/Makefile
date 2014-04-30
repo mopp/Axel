@@ -42,7 +42,7 @@ GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
 KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 # Attention object file order.
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o doubly_linked_list.o queue.o stack.o memory.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o list.o queue.o stack.o memory.o kernel.o
 SUBDIRS 			:= $(BOOT_DIR)
 
 # CC          C compiler command
@@ -81,7 +81,7 @@ default :
 
 
 asm_functions.o 		: asm_functions.asm 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)asm_functions.h
-doubly_linked_list.o	: doubly_linked_list.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)doubly_linked_list.h
+list.o					: list.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)list.h
 graphic_txt.o			: graphic_txt.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
 graphic_vbe.o			: graphic_vbe.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_vbe.h
 graphic.o				: graphic.c 				$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h graphic_vbe.c graphic_txt.c

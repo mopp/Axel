@@ -1,32 +1,30 @@
 /**
  * @file queue.c
- * @brief  Queue structure header.
+ * @brief queue header.
  * @author mopp
  * @version 0.1
- * @date 2014-04-13
+ * @date 2014-04-24
  */
 
+#ifndef _QUEUE_H
+#define _QUEUE_H
 
-#ifndef QUEUE_H
-#define QUEUE_H
 
-#include <stdbool.h>
-#include <doubly_linked_list.h>
+#include <list.h>
 
 struct queue {
-    Dlinked_list_node* first; /* Pointer to first element. */
-    Dlinked_list_node* last;  /* Pointer to last element. */
-    size_t size;              /* All element size. */
+    List* list;
 };
 typedef struct queue Queue;
 
 
-extern Queue* init_queue(Queue* const);
-extern bool is_empty_queue(Queue const* const);
-extern uintptr_t get_first(Queue* const);
-extern void remove_first(Queue* const);
-extern uintptr_t enqueue(Queue* const, uintptr_t);
-extern uintptr_t dequeue(Queue* const);
+extern Queue* queue_init(Queue*, size_t, release_func);
+extern bool queue_is_empty(Queue const*);
+extern void* queue_get_first(Queue*);
+extern void queue_delete_first(Queue*);
+extern void* queue_insert(Queue*, void*);
+extern void queue_destruct(Queue*);
+extern size_t queue_get_size(Queue const*);
 
 
 #endif
