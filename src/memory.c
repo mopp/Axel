@@ -8,7 +8,6 @@
 
 #include <memory.h>
 #include <string.h>
-#include <list.h>
 
 /*
  * It is wapped by function. bacause I foget '&'

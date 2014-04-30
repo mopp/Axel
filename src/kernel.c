@@ -112,6 +112,10 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
 
     puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
 
+
+    List l;
+    list_init(&l, 8, NULL);
+
     for (int i = 1;; ++i) {
         /* clean drawing area */
         fill_rectangle(&p_num_start, &p_num_end, set_rgb_by_color(&c, 0x3A6EA5));

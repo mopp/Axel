@@ -5,45 +5,44 @@
 # := で 代入時に展開
 
 # Path
-hostname = $(shell uname -n)
-ifeq ($(shell uname -n), march)
+HOSTNAME = $(shell uname -n)
+ifeq ($(HOSTNAME), march_pro)
 	export TOOL_PATH 		:= /home/mopp/.mopp/axel/
 else
 	export TOOL_PATH 		:= /home/mopp/.mopp/
 endif
 
-ifeq ($(shell uname -n), march_pro)
-	export TOOL_PATH 		:= /home/mopp/.mopp/axel/
-endif
-
 # command
-export RM 					:= rm -rf
-export GCC					:= $(TOOL_PATH)bin/i686-elf-gcc
-export CLANG				:= clang
-export NASM 				:= nasm -f elf32
-export AR					:= $(TOOL_PATH)bin/i686-elf-ar
-export RANLIB				:= $(TOOL_PATH)bin/i686-elf-ranlib
-export QEMU 				:= qemu-system-x86_64 -monitor stdio -vga std
-export BOCHS				:= bochs
+export RM 		:= rm -rf
+export GCC		:= $(TOOL_PATH)bin/i686-elf-gcc
+export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
+export CLANG	:= clang
+export NASM 	:= nasm -f elf32
+export AR_R		:= ar r --target elf32-i386
+export QEMU 	:= qemu-system-x86_64 -monitor stdio -vga std
+export BOCHS	:= bochs
 
-AXEL_ROOT_DIR		:= $(shell pwd)/
-AXEL_INCLUDE_PATH 	:= $(AXEL_ROOT_DIR)include/
+export AXEL_ROOT_DIR		:= $(shell pwd)/
+export AXEL_INCLUDE_PATH 	:= $(AXEL_ROOT_DIR)include/
+export AXEL_LIB_PATH 		:= $(AXEL_ROOT_DIR)lib
 
-# files
-MAKEFILE 			:= Makefile
+export MAKEFILE 	:= Makefile
 
 AXEL_BIN 			:= axel.bin
-ISO_NAME 			:= axel.iso
-ISO_DIR 			:= iso_dir
 
-BOOT_DIR			:= ./boot/
+ISO_NAME 			:= axel.iso
+ISO_DIR 			:= $(AXEL_ROOT_DIR)iso_dir/
+
+BOOT_DIR			:= $(AXEL_ROOT_DIR)boot/
 BOOT_OBJ 			:= $(BOOT_DIR)multiboot.o
 GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
+
 KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
-# Attention object file order.
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o list.o queue.o stack.o memory.o kernel.o
-SUBDIRS 			:= $(BOOT_DIR)
+
+STRUCT_DIR			:= $(AXEL_ROOT_DIR)struct/
+SUB_DIRS 			:= $(BOOT_DIR) $(STRUCT_DIR)
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o memory.o kernel.o
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -55,16 +54,16 @@ SUBDIRS 			:= $(BOOT_DIR)
 CPPFLAGS			:= -I$(AXEL_INCLUDE_PATH)
 # W_FLAGS 			:= -Wall -Wextra -Wpadded -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
 W_FLAGS 			:= -Wgnu-designator -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
-# CFLAGS				:= -fdiagnostics-color=always -g -std=c11 -fno-builtin -nostdlib -mno-red-zone -ffreestanding -nostdinc -fno-stack-protector $(W_FLAGS)
-# -nostdinc cause error(macro redifine)
-# for debug option --analyze -g
-# CFLAGS				:= --analyze --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
+# gcc option
+# 	-fdiagnostics-color=always
+# clang option
+# 	-nostdinc cause error(macro redifine)
+# debug option
+# 	--analyze -g
 CFLAGS				:= --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
-LIBS				:=
-LDFLAGS				:= -T $(KERNEL_LNK) -Wl,-Map,$(KERNEL_MAP) -nostdlib -ffreestanding $(LIBS)
-export CC 					:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
-# TODO: change linker.
-export LD 					:= $(GCC)
+LDFLAGS				:= -L$(AXEL_LIB_PATH) -T $(KERNEL_LNK) -Map $(KERNEL_MAP) -nostdlib
+LIBS				:= -lstruct
+export CC 			:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
 
 
 # 一般生成規則
@@ -75,13 +74,13 @@ export LD 					:= $(GCC)
 	$(NASM) -l $*.lst -o $@ $<
 
 
+.PHONY: default
 default :
 	make all
 	ctags -R ./*
 
 
 asm_functions.o 		: asm_functions.asm 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)asm_functions.h
-list.o					: list.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)list.h
 graphic_txt.o			: graphic_txt.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
 graphic_vbe.o			: graphic_vbe.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_vbe.h
 graphic.o				: graphic.c 				$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h graphic_vbe.c graphic_txt.c
@@ -89,8 +88,6 @@ interrupt_handler.o 	: interrupt_handler.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)int
 interrupt_handler_asm.o : interrupt_handler_asm.asm $(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
 kernel.o				: kernel.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot_constants.h $(AXEL_INCLUDE_PATH)multiboot_structs.h
 memory.o				: memory.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)memory.h
-stack.o					: stack.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)stack.h
-queue.o					: queue.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)queue.h
 string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
 stdio.o					: stdio.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)stdio.h
 font.o					: font.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)font.h
@@ -102,20 +99,20 @@ $(BOOT_OBJ) : $(MAKEFILE)
 
 
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(LINK_OBJS)
-	$(LD) $(LDFLAGS) $(LINK_OBJS) -o $@
+	$(LD) $(LINK_OBJS) $(LDFLAGS) -static $(LIBS) -o $@
 
 
 $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
-	mkdir -p $(ISO_DIR)/boot/grub
-	cp $(AXEL_BIN) $(ISO_DIR)/boot/
-	cp $(GRUB_CONFIG) $(ISO_DIR)/boot/grub/grub.cfg
-	grub-mkimage -O i386-pc -o $(ISO_DIR)/efi.img multiboot biosdisk iso9660
+	mkdir -p $(ISO_DIR)boot/grub
+	cp $(AXEL_BIN) $(ISO_DIR)boot/
+	cp $(GRUB_CONFIG) $(ISO_DIR)boot/grub/grub.cfg
+	grub-mkimage -O i386-pc -o $(ISO_DIR)efi.img multiboot biosdisk iso9660
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
 
 
-.PHONY: all $(SUBDIRS)
-all: $(SUBDIRS)
-	@for dir in $(SUBDIRS) ; do \
+.PHONY: all
+all: $(SUB_DIRS)
+	@for dir in $(SUB_DIRS) ; do \
 		($(MAKE) -C $$dir); \
 		done
 	make $(ISO_NAME)
@@ -123,11 +120,16 @@ all: $(SUBDIRS)
 
 .PHONY: clean
 clean:
-	@for dir in $(SUBDIRS) ; do \
-		($(MAKE) -C $$dir clean); \
+	@for dir in $(SUB_DIRS) ; \
+		do ($(MAKE) -C $$dir clean); \
 		done
 	$(RM) *.o *.bin *.iso *.map *.lst *.log $(ISO_DIR) tags
 	ctags -R ./*
+
+
+.PHONY: lib
+lib: $(STRUCT_DIR)
+	make -C $(STRUCT_DIR)
 
 
 .PHONY: run_qemu_cdrom

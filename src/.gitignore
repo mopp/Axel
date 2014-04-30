@@ -4,14 +4,15 @@
 # allow directors
 !boot
 !include
-!structure
-!t
+!struct
+!lib
 
 # allow files
 !.gitignore
 !Makefile
 !bochsrc
 !*.asm
+!*.a
 !*.c
 !*.h
 !*.ld
