@@ -11,25 +11,7 @@
 
 
 #include <stdbool.h>
-
-/*
- * free function for list node.
- * It is used in list_destruct().
- */
-typedef void (*release_func)(void*);
-
-/*
- * comparison function for list node.
- * It is used in search_list_node().
- */
-typedef bool (*comp_func)(void*, void*);
-
-/*
- * for each function for list node.
- * if return value is true, loop is abort
- */
-typedef bool (*for_each_func)(void*);
-
+#include <atype.h>
 
 /*
  * List node structure.
