@@ -21,7 +21,7 @@ static inline void send_done_interrupt_slave(void) {
 }
 
 
-void interrupt_handler0x20(uint32_t* esp){
+void interrupt_handler0x20(uint32_t* esp) {
     static uint16_t t = 0xff;
     /* static RGB8 rgb = {1, 1, 1, 1}; */
     /* rgb.r = 0x10; */
@@ -39,13 +39,13 @@ void interrupt_handler0x20(uint32_t* esp){
 }
 
 
-void interrupt_handler0x21(uint32_t* esp){
+void interrupt_handler0x21(uint32_t* esp) {
     static Point2d const start = {300, 500};
     static Point2d const sstart = {300 - 10 * 8, 500};
     static char buf[20] = {0};
 
-    uint8_t const key_code = io_in8(KEYBOARD_DATA_PORT);
-    itoa(key_code, buf, 10);
+    uint8_t key_code = io_in8(KEYBOARD_DATA_PORT);
+    itoa(key_code & 0x3F, buf, 16);
 
     /* clear drawing area. */
     static RGB8 c;
@@ -54,6 +54,8 @@ void interrupt_handler0x21(uint32_t* esp){
     /* draw key code */
     puts_ascii_font("Key code: ", &sstart);
     puts_ascii_font(buf, &start);
+
+    aqueue_insert(&keyboard.aqueue, &key_code);
 
     send_done_interrupt_master();
 }

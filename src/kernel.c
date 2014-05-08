@@ -38,12 +38,6 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     init_pic();
     init_pit();
     init_graphic(vbe_info, vbe_mode_info);
-    Axel_state_code t = init_keyboard();
-    io_sti();
-
-    if (t == AXEL_FAILED) {
-        puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
-    }
 
     Point2d p0, p1;
     RGB8 c;
@@ -69,10 +63,15 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 2), set_point2d(&p1, max_x - 3, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
     fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
 
+    if (init_keyboard() == AXEL_FAILED) {
+        puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
+    }
+
     if (boot_flags & 0x20) {
         /* checking nmap_* field */
         init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
     }
+    io_sti();
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 

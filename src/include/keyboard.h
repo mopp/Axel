@@ -10,14 +10,16 @@
 
 #include <state_code.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <aqueue.h>
 
 struct keyboard {
-    uint8_t enable_calps_lock;
-    uint8_t enable_num_lock;
-    uint8_t enable_scroll_lock;
-    // Queue8 buffer;
+    bool enable_calps_lock;
+    bool enable_num_lock;
+    bool enable_scroll_lock;
+    Aqueue aqueue;
 };
-typedef struct keyboard  Keyboard;
+typedef struct keyboard Keyboard;
 
 
 enum keyboard_constants {
@@ -35,9 +37,9 @@ enum keyboard_constants {
     /* keyboard buffer size */
     KEYBOARD_BUFFER_SIZE    = 1024,
 
-    /* アウトプットバッファが空ならば0 */
+    /* アウトプットバッファが空かどうか */
     KEYBOARD_STATUS_OBF     = 0x01,
-    /* インプットプットバッファが空ならば0 */
+    /* インプットプットバッファが空かどうか */
     KEYBOARD_STATUS_IBF     = 0x02,
     /*
      * システムフラグ
@@ -115,8 +117,10 @@ enum keyboard_constants {
 };
 
 
+extern Keyboard keyboard;
+
 extern Axel_state_code init_keyboard(void);
-extern Axel_state_code set_keyboard_led(uint8_t);
+extern Axel_state_code set_keyboard_led(uint8_t, bool);
 
 
 #endif
