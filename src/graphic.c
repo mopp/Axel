@@ -9,6 +9,7 @@
 
 Axel_state_code init_graphic(Vbe_info_block const* const in, Vbe_mode_info_block const* const mi) {
 #ifdef TEXT_MODE
+    return AXEL_SUCCESS;
 #else
     return init_graphic_vbe(in, mi);
 #endif
@@ -17,7 +18,7 @@ Axel_state_code init_graphic(Vbe_info_block const* const in, Vbe_mode_info_block
 
 void clean_screen(RGB8 const* const c) {
 #ifdef TEXT_MODE
-    c;
+    c;  // dummy.
     clean_screen_txt();
 #else
     clean_screen_vbe(c);

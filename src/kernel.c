@@ -8,16 +8,15 @@
 #include <interrupt_handler.h>
 #include <kernel.h>
 #include <keyboard.h>
+#include <list.h>
 #include <macros.h>
 #include <memory.h>
-#include <multiboot_constants.h>
 #include <multiboot_structs.h>
+#include <paging.h>
 #include <point.h>
-#include <stddef.h>
+#include <queue.h>
 #include <stdio.h>
 #include <vbe.h>
-#include <list.h>
-#include <queue.h>
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 static inline void init_gdt(void);
@@ -26,13 +25,30 @@ static inline void init_idt(void);
 static inline void init_pic(void);
 static inline void init_pit(void);
 
+static void debug(uint32_t x) {
+    *((uint32_t*)0xC0000000) = x;
+}
 
-_Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
-    Vbe_info_block const* const vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
-    Vbe_mode_info_block const* const vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
+
+_Noreturn void kernel_entry(Multiboot_info* const boot_info) {
+    io_cli();
+
+    /* fix multiboot_info address .bacause it is physical address yet. */
+    set_phys_to_vir_addr(uint32_t, boot_info->vbe_control_info);
+    set_phys_to_vir_addr(uint32_t, boot_info->vbe_mode_info);
+
+    Vbe_info_block* const vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
+    Vbe_mode_info_block* const vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
     uint32_t const boot_flags = boot_info->flags;
 
-    io_cli();
+    set_phys_to_vir_addr(uint32_t, vbe_info->video_mode_ptr);
+
+    /* check nmap_* field */
+    if (boot_flags & 0x20) {
+        set_phys_to_vir_addr(uint32_t, boot_info->mmap_addr);
+        init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
+    }
+
     init_gdt();
     init_idt();
     init_pic();
@@ -63,14 +79,13 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
     fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 2), set_point2d(&p1, max_x - 3, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
     fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
 
-    if (init_keyboard() == AXEL_FAILED) {
-        puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
-    }
+    /* FIXME: please implement paging
+     * if (init_keyboard() == AXEL_FAILED) {
+     *     puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
+     * }
+     */
 
-    if (boot_flags & 0x20) {
-        /* checking nmap_* field */
-        init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
-    }
+
     io_sti();
 
     puts("-------------------- Start Axel ! --------------------\n\n");
@@ -92,13 +107,13 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
         printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
     }
 
-    size_t size = 83200;
-    char* str = (char*)malloc(sizeof(char) * size);
-    for (int i = 0; i < size; i++) {
-        str[i] = (char)0xAA;
-    }
-    free(str);
-    printf("test malloc %x\n", (uintptr_t)str);
+    // size_t size = 83200;
+    // char* str = (char*)malloc(sizeof(char) * size);
+    // for (int i = 0; i < size; i++) {
+    //     str[i] = (char)0xAA;
+    // }
+    // free(str);
+    // printf("test malloc %x\n", (uintptr_t)str);
 
     const uint32_t base_y = 5;
     const uint32_t base_x = get_max_x_resolution();
@@ -111,9 +126,8 @@ _Noreturn void kernel_entry(Multiboot_info const* const boot_info) {
 
     puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
 
-
-    List l;
-    list_init(&l, 8, NULL);
+    // List l;
+    // list_init(&l, 8, NULL);
 
     for (int i = 1;; ++i) {
         /* clean drawing area */

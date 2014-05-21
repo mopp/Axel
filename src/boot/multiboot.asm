@@ -7,6 +7,11 @@
 
 #include <multiboot_constants.h>
 
+
+KERNEL_VIRTUAL_BASE_ADDR   equ 0xC0000000                           ; 3GB
+KERNEL_PAGE_INDEX          equ (KERNEL_VIRTUAL_BASE_ADDR >> 22)     ; Page directory index of kernel s 4MB PTE.
+
+
 ; 上記定数を用いてヘッダを書き込み
 section .multiboot_header
 align 4
@@ -27,14 +32,8 @@ align 4
     dd DISPLAY_Y_RESOLUTION
     dd DISPLAY_BIT_SIZE
 
-section .kernel_init_stack
-stack_bottom:
-    ; times 16384 db 0
-    times 16384 db 0
-stack_top:
 
-
-section .text
+section .boot_kernel
     extern kernel_entry
 
     ; リンク時にboot_kernelをエントリポイントとして指定すること
@@ -43,15 +42,57 @@ boot_kernel:
     cli
 
     cmp EAX, MULTIBOOT_BOOTLOADER_MAGIC
-    jne .sleep
+    jne sleep
 
-    mov esp, stack_top
+    mov ecx, (kernel_init_page_directory - KERNEL_VIRTUAL_BASE_ADDR)
+    mov cr3, ecx                                ; Load Page Directory Base Register.
+
+    mov ECX, CR4
+    or  ECX, 0x00000010                         ; Set PSE bit in CR4 to enable 4MB pages.
+    mov CR4, ECX
+
+    mov ECX, CR0
+    or  ECX, 0x80000000                         ; Set PG bit in CR0 to enable paging.
+    mov CR0, ECX
+
+    lea ECX, [higher_half]
+    jmp ECX
+
+higher_half:
+
+.exit:
+    mov dword [kernel_init_page_directory], 0
+
+    ; hlt
+    ; jmp .exit
+
+    ; invlpg [0]
+
+    mov ESP, stack_top
 
     ; ブート情報構造体の格納アドレスを引数へ
+    add  EBX, KERNEL_VIRTUAL_BASE_ADDR
     push EBX
     call kernel_entry
-
-    ; sti
-.sleep:
+sleep:
     hlt
-    jmp .sleep
+    jmp sleep
+
+
+section .data
+align 0x1000
+VBE_PAGE_INDEX  equ (0xFD000000 >> 22)
+kernel_init_page_directory:
+    dd 0x00000083
+    times (KERNEL_PAGE_INDEX - 1) dd 0                 ; Pages before kernel space.
+    dd 0x00000083
+    times (VBE_PAGE_INDEX - KERNEL_PAGE_INDEX - 1) dd 0
+    dd 0xFD000083
+    times (1024 - VBE_PAGE_INDEX - 1) dd 0          ; Pages after the kernel image.
+
+
+section .bss
+KERNEL_INIT_STACK_SIZE equ 0x4000
+stack_bottom:
+    resb KERNEL_INIT_STACK_SIZE
+stack_top:

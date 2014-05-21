@@ -46,7 +46,7 @@ _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descript
 
 enum GDT_constants {
     /* 設定先アドレス */
-    GDT_ADDR                = 0x00270000,
+    GDT_ADDR                = 0x00270000 + 0xC0000000,
 
     GDT_KERNEL_CODE_INDEX   = 1,
     GDT_KERNEL_DATA_INDEX   = 2,
@@ -113,7 +113,7 @@ _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor siz
 
 
 enum IDT_constants {
-    IDT_ADDR                = 0x0026f800,
+    IDT_ADDR                = 0x0026f800 + 0xC0000000,
     IDT_MAX_NUM             = 256,
     IDT_LIMIT               = IDT_MAX_NUM * 8 - 1,
 

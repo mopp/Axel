@@ -1,7 +1,10 @@
-/************************************************************
- * File: include/memory.h
- * Description: about memory header
- ************************************************************/
+/**
+ * @file include/memory.c
+ * @brief some memory functions.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-05-20
+ */
 
 #ifndef MEMORY_H
 #define MEMORY_H
@@ -12,65 +15,13 @@
 #include <list.h>
 #include <multiboot_structs.h>
 
-/* page_table_entry -> page_table(page_table_entry[1024]) -> page_directory_entry -> page_directory_table(page_directory_entry[1024]) */
-
-/*
- * ページ一つに相当し、ページについての情報を保持する
- * 制御レジスタの値によってはCPUに無視されるフラグがある
- */
-struct page_table_entry {
-    unsigned int preset_flag : 1;                   /* 物理メモリに存在するか否か */
-    unsigned int read_write_flag : 1;               /* 読み込み専用(0) or 読み書き可能(1) */
-    unsigned int user_supervisor_flag : 1;          /* ページの権限 */
-    unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
-    unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
-    unsigned int access_flag : 1;                   /* ページがアクセスされたか否か */
-    unsigned int dirty_flag : 1;                    /* ページが変更されたか否か */
-    unsigned int page_attr_table_flag : 1;          /* PAT機能で使用される */
-    unsigned int global_flag : 1;                   /* ページがグローバルか否か */
-    unsigned int available_for_os : 3;              /* CPUに無視されるのでOSが自由に使用してよい */
-    unsigned int page_frame_addr : 20;              /* ページに割り当てられる物理アドレスの上位20bit */
-};
-typedef struct page_table_entry Page_table_entry;
-_Static_assert(sizeof(Page_table_entry) == 4, "Static ERROR : Page_table_entry size is NOT 4 byte(32 bit).");
-
-
-/* ページテーブル一つに相当する */
-struct page_directory_entry {
-    unsigned int preset_flag : 1;
-    unsigned int read_write_flag : 1;
-    unsigned int user_supervisor_flag : 1;
-    unsigned int page_level_write_throgh_flag : 1;
-    unsigned int page_level_cache_disable_flag : 1;
-    unsigned int access_flag : 1;
-    unsigned int reserved : 1;
-    unsigned int page_size_flag : 1; /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
-    unsigned int global_flag : 1;
-    unsigned int usable_for_os : 3;
-    unsigned int page_table_addr : 20; /* 管理対象のページテーブルアドレス */
-};
-typedef struct page_directory_entry Page_directory_entry;
-_Static_assert(sizeof(Page_directory_entry) == 4, "Static ERROR : Page_directory_entry size is NOT 4 byte(32 bit).");
-
-enum paging_constants {
-    PAGE_SIZE = 4096,
-    PAGE_NUM = 1024,
-    PAGE_TABLE_NUM = 1024,
-};
-
-/* one page_table should have 1024 page. */
-/* one page_directory_table should have 1024 page_table. */
-
-/* the page_table size is 1024(PAGE_NUM) * 4KB(PAGE_SIZE) = 4MB */
-/* extern Page_table_entry page_table[PAGE_TABLE_SIZE]; */
-
 
 enum memory_manager_constants {
-    MAX_MEM_NODE_NUM = 4096, /* MAX_MEM_NODE_NUM must be a power of 2 for below modulo. */
+    MAX_MEM_NODE_NUM = 4096, /* MAX_MEM_NODE_NUM(0x1000) must be a power of 2 for below modulo. */
     MEM_INFO_STATE_FREE = 0, /* this shows that we can use its memory. */
     MEM_INFO_STATE_ALLOC,    /* this shows that we cannot use its memory. */
 };
-#define MOD_MAX_MEM_NODE_NUM(n) (n & 0x0ffffu)
+#define MOD_MAX_MEM_NODE_NUM(n) (n & 0x07ffu)
 
 
 /* memory infomation structure to managed. */

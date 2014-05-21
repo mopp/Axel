@@ -1,12 +1,16 @@
-/************************************************************
- * File: graphic_txt.c
- * Description: some memory functions.
+/**
+ * @file memory.c
+ * @brief some memory functions.
  *      You MUST NOT use get_new_dlinked_list_node().
  *      bacause get_new_dlinked_list_node() include malloc.
  *      So, You MUST use list_get_new_memory_node().
- ************************************************************/
+ * @author mopp
+ * @version 0.1
+ * @date 2014-05-20
+ */
 
 #include <memory.h>
+#include <asm_functions.h>
 #include <string.h>
 
 /*
@@ -147,6 +151,7 @@ void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
 
     /* set memory infomation by Multiboot_memory_map. */
     Multiboot_memory_map const* const limit = (Multiboot_memory_map const* const)((uintptr_t)mmap + mmap_len);
+
     for (Multiboot_memory_map const* i = mmap; i < limit; i = (Multiboot_memory_map*)((uintptr_t)i + sizeof(i->size) + i->size)) {
         List_node* n = list_get_new_memory_node();
 

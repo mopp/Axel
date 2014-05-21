@@ -16,9 +16,10 @@ static inline void send_done_interrupt_master(void) {
 }
 
 
-static inline void send_done_interrupt_slave(void) {
-    io_out8(PIC1_CMD_STATE_PORT, PIC_OCW2_EOI);
-}
+// it is unused yet.
+// static inline void send_done_interrupt_slave(void) {
+//     io_out8(PIC1_CMD_STATE_PORT, PIC_OCW2_EOI);
+// }
 
 
 void interrupt_handler0x20(uint32_t* esp) {

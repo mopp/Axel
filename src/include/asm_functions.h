@@ -21,8 +21,8 @@ extern void io_out8 (uint16_t, uint8_t );
 extern void io_out16(uint16_t, uint16_t);
 extern void io_out32(uint16_t, uint32_t);
 
-extern void load_gdtr(int, int);
-extern void load_idtr(int, int);
-extern void change_segment_selectors(int);
+extern void load_gdtr(uint32_t, uint32_t);
+extern void load_idtr(uint32_t, uint32_t);
+extern void change_segment_selectors(uint32_t);
 
 #endif

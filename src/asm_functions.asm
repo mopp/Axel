@@ -81,7 +81,7 @@ io_out32:
     ret
 
 
-; void load_gdtr(int limit_byte, int addr);
+; void load_gdtr(uint32_t limit_byte, uint32_t addr);
 ; 大きさが2byte アドレスが4byte 合わせて6byteをlgdtが読み込む
 ; なので、limit_byteの下位2byteをずらしている。 ldtrも同様
 load_gdtr:

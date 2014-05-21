@@ -26,4 +26,4 @@ aqueue.o	: aqueue.c 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)aqueue.h
 .PHONY: clean
 clean:
 	$(RM) *.o *.a
-	$(RM) $(AXEL_LIB_PATH)$(TARGET)
+	# $(RM) $(AXEL_LIB_PATH)$(TARGET)

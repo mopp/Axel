@@ -1,52 +1,40 @@
-/* エントリポイントを設定 */
 ENTRY(boot_kernel)
+OUTPUT_FORMAT(elf32-i386)
+
 
 SECTIONS {
-    /*
-     * 以降のセグメントをカーネルの読み込み先である
-     * 0x100000から開始するように
-     * 現在のアドレスを設定
-     */
-    /* .  =  0x100000; */
-    . = 1M;
+    . = 0x100000;
+
+    .multiboot_header : {
+        *(.multiboot_header)
+    }
+
+    .boot_kernel : {
+        *(.boot_kernel)
+    }
+
+    . += 0xC0000000;
     LD_KERNEL_START = .;
 
-    /* Code. */
-    .text BLOCK(4K) : ALIGN(4K) {
-        LD_KERNEL_TEXT_START = .;
-        *(.multiboot_header)
-        *(.boot_kernel)
+    .text : AT(ADDR(.text) - 0xC0000000) {
+        _text_start = .;
         *(.text)
-        . = ALIGN(4096);
-        LD_KERNEL_TEXT_END = .;
+        *(.rodata*)
+        _text_end = .;
     }
 
-    /* Read-only data. */
-    .rodata BLOCK(4K) : ALIGN(4K) {
-        LD_KERNEL_RODATA_START = .;
-        *(.rodata)
-        . = ALIGN(4096);
-        LD_KERNEL_RODATA_END = .;
-    }
-
-    /* Read-write data (initialized) */
-    .data BLOCK(4K) : ALIGN(4K) {
-        LD_KERNEL_DATA_START = .;
+    .data ALIGN (0x1000) : AT(ADDR(.data) - 0xC0000000) {
+        _data_start = .;
         *(.data)
-        . = ALIGN(4096);
-        LD_KERNEL_DATA_END = .;
+        _data_end = .;
     }
 
-    /* Read-write data (uninitialized) and stack */
-    .bss BLOCK(4K) : ALIGN(4K) {
-        /* LD_KERNEL_BSS_START = .; */
-        *(.kernel_init_stack)
+    .bss : AT(ADDR(.bss) - 0xC0000000) {
+        _bss_start = .;
         *(COMMON)
         *(.bss)
-        . = ALIGN(4096);
-        /* LD_KERNEL_BSS_END = .; */
+        _bss_end = .;
     }
-
     LD_KERNEL_END = .;
 
     LD_KERNEL_SIZE = LD_KERNEL_END - LD_KERNEL_START;

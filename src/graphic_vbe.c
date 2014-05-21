@@ -4,6 +4,7 @@
  ************************************************************/
 
 #include <graphic_vbe.h>
+#include <asm_functions.h>
 #include <macros.h>
 #include <state_code.h>
 #include <vbe.h>
@@ -25,10 +26,6 @@ struct Color_bit_info {
 };
 typedef struct Color_bit_info Color_bit_info;
 
-
-static Vbe_info_block const* info;
-static Vbe_mode_info_block const* m_info;
-
 static volatile uintptr_t vram;
 static uint8_t byte_per_pixel;
 static uint32_t vram_size;
@@ -44,14 +41,11 @@ static inline void set_vram8888(uint32_t const, uint32_t const, RGB8 const* cons
 static inline void set_vram5650(uint32_t const, uint32_t const, RGB8 const* const);
 
 
-Axel_state_code init_graphic_vbe(Vbe_info_block const* const in, Vbe_mode_info_block const* const mi) {
+Axel_state_code init_graphic_vbe(Vbe_info_block const* const info, Vbe_mode_info_block const* const m_info) {
     if (m_info->phys_base_ptr == 0) {
         return AXEL_FAILED;
     }
 
-    /* store to file local variable */
-    info = in;
-    m_info = mi;
     max_x_resolution = m_info->x_resolution;
     max_y_resolution = m_info->y_resolution;
     max_xy_resolution = max_x_resolution * max_y_resolution;
