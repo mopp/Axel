@@ -11,7 +11,7 @@
 #include <list.h>
 #include <macros.h>
 #include <memory.h>
-#include <multiboot_structs.h>
+#include <multiboot.h>
 #include <paging.h>
 #include <point.h>
 #include <queue.h>

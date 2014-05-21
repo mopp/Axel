@@ -1,14 +1,18 @@
-;---------------------------------------------------------------------
+;;
 ; vim:ft=nasm:foldmethod=marker
-; File: boot/multiboot.asm
-; Description: It is called by grub and call kernel entry point.
-;---------------------------------------------------------------------
-    bits 32
+; @file boot/multiboot.asm
+; @brief It is called by grub and call kernel entry point.
+; @author mopp
+; @version 0.1
+; @date 2014-05-21
+;;
+bits 32
 
-#include <multiboot_constants.h>
+#define _ASSEMBLY
+#include <multiboot.h>
+#include <paging.h>
 
 
-KERNEL_VIRTUAL_BASE_ADDR   equ 0xC0000000                           ; 3GB
 KERNEL_PAGE_INDEX          equ (KERNEL_VIRTUAL_BASE_ADDR >> 22)     ; Page directory index of kernel s 4MB PTE.
 
 
@@ -35,8 +39,6 @@ align 4
 
 section .boot_kernel
     extern kernel_entry
-
-    ; リンク時にboot_kernelをエントリポイントとして指定すること
     global boot_kernel
 boot_kernel:
     cli

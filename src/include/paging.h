@@ -7,6 +7,8 @@
  */
 #ifndef _PAGING_H
 #define _PAGING_H
+#   ifndef _ASSEMBLY
+
 
 #include <stdint.h>
 
@@ -51,17 +53,8 @@ typedef struct page_directory_entry Page_directory_entry;
 _Static_assert(sizeof(Page_directory_entry) == 4, "Static ERROR : Page_directory_entry size is NOT 4 byte(32 bit).");
 
 
-enum paging_constants {
-    PAGE_SIZE                   = 4096,
-    PAGE_NUM                    = 1024,
-    PAGE_TABLE_NUM              = 1024,
-    KERNEL_PHYSICAL_BASE_ADDR   = 0x100000,
-    KERNEL_VIRTUAL_BASE_ADDR    = 0xC0000000,
-};
-
-
-extern uintptr_t phys_to_vir_addr(uintptr_t );
-extern uintptr_t vir_to_phys_addr(uintptr_t );
+extern uintptr_t phys_to_vir_addr(uintptr_t);
+extern uintptr_t vir_to_phys_addr(uintptr_t);
 
 #define set_phys_to_vir_addr(type, x) (x) = (type)phys_to_vir_addr((x))
 
@@ -70,6 +63,17 @@ extern uintptr_t vir_to_phys_addr(uintptr_t );
 
 /* the page_table size is 1024(PAGE_NUM) * 4KB(PAGE_SIZE) = 4MB */
 /* extern Page_table_entry page_table[PAGE_TABLE_SIZE]; */
+
+
+#   endif /* _ASSEMBLY */
+
+
+#define PAGE_SIZE 4096,
+#define PAGE_NUM 1024,
+#define PAGE_TABLE_NUM 1024,
+#define KERNEL_PHYSICAL_BASE_ADDR 0x100000
+#define KERNEL_VIRTUAL_BASE_ADDR 0xC0000000
+
 
 
 #endif

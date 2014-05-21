@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <list.h>
-#include <multiboot_structs.h>
+#include <multiboot.h>
 
 
 enum memory_manager_constants {

@@ -77,7 +77,7 @@ graphic_vbe.o			: graphic_vbe.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_vbe.h
 graphic.o				: graphic.c 				$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h graphic_vbe.c graphic_txt.c
 interrupt_handler.o 	: interrupt_handler.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
 interrupt_handler_asm.o : interrupt_handler_asm.asm $(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
-kernel.o				: kernel.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot_constants.h $(AXEL_INCLUDE_PATH)multiboot_structs.h
+kernel.o				: kernel.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h
 memory.o				: memory.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)memory.h
 paging.o				: paging.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)paging.h
 string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
