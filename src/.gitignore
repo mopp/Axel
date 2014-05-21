@@ -12,7 +12,7 @@
 !Makefile
 !bochsrc
 !*.asm
-!*.a
+# !*.a
 !*.c
 !*.h
 !*.ld
