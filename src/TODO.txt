@@ -2,6 +2,7 @@
 [ ] fix file comments.
 [ ] add function comments.
 [ ] make console.
+[ ] add panic function.
 
 clang option for cross compile
 lib32-glibc-2.14-4

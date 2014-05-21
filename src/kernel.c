@@ -33,7 +33,10 @@ static void debug(uint32_t x) {
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     io_cli();
 
-    /* fix multiboot_info address .bacause it is physical address yet. */
+    /*
+     * Fix multiboot_info address.
+     * Bacause it is physical address yet.
+     */
     set_phys_to_vir_addr(uint32_t, boot_info->vbe_control_info);
     set_phys_to_vir_addr(uint32_t, boot_info->vbe_mode_info);
 
@@ -46,6 +49,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     /* check nmap_* field */
     if (boot_flags & 0x20) {
         set_phys_to_vir_addr(uint32_t, boot_info->mmap_addr);
+        /* initialize memory. */
         init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
     }
 

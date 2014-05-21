@@ -1,22 +1,25 @@
-;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; vim:ft=nasm:foldmethod=marker
 ; @file boot/multiboot.asm
 ; @brief It is called by grub and call kernel entry point.
 ; @author mopp
 ; @version 0.1
 ; @date 2014-05-21
-;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 bits 32
+
 
 #define _ASSEMBLY
 #include <multiboot.h>
 #include <paging.h>
 
 
-KERNEL_PAGE_INDEX          equ (KERNEL_VIRTUAL_BASE_ADDR >> 22)     ; Page directory index of kernel s 4MB PTE.
+extern kernel_entry
+global boot_kernel
 
 
-; 上記定数を用いてヘッダを書き込み
+; multiboot header section.
+; This is read by multiboot bootstraps loader (grub2).
 section .multiboot_header
 align 4
     dd MULTIBOOT_HEADER_MAGIC
@@ -37,64 +40,91 @@ align 4
     dd DISPLAY_BIT_SIZE
 
 
+; boot kernel section
+; This section is entry point and called by bootstraps loader.
 section .boot_kernel
-    extern kernel_entry
-    global boot_kernel
 boot_kernel:
+    ; We cannot use eax and ebx.
+    ; eax and ebx has multiboot magic number and multiboot_info struct.
     cli
 
-    cmp EAX, MULTIBOOT_BOOTLOADER_MAGIC
+    ; check multiboot magic number.
+    ; If mismatched, goto infinity sleep loop.
+    cmp eax, MULTIBOOT_BOOTLOADER_MAGIC
     jne sleep
 
-    mov ecx, (kernel_init_page_directory - KERNEL_VIRTUAL_BASE_ADDR)
-    mov cr3, ecx                                ; Load Page Directory Base Register.
+    ; Load page directory table.
+    ; But, paging is NOT enable in this.
+    ; So We have to calculate physical address from virtual address.
+    mov ecx, (kernel_init_page_directory_table - KERNEL_VIRTUAL_BASE_ADDR)
+    mov cr3, ecx
 
-    mov ECX, CR4
-    or  ECX, 0x00000010                         ; Set PSE bit in CR4 to enable 4MB pages.
-    mov CR4, ECX
+    ; Set PSE bit in CR4 to enable 4MB pages.
+    mov ecx, cr4
+    or  ecx, 0x00000010
+    mov cr4, ecx
 
-    mov ECX, CR0
-    or  ECX, 0x80000000                         ; Set PG bit in CR0 to enable paging.
-    mov CR0, ECX
+    ; Set PG bit in CR0 to enable paging.
+    mov ecx, cr0
+    or  ecx, 0X80000000
+    mov cr0, ecx
 
-    lea ECX, [higher_half]
-    jmp ECX
+    ; Paging is enable in this :)
+    ; Virtual address 0x00000000~4M is required here.
+    ; Then, We change eip for higher kernel, but eip has physical address yet.
+    ; jump destination(boot_higher_kernel) exists virtual 0xC0000000~4MB address.
+    ; So, We set eip = 0xCXXXXXXXX.
+    ; And first page and kernel page is same mapping(0x00000000~4MB).
+    lea ecx, [boot_higher_kernel]
+    jmp ecx
 
-higher_half:
+boot_higher_kernel:
+    ; Clean first page and its cache.
+    ; It should not be needed anymore.
+    mov dword [kernel_init_page_directory_table], 0
+    invlpg [0]
 
-.exit:
-    mov dword [kernel_init_page_directory], 0
+    ; Kernel uses this stack.
+    mov esp, kernel_init_stack_top
 
-    ; hlt
-    ; jmp .exit
-
-    ; invlpg [0]
-
-    mov ESP, stack_top
-
-    ; ブート情報構造体の格納アドレスを引数へ
-    add  EBX, KERNEL_VIRTUAL_BASE_ADDR
-    push EBX
+    ; ebx is pointer to multiboot_info.
+    ; It is found while disable paging.
+    ; So, fix address
+    add  ebx, KERNEL_VIRTUAL_BASE_ADDR
+    push ebx
     call kernel_entry
+
 sleep:
     hlt
     jmp sleep
 
 
+; date section.
+; This is Page Directory Table.
+; And Page size is 4MB in this.
+; PDE means Page Directory Entry.
 section .data
 align 0x1000
-VBE_PAGE_INDEX  equ (0xFD000000 >> 22)
-kernel_init_page_directory:
+KERNEL_PAGE_INDEX   equ KERNEL_VIRTUAL_BASE_ADDR >> 22  ; Page directory index of kernel.
+VBE_PAGE_INDEX      equ 0xFD000000 >> 22                ; FIXME: set it dynamicaly, Page firectory index of vram.
+PDE_NUM             equ 1024                            ; The number of page table.
+kernel_init_page_directory_table:
+    ; We must have this page witch include virtual address 0x100000.
+    ; Because This is required when we just enable paging.
+    ; And This page is straight mapping vir 0x00000000~4MB to phys 0x00000000~4MB
     dd 0x00000083
-    times (KERNEL_PAGE_INDEX - 1) dd 0                 ; Pages before kernel space.
+    times (KERNEL_PAGE_INDEX - 1) dd 0                  ; Before kernel space.
+    ; This is same mapping above page.
     dd 0x00000083
-    times (VBE_PAGE_INDEX - KERNEL_PAGE_INDEX - 1) dd 0
+    times (VBE_PAGE_INDEX - KERNEL_PAGE_INDEX - 1) dd 0 ; Before vram space.
     dd 0xFD000083
-    times (1024 - VBE_PAGE_INDEX - 1) dd 0          ; Pages after the kernel image.
+    times (PDE_NUM - VBE_PAGE_INDEX - 1) dd 0           ; Remains pages.
 
 
+; Block Started by Symbol
+; This allocate initial kernel stack witch is 16KB.
 section .bss
 KERNEL_INIT_STACK_SIZE equ 0x4000
-stack_bottom:
+kernel_init_stack_bottom:
     resb KERNEL_INIT_STACK_SIZE
-stack_top:
+kernel_init_stack_top:

@@ -9,34 +9,27 @@ SECTIONS {
     ENTRY(boot_kernel)
 
     /*
-     * Set kernel physical base address in current address.
-     * Because bootstraps loader will load kernel at 0x100000
-     * And this area is exexuted before enable paging.
+     * Set current virtual address for paging.
+     * Kernel is loaded at physical address 0x100000.
+     * But We map kernel to higher address(0xC0100000).
+     * Therefor, add kerne physical address + virtual address in this.
      */
-    . = LD_KERNEL_PHYSICAL_BASE_ADDR;
+    . = LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR;
 
-    /* This is required by multiboot specification. */
-    .multiboot_header : {
-        *(.multiboot_header)
-    }
+    LD_KERNEL_START = .;
 
     /*
      * Entry point.
      * This is called by bootstraps loader.
+     * AT command indicates load memory address.
      */
-    .boot_kernel : {
+    .boot_kernel : AT(ADDR(.boot_kernel) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
+        *(.multiboot_header)
         *(.boot_kernel)
     }
 
-    /*
-     * Paging is enable with the address below.
-     * Therefor, add kernel virtual base address in this.
-     */
-    . += LD_KERNEL_VIRTUAL_BASE_ADDR;
 
-    LD_KERNEL_START = .;
-
-    .text ALIGN(0x1000) : AT(ADDR(.text) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
+    .text : AT(ADDR(.text) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
         *(.text*)
     }
 
