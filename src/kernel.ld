@@ -44,8 +44,11 @@ SECTIONS {
 
 
     .bss : AT(ADDR(.bss) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
+        LD_KERNEL_BSS_START = .;
         *(.bss*)
         *(COMMON)
+        LD_KERNEL_BSS_END = .;
+        LD_KERNEL_BSS_SIZE = LD_KERNEL_BSS_END - LD_KERNEL_BSS_START;
     }
 
 
