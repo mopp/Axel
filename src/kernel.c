@@ -15,6 +15,7 @@
 #include <paging.h>
 #include <point.h>
 #include <queue.h>
+#include <string.h>
 #include <stdio.h>
 #include <vbe.h>
 
@@ -24,14 +25,13 @@ static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void (*)(
 static inline void init_idt(void);
 static inline void init_pic(void);
 static inline void init_pit(void);
-
-static void debug(uint32_t x) {
-    *((uint32_t*)0xC0000000) = x;
-}
-
+static inline void clear_bss(void);
 
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     io_cli();
+
+    /* clear bss section of kernel. */
+    clear_bss();
 
     /*
      * Fix multiboot_info address.
@@ -274,4 +274,12 @@ static inline void init_pit(void) {
 
     /* PITはタイマーでIRQ0なのでMaster PICのIRQ0を解除 */
     io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (0xFF & ~PIC_IMR_MASK_IRQ0));
+}
+
+
+static inline void clear_bss(void) {
+    extern uintptr_t LD_KERNEL_BSS_START;
+    extern uintptr_t LD_KERNEL_BSS_SIZE;
+
+    memset(&LD_KERNEL_BSS_START, 0, (unsigned long)LD_KERNEL_BSS_SIZE);
 }
