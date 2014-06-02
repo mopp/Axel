@@ -11,6 +11,7 @@
     global io_out8, io_out16, io_out32
     global load_gdtr, load_idtr
     global change_segment_selectors
+    global set_cpu_pdt, get_cpu_pdt, flush_tlb
 
 section .text
 
@@ -98,6 +99,7 @@ load_idtr:
     lidt [ESP + 6]
     ret
 
+
 ; void change_segment_selectors(int data_segment);
 change_segment_selectors:
     jmp 0x08:.jmp_point
@@ -108,4 +110,25 @@ change_segment_selectors:
     mov FS, AX
     mov GS, AX
     mov SS, AX
+    ret
+
+
+; void set_cpu_pdt(uintptr_t addr)
+set_cpu_pdt:
+    mov ebx, [ESP + 4]
+    mov cr3, ebx
+    ret
+
+
+; uintptr_t get_cpu_pdt(void)
+get_cpu_pdt:
+    mov eax, cr3
+    ret
+
+
+; void flush_tlb(uintptr_t addr)
+flush_tlb:
+    cli
+    invlpg [esp + 4]
+    sti
     ret

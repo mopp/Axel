@@ -10,19 +10,19 @@
  */
 
 #include <memory.h>
+#include <paging.h>
 #include <asm_functions.h>
 #include <string.h>
 
 /*
- * It is wapped by function. bacause I foget '&'
- * And It is set by linker. see kernel.ld
+ * It is set by linker. see kernel.ld
  */
 extern uintptr_t const LD_KERNEL_START;
 extern uintptr_t const LD_KERNEL_END;
 extern uintptr_t const LD_KERNEL_SIZE;
 
-static uintptr_t kernel_start_addr = (uintptr_t) & LD_KERNEL_START;
-static uintptr_t kernel_end_addr = (uintptr_t) & LD_KERNEL_END;
+static uintptr_t kernel_start_addr = (uintptr_t)&LD_KERNEL_START;
+static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 static uintptr_t kernel_size;
 
 /* This variables is dynamicaly allocated in kernel tail. */
@@ -96,7 +96,7 @@ static void dummy_free(void* d) {
 static bool for_each_kernel_area_node(void* d) {
     Memory_info const* const m = (Memory_info*)d;
 
-    if ((get_kernel_start_addr() <= m->base_addr) && (get_kernel_end_addr() <= (m->base_addr + m->size))) {
+    if ((get_kernel_phys_start_addr() <= m->base_addr) && (get_kernel_phys_end_addr() <= (m->base_addr + m->size))) {
         return true;
     }
 
@@ -120,14 +120,14 @@ static bool for_each_in_free(void* d) {
 
 void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
     /* calculate each variable memory address. */
-    uintptr_t mem_manager_addr = get_kernel_end_addr();
+    uintptr_t mem_manager_addr = get_kernel_vir_end_addr();
     uintptr_t mem_list_nodes_addr = mem_manager_addr + sizeof(Memory_manager);
     uintptr_t mem_info_addr = mem_list_nodes_addr + sizeof(List_node) * MAX_MEM_NODE_NUM;
     uintptr_t used_list_node_addr = mem_info_addr + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
     uintptr_t added_variables_end_addr = used_list_node_addr + sizeof(bool) * MAX_MEM_NODE_NUM;
 
-    kernel_end_addr = added_variables_end_addr;        /* update kernel end address. */
-    kernel_size = kernel_end_addr - kernel_start_addr; /* update kernel size. */
+    kernel_end_addr = added_variables_end_addr;                         /* update virtual kernel end address. */
+    kernel_size = round_page_size(kernel_end_addr - kernel_start_addr); /* update kernel size and round kernel size for paging. */
 
     /* initialize dynamic allocated variables. */
     mem_manager = (Memory_manager*)mem_manager_addr;
@@ -166,9 +166,9 @@ void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
     }
 
     /* allocate kernel area. */
-    uintptr_t const ka_start_addr = get_kernel_start_addr(); /* kernel area start address */
-    uintptr_t const ka_end_addr = get_kernel_end_addr();     /* kernel area end address */
-    uintptr_t const ka_size = ka_end_addr - ka_start_addr;   /* kernel area size */
+    uintptr_t const ka_start_addr = get_kernel_phys_start_addr(); /* kernel area start address */
+    uintptr_t const ka_end_addr = get_kernel_phys_end_addr();     /* kernel area end address */
+    uintptr_t const ka_size = get_kernel_size();                  /* kernel area size */
 
     /* search karnel area contain node */
     List_node* searched = list_for_each(&mem_manager->list, for_each_kernel_area_node, false);
@@ -198,10 +198,63 @@ void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
             // TODO: add node include kernel case and node end_addr equals ka_end_addr case.
         }
     }
+
+    /*
+     * Set 0x000000 to 0x100000 area is allocated.
+     * But, there are some allocated in this area.
+     * So, We need alloc to one node.
+     */
+    List_node* n = mem_manager->list.node->next;
+    uintptr_t reserved_limit = 0x100000;
+    while (1) {
+        Memory_info* mi = (Memory_info*)n->data;
+        uintptr_t addr = mi->base_addr;
+        if (reserved_limit <= addr) {
+            if (reserved_limit == addr && mi->state == MEM_INFO_STATE_ALLOC) {
+                /*
+                 * If after 0x100000 area is allocated.
+                 * We includes this area.
+                 * For example, kernel allocated area is absorbed in here.
+                 */
+                reserved_limit += mi->size;
+            } else {
+                break;
+            }
+        }
+
+        phys_free((void*)addr);
+        n = n->next;
+    }
+    Memory_info* mi = (Memory_info*)mem_manager->list.node->data;
+    mi->base_addr = 0x000000;
+    mi->size = reserved_limit;
+    mi->state = MEM_INFO_STATE_ALLOC;
+
+    /*
+     * Physical memory managing is just finished.
+     * Next, let's set paging.
+     */
+    /* init_paging(); */
 }
 
 
-void* malloc(size_t size_byte) {
+#include <stdio.h>
+static bool for_each_in_print(void* d) {
+    Memory_info const* const m = (Memory_info*)d;
+
+    printf((m->state == MEM_INFO_STATE_FREE) ? "FREE " : "ALLOC");
+    printf(" Base: 0x%x  Size: %dKB\n", m->base_addr, m->size / 1024);
+
+    return false;
+}
+
+
+void print_mem(void) {
+    list_for_each(&mem_manager->list, for_each_in_print, false);
+}
+
+
+void* phys_malloc(size_t size_byte) {
     size_t size = size_byte * 8;
 
     /* search enough size node */
@@ -233,7 +286,7 @@ void* malloc(size_t size_byte) {
 }
 
 
-void free(void* object) {
+void phys_free(void* object) {
     for_each_in_free_base_addr = (uintptr_t)object;
     List_node* n = list_for_each(&mem_manager->list, for_each_in_free, false);
     if (n == NULL) {
@@ -258,19 +311,35 @@ void free(void* object) {
     } else {
         n_mi->state = MEM_INFO_STATE_FREE;
     }
+    // TODO: add that can merge next and previous.
 }
 
 
-uintptr_t get_kernel_start_addr(void) {
+uintptr_t get_kernel_vir_start_addr(void) {
     return kernel_start_addr;
 }
 
 
-uintptr_t get_kernel_end_addr(void) {
+uintptr_t get_kernel_vir_end_addr(void) {
     return kernel_end_addr;
 }
 
 
-uintptr_t get_kernel_size(void) {
+uintptr_t get_kernel_phys_start_addr(void) {
+    return vir_to_phys_addr(kernel_start_addr);
+}
+
+
+uintptr_t get_kernel_phys_end_addr(void) {
+    return vir_to_phys_addr(kernel_end_addr);
+}
+
+
+size_t get_kernel_size(void) {
     return kernel_size;
+}
+
+
+size_t get_kernel_static_size(void) {
+    return (uintptr_t)&LD_KERNEL_SIZE;
 }

@@ -37,18 +37,18 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
      * Fix multiboot_info address.
      * Bacause it is physical address yet.
      */
-    set_phys_to_vir_addr(uint32_t, boot_info->vbe_control_info);
-    set_phys_to_vir_addr(uint32_t, boot_info->vbe_mode_info);
+    set_phys_to_vir_addr(&boot_info->vbe_control_info);
+    set_phys_to_vir_addr(&boot_info->vbe_mode_info);
 
     Vbe_info_block* const vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
     Vbe_mode_info_block* const vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
     uint32_t const boot_flags = boot_info->flags;
 
-    set_phys_to_vir_addr(uint32_t, vbe_info->video_mode_ptr);
+    set_phys_to_vir_addr(&vbe_info->video_mode_ptr);
 
     /* check nmap_* field */
     if (boot_flags & 0x20) {
-        set_phys_to_vir_addr(uint32_t, boot_info->mmap_addr);
+        set_phys_to_vir_addr(&boot_info->mmap_addr);
         /* initialize memory. */
         init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
     }
@@ -95,21 +95,25 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     puts("-------------------- Start Axel ! --------------------\n\n");
 
     printf("kernel size: %dKB\n", get_kernel_size() / 1024);
-    printf("kernel start address: %x\n", get_kernel_start_addr());
-    printf("kernel end address: %x\n\n", get_kernel_end_addr());
+    printf("kernel vir  start addr: 0x%x\n", get_kernel_vir_start_addr());
+    printf("kernel vir  end   addr: 0x%x\n", get_kernel_vir_end_addr());
+    printf("kernel phys start addr: 0x%x\n", get_kernel_phys_start_addr());
+    printf("kernel phys end   addr: 0x%x\n", get_kernel_phys_end_addr());
 
-    printf("PIC0 State: %x\n", io_in8(PIC0_CMD_STATE_PORT));
-    printf("PIC0 Data: %x\n", io_in8(PIC0_IMR_DATA_PORT));
-    printf("PIC1 State: %x\n", io_in8(PIC1_CMD_STATE_PORT));
-    printf("PIC1 Data: %x\n\n", io_in8(PIC1_IMR_DATA_PORT));
+    // printf("PIC0 State: %x\n", io_in8(PIC0_CMD_STATE_PORT));
+    // printf("PIC0 Data: %x\n", io_in8(PIC0_IMR_DATA_PORT));
+    // printf("PIC1 State: %x\n", io_in8(PIC1_CMD_STATE_PORT));
+    // printf("PIC1 Data: %x\n\n", io_in8(PIC1_IMR_DATA_PORT));
 
-    printf("BootInfo flags: %x\n", boot_flags); /* 0001 1010 0110 0111 */
+    // printf("BootInfo flags: %x\n", boot_flags); /* 0001 1010 0110 0111 */
 
     /* mem_*フィールドを確認 */
     if (boot_flags & 0x01) {
         printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
         printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
     }
+
+    print_mem();
 
     // size_t size = 83200;
     // char* str = (char*)malloc(sizeof(char) * size);

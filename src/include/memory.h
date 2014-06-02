@@ -42,13 +42,16 @@ typedef struct memory_manager Memory_manager;
 
 
 /* リンカスクリプトで設定される数値を取得 */
-extern uintptr_t get_kernel_start_addr(void);
-extern uintptr_t get_kernel_end_addr(void);
-extern uintptr_t get_kernel_size(void);
+extern uintptr_t get_kernel_vir_start_addr(void);
+extern uintptr_t get_kernel_vir_end_addr(void);
+extern uintptr_t get_kernel_phys_start_addr(void);
+extern uintptr_t get_kernel_phys_end_addr(void);
+extern size_t get_kernel_size(void);
+extern size_t get_kernel_static_size(void);
 
 extern void init_memory(Multiboot_memory_map const*, size_t);
-extern void* malloc(size_t);
-extern void free(void*);
+extern void* phys_malloc(size_t);
+extern void phys_free(void*);
 
 
 #endif

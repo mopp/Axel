@@ -1,26 +1,49 @@
 /**
  * @file paging.c
  * @brief paging header.
+ *      NOTE that "frame" is also physical page or page frame.
  * @author mopp
  * @version 0.1
  * @date 2014-05-20
  */
 #ifndef _PAGING_H
 #define _PAGING_H
-#   ifndef _ASSEMBLY
+
+
+
+#define FRAME_SIZE 4096
+#define PAGE_SIZE FRAME_SIZE
+#define PAGE_NUM 1024
+#define PAGE_TABLE_NUM 1024
+#define KERNEL_PHYSICAL_BASE_ADDR 0x100000
+#define KERNEL_VIRTUAL_BASE_ADDR 0xC0000000
+
+
+
+#ifndef _ASSEMBLY
 
 
 #include <stdint.h>
-
-/* page_table_entry -> page_table(page_table_entry[1024]) -> page_directory_entry -> page_directory_table(page_directory_entry[1024]) */
+#include <stddef.h>
 
 /*
- * ページ一つに相当し、ページについての情報を保持する
- * 制御レジスタの値によってはCPUに無視されるフラグがある
+ * In x86_64
+ * "Two-Level paging"
+ *      page_table_entry -> page_table(page_table_entry[1024]) -> page_directory_entry -> page_directory_table(page_directory_entry[1024])
+ *      one page_table should have 1024 page.
+ *      one page_directory_table should have 1024 page_table.
+ *      the page_table size is 1024(PAGE_NUM) * 4KB(PAGE_SIZE) = 4MB
+ *      extern Page_table_entry page_table[PAGE_TABLE_SIZE];
+ */
+
+
+/*
+ * This structure corresponds with page frame on physical memory
+ * And store those data.
  */
 struct page_table_entry {
-    unsigned int preset_flag : 1;                   /* 物理メモリに存在するか否か */
-    unsigned int read_write_flag : 1;               /* 読み込み専用(0) or 読み書き可能(1) */
+    unsigned int preset_flag : 1;                   /* This is allocated phys memory. */
+    unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
     unsigned int user_supervisor_flag : 1;          /* ページの権限 */
     unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
     unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
@@ -28,14 +51,19 @@ struct page_table_entry {
     unsigned int dirty_flag : 1;                    /* ページが変更されたか否か */
     unsigned int page_attr_table_flag : 1;          /* PAT機能で使用される */
     unsigned int global_flag : 1;                   /* ページがグローバルか否か */
-    unsigned int available_for_os : 3;              /* CPUに無視されるのでOSが自由に使用してよい */
-    unsigned int page_frame_addr : 20;              /* ページに割り当てられる物理アドレスの上位20bit */
+    unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
+    unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
 };
 typedef struct page_table_entry Page_table_entry;
 _Static_assert(sizeof(Page_table_entry) == 4, "Static ERROR : Page_table_entry size is NOT 4 byte(32 bit).");
 
 
-/* ページテーブル一つに相当する */
+typedef Page_table_entry* Page_table;
+
+
+/*
+ * This structure corresponds with page directory entry.
+ */
 struct page_directory_entry {
     unsigned int preset_flag : 1;
     unsigned int read_write_flag : 1;
@@ -53,26 +81,41 @@ typedef struct page_directory_entry Page_directory_entry;
 _Static_assert(sizeof(Page_directory_entry) == 4, "Static ERROR : Page_directory_entry size is NOT 4 byte(32 bit).");
 
 
-extern uintptr_t phys_to_vir_addr(uintptr_t);
-extern uintptr_t vir_to_phys_addr(uintptr_t);
-
-#define set_phys_to_vir_addr(type, x) (x) = (type)phys_to_vir_addr((x))
-
-/* one page_table should have 1024 page. */
-/* one page_directory_table should have 1024 page_table. */
-
-/* the page_table size is 1024(PAGE_NUM) * 4KB(PAGE_SIZE) = 4MB */
-/* extern Page_table_entry page_table[PAGE_TABLE_SIZE]; */
+typedef Page_directory_entry* Page_directory_table;
 
 
-#   endif /* _ASSEMBLY */
+static inline uintptr_t phys_to_vir_addr(uintptr_t addr) {
+    return addr + KERNEL_VIRTUAL_BASE_ADDR;
+}
 
 
-#define PAGE_SIZE 4096,
-#define PAGE_NUM 1024,
-#define PAGE_TABLE_NUM 1024,
-#define KERNEL_PHYSICAL_BASE_ADDR 0x100000
-#define KERNEL_VIRTUAL_BASE_ADDR 0xC0000000
+static inline uintptr_t vir_to_phys_addr(uintptr_t addr) {
+    return addr - KERNEL_VIRTUAL_BASE_ADDR;
+}
+
+
+static inline void set_phys_to_vir_addr(void* addr) {
+    uintptr_t* p = addr;
+    *p = phys_to_vir_addr(*p);
+}
+
+
+static inline size_t round_page_size(size_t size) {
+    /*
+     * Simple expression is below.
+     * ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE
+     * In particular, PAGE_SIZE is power of 2.
+     * We calculate same thing using below code.
+     */
+    return ((size + PAGE_SIZE - 1) & 0xFFFFFF000);
+}
+
+
+
+extern void init_paging(void);
+
+
+#endif /* _ASSEMBLY */
 
 
 

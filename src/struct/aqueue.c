@@ -6,9 +6,9 @@
  * @date 2014-04-27
  */
 
-#include <stdlib.h>
 #include <string.h>
 #include <aqueue.h>
+#include <stdlib.h>
 
 
 Aqueue* aqueue_init(Aqueue* q, size_t t_size, size_t capacity, release_func f) {

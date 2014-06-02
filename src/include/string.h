@@ -3,8 +3,8 @@
  * Description: String Header.
  ************************************************************/
 
-#ifndef STRING_H
-#define STRING_H
+#ifndef _STRING_H
+#define _STRING_H
 
 #include <stddef.h>
 
@@ -16,6 +16,7 @@ extern void *memset(void *, int, size_t);
 extern int strcmp(const char *, const char *);
 extern char *strcpy(char *, const char *);
 extern size_t strlen(const char *);
+
 
 
 #endif

@@ -9,13 +9,13 @@
 bits 32
 
 
+; for C Pre processor.
 #define _ASSEMBLY
 #include <multiboot.h>
 #include <paging.h>
 
 
 extern kernel_entry
-global boot_kernel
 
 
 ; multiboot header section.
@@ -43,8 +43,9 @@ align 4
 ; boot kernel section
 ; This section is entry point and called by bootstraps loader.
 section .boot_kernel
+global boot_kernel
 boot_kernel:
-    ; We cannot use eax and ebx.
+    ; NOTE that We cannot use eax and ebx.
     ; eax and ebx has multiboot magic number and multiboot_info struct.
     cli
 
@@ -122,9 +123,9 @@ kernel_init_page_directory_table:
 
 
 ; Block Started by Symbol
-; This allocate initial kernel stack witch is 16KB.
+; This allocate initial kernel stack witch is 8KB.
 section .bss
-KERNEL_INIT_STACK_SIZE equ 0x4000
+KERNEL_INIT_STACK_SIZE equ 0x2000
 kernel_init_stack_bottom:
     resb KERNEL_INIT_STACK_SIZE
 kernel_init_stack_top:
