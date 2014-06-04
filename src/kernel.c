@@ -53,6 +53,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
     }
 
+
     init_gdt();
     init_idt();
     init_pic();
@@ -99,6 +100,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("kernel vir  end   addr: 0x%x\n", get_kernel_vir_end_addr());
     printf("kernel phys start addr: 0x%x\n", get_kernel_phys_start_addr());
     printf("kernel phys end   addr: 0x%x\n", get_kernel_phys_end_addr());
+    printf("debug: 0x%x\n", debug);
+    printf("All page struct size : %dKB\n", ALL_PAGE_STRUCT_SIZE / 1024);
 
     // printf("PIC0 State: %x\n", io_in8(PIC0_CMD_STATE_PORT));
     // printf("PIC0 Data: %x\n", io_in8(PIC0_IMR_DATA_PORT));
@@ -244,6 +247,7 @@ static inline void init_idt(void) {
     }
     load_idtr(IDT_LIMIT, IDT_ADDR);
 
+    set_gate_descriptor(idt + 0x0E, IDT_GATE_TYPE_INTERRUPT, io_hlt, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
     set_gate_descriptor(idt + 0x20, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x20, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
     set_gate_descriptor(idt + 0x21, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x21, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
 }

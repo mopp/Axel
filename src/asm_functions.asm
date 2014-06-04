@@ -115,8 +115,14 @@ change_segment_selectors:
 
 ; void set_cpu_pdt(uintptr_t addr)
 set_cpu_pdt:
-    mov ebx, [ESP + 4]
+    mov ebx, [esp + 4]
     mov cr3, ebx
+
+    ; turn off 4MB paging
+    mov ecx, cr4
+    and ecx, 0xFFFFFFEF
+    mov cr4, ecx
+
     ret
 
 

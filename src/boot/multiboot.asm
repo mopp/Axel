@@ -67,7 +67,7 @@ boot_kernel:
 
     ; Set PG bit in CR0 to enable paging.
     mov ecx, cr0
-    or  ecx, 0X80000000
+    or  ecx, 0x80000000
     mov cr0, ecx
 
     ; Paging is enable in this :)
@@ -110,16 +110,24 @@ KERNEL_PAGE_INDEX   equ KERNEL_VIRTUAL_BASE_ADDR >> 22  ; Page directory index o
 VBE_PAGE_INDEX      equ 0xFD000000 >> 22                ; FIXME: set it dynamicaly, Page firectory index of vram.
 PDE_NUM             equ 1024                            ; The number of page table.
 kernel_init_page_directory_table:
-    ; We must have this page witch include virtual address 0x100000.
-    ; Because This is required when we just enable paging.
-    ; And This page is straight mapping vir 0x00000000~4MB to phys 0x00000000~4MB
+    ; We must have some page which is mapped physical address 0x100000.
+    ; Because it is required for enable paging.
+    ; And This page is straight mapping virtual 0x00000000~4MB to phys 0x00000000~4MB and mapping virtual 0xC0000000~8MB to phys 0x00000000~8MB
     dd 0x00000083
     times (KERNEL_PAGE_INDEX - 1) dd 0                  ; Before kernel space.
-    ; This is same mapping above page.
+    ; virtual 0xC0000000 to physical 0x000000
+    ; 0xC0000000
+    ; = 1100 0000 00|00 0000 0000 0000 0000 0000
     dd 0x00000083
-    times (VBE_PAGE_INDEX - KERNEL_PAGE_INDEX - 1) dd 0 ; Before vram space.
+    ; virtual 0xC0400000 to physical 0x400000
+    ; 0xC0400000
+    ; = 1100 0000 01|00 0000 0000 0000 0000 0000
+    ; 0x400000
+    ; = 0000 0000 01|00 0000 0000 0000 0000 0000
+    dd 0x00400083
+    times (VBE_PAGE_INDEX - KERNEL_PAGE_INDEX - 2) dd 0 ; Before vram space.
     dd 0xFD000083
-    times (PDE_NUM - VBE_PAGE_INDEX - 1) dd 0           ; Remains pages.
+    times (PDE_NUM - VBE_PAGE_INDEX - 2) dd 0           ; Remains pages.
 
 
 ; Block Started by Symbol

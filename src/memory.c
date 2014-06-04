@@ -21,7 +21,9 @@ extern uintptr_t const LD_KERNEL_START;
 extern uintptr_t const LD_KERNEL_END;
 extern uintptr_t const LD_KERNEL_SIZE;
 
-static uintptr_t kernel_start_addr = (uintptr_t)&LD_KERNEL_START;
+// In linker script, I did (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
+// So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START
+static uintptr_t kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 static uintptr_t kernel_size;
 
@@ -120,11 +122,12 @@ static bool for_each_in_free(void* d) {
 
 void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
     /* calculate each variable memory address. */
-    uintptr_t mem_manager_addr = get_kernel_vir_end_addr();
-    uintptr_t mem_list_nodes_addr = mem_manager_addr + sizeof(Memory_manager);
-    uintptr_t mem_info_addr = mem_list_nodes_addr + sizeof(List_node) * MAX_MEM_NODE_NUM;
-    uintptr_t used_list_node_addr = mem_info_addr + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
-    uintptr_t added_variables_end_addr = used_list_node_addr + sizeof(bool) * MAX_MEM_NODE_NUM;
+    uintptr_t const mem_manager_addr = get_kernel_vir_end_addr();
+    uintptr_t const mem_list_nodes_addr = mem_manager_addr + sizeof(Memory_manager);
+    uintptr_t const mem_info_addr = mem_list_nodes_addr + sizeof(List_node) * MAX_MEM_NODE_NUM;
+    uintptr_t const used_list_node_addr = mem_info_addr + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
+    uintptr_t const kernel_pdt_addr = round_page_size(used_list_node_addr + sizeof(bool) * MAX_MEM_NODE_NUM);
+    uintptr_t const added_variables_end_addr = kernel_pdt_addr + ALL_PAGE_STRUCT_SIZE;
 
     kernel_end_addr = added_variables_end_addr;                         /* update virtual kernel end address. */
     kernel_size = round_page_size(kernel_end_addr - kernel_start_addr); /* update kernel size and round kernel size for paging. */
@@ -234,7 +237,8 @@ void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
      * Physical memory managing is just finished.
      * Next, let's set paging.
      */
-    /* init_paging(); */
+    /* init_paging((Page_directory_table)kernel_pdt_addr); */
+    /* init_paging((Page_directory_entry*)kernel_pdt_addr); */
 }
 
 
@@ -251,6 +255,11 @@ static bool for_each_in_print(void* d) {
 
 void print_mem(void) {
     list_for_each(&mem_manager->list, for_each_in_print, false);
+}
+
+
+void* phys_round_page_malloc(size_t size) {
+    return phys_malloc(round_page_size(size));
 }
 
 
@@ -315,31 +324,31 @@ void phys_free(void* object) {
 }
 
 
-uintptr_t get_kernel_vir_start_addr(void) {
+inline uintptr_t get_kernel_vir_start_addr(void) {
     return kernel_start_addr;
 }
 
 
-uintptr_t get_kernel_vir_end_addr(void) {
+inline uintptr_t get_kernel_vir_end_addr(void) {
     return kernel_end_addr;
 }
 
 
-uintptr_t get_kernel_phys_start_addr(void) {
+inline uintptr_t get_kernel_phys_start_addr(void) {
     return vir_to_phys_addr(kernel_start_addr);
 }
 
 
-uintptr_t get_kernel_phys_end_addr(void) {
+inline uintptr_t get_kernel_phys_end_addr(void) {
     return vir_to_phys_addr(kernel_end_addr);
 }
 
 
-size_t get_kernel_size(void) {
+inline size_t get_kernel_size(void) {
     return kernel_size;
 }
 
 
-size_t get_kernel_static_size(void) {
+inline size_t get_kernel_static_size(void) {
     return (uintptr_t)&LD_KERNEL_SIZE;
 }

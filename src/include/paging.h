@@ -11,16 +11,13 @@
 
 
 
-#define FRAME_SIZE 4096
-#define PAGE_SIZE FRAME_SIZE
-#define PAGE_NUM 1024
-#define PAGE_TABLE_NUM 1024
 #define KERNEL_PHYSICAL_BASE_ADDR 0x100000
 #define KERNEL_VIRTUAL_BASE_ADDR 0xC0000000
 
 
 
 #ifndef _ASSEMBLY
+
 
 
 #include <stdint.h>
@@ -42,23 +39,28 @@
  * And store those data.
  */
 struct page_table_entry {
-    unsigned int preset_flag : 1;                   /* This is allocated phys memory. */
-    unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
-    unsigned int user_supervisor_flag : 1;          /* ページの権限 */
-    unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
-    unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
-    unsigned int access_flag : 1;                   /* ページがアクセスされたか否か */
-    unsigned int dirty_flag : 1;                    /* ページが変更されたか否か */
-    unsigned int page_attr_table_flag : 1;          /* PAT機能で使用される */
-    unsigned int global_flag : 1;                   /* ページがグローバルか否か */
-    unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
-    unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
+    union {
+        struct  {
+            unsigned int preset_flag : 1;                   /* This is allocated phys memory. */
+            unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
+            unsigned int user_supervisor_flag : 1;          /* ページの権限 */
+            unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
+            unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
+            unsigned int access_flag : 1;                   /* ページがアクセスされたか否か */
+            unsigned int dirty_flag : 1;                    /* ページが変更されたか否か */
+            unsigned int page_attr_table_flag : 1;          /* PAT機能で使用される */
+            unsigned int global_flag : 1;                   /* ページがグローバルか否か */
+            unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
+            unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
+        };
+        uint32_t pte;
+    };
 };
 typedef struct page_table_entry Page_table_entry;
 _Static_assert(sizeof(Page_table_entry) == 4, "Static ERROR : Page_table_entry size is NOT 4 byte(32 bit).");
 
 
-typedef Page_table_entry* Page_table;
+/* typedef Page_table_entry* Page_table; */
 
 
 /*
@@ -81,7 +83,17 @@ typedef struct page_directory_entry Page_directory_entry;
 _Static_assert(sizeof(Page_directory_entry) == 4, "Static ERROR : Page_directory_entry size is NOT 4 byte(32 bit).");
 
 
-typedef Page_directory_entry* Page_directory_table;
+/* typedef Page_directory_entry* Page_directory_table; */
+
+
+enum Paging_constants {
+    FRAME_SIZE = 4096,
+    PAGE_SIZE = FRAME_SIZE,
+    PAGE_NUM = 1024,
+    PAGE_TABLE_ENTRY_NUM = 1024,
+    PAGE_DIRECTORY_ENTRY_NUM = 1024,
+    ALL_PAGE_STRUCT_SIZE = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM * PAGE_DIRECTORY_ENTRY_NUM),
+};
 
 
 static inline uintptr_t phys_to_vir_addr(uintptr_t addr) {
@@ -111,8 +123,10 @@ static inline size_t round_page_size(size_t size) {
 }
 
 
+extern void init_paging(Page_directory_entry*);
 
-extern void init_paging(void);
+
+extern uintptr_t debug;
 
 
 #endif /* _ASSEMBLY */
