@@ -17,12 +17,11 @@
 
 
 enum memory_manager_constants {
-    MAX_MEM_NODE_NUM = 4096, /* MAX_MEM_NODE_NUM(0x1000) must be a power of 2 for below modulo. */
+    MAX_MEM_NODE_NUM = 2048, /* MAX_MEM_NODE_NUM(0x800) must be a power of 2 for below modulo. */
     MEM_INFO_STATE_FREE = 0, /* this shows that we can use its memory. */
     MEM_INFO_STATE_ALLOC,    /* this shows that we cannot use its memory. */
 };
-#define MOD_MAX_MEM_NODE_NUM(n) (n & 0x07ffu)
-
+#define MOD_MAX_MEM_NODE_NUM(n) (n & 0x04ffu)
 
 /* memory infomation structure to managed. */
 struct memory_info {

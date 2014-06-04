@@ -103,12 +103,9 @@ sleep:
 ; date section.
 ; This is Page Directory Table.
 ; And Page size is 4MB in this.
-; PDE means Page Directory Entry.
 section .data
 align 0x1000
 KERNEL_PAGE_INDEX   equ KERNEL_VIRTUAL_BASE_ADDR >> 22  ; Page directory index of kernel.
-; VBE_PAGE_INDEX      equ 0xFD000000 >> 22                ; FIXME: set it dynamicaly, Page firectory index of vram.
-; PDE_NUM             equ 1024                            ; The number of page table.
 kernel_init_page_directory_table:
     ; We must have some page which is mapped to physical address 0x100000.
     ; Because it(temporaly paging) is required for enable paging.
@@ -117,10 +114,7 @@ kernel_init_page_directory_table:
     times (KERNEL_PAGE_INDEX - 1) dd 0                      ; Before kernel space.
     dd 0x00000083                                           ; Virtual 0xC0000000 map to physical 0x000000
     dd 0x00400083                                           ; Virtual 0xC0400000 map to physical 0x400000
-    ; This area should NOT refered by CPU.
-    ; times (VBE_PAGE_INDEX - KERNEL_PAGE_INDEX - 2) dd 0   ; Before vram space.
-    ; dd 0xFD000083
-    ; times (PDE_NUM - VBE_PAGE_INDEX - 2) dd 0             ; Remains pages.
+    ; Later area should NOT refered by CPU.
 
 
 ; BSS(Block Started by Symbol) section
