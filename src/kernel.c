@@ -53,12 +53,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
     }
 
-
     init_gdt();
     init_idt();
+    init_graphic(vbe_info, vbe_mode_info);
     init_pic();
     init_pit();
-    init_graphic(vbe_info, vbe_mode_info);
 
     Point2d p0, p1;
     RGB8 c;
@@ -96,11 +95,12 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     puts("-------------------- Start Axel ! --------------------\n\n");
 
     printf("kernel size: %dKB\n", get_kernel_size() / 1024);
+    printf("kernel static size: %dKB\n", get_kernel_static_size() / 1024);
     printf("kernel vir  start addr: 0x%x\n", get_kernel_vir_start_addr());
     printf("kernel vir  end   addr: 0x%x\n", get_kernel_vir_end_addr());
     printf("kernel phys start addr: 0x%x\n", get_kernel_phys_start_addr());
     printf("kernel phys end   addr: 0x%x\n", get_kernel_phys_end_addr());
-    printf("debug: 0x%x\n", debug);
+    printf("VBE Address: 0x%x\n", vbe_mode_info->phys_base_ptr);
     printf("All page struct size : %dKB\n", ALL_PAGE_STRUCT_SIZE / 1024);
 
     // printf("PIC0 State: %x\n", io_in8(PIC0_CMD_STATE_PORT));
@@ -286,8 +286,8 @@ static inline void init_pit(void) {
 
 
 static inline void clear_bss(void) {
-    extern uintptr_t LD_KERNEL_BSS_START;
-    extern uintptr_t LD_KERNEL_BSS_SIZE;
+    extern uintptr_t const LD_KERNEL_BSS_START;
+    extern uintptr_t const LD_KERNEL_BSS_SIZE;
 
-    memset(&LD_KERNEL_BSS_START, 0, (unsigned long)LD_KERNEL_BSS_SIZE);
+    memset((void*)&LD_KERNEL_BSS_START, 0, (size_t)(uintptr_t)&LD_KERNEL_BSS_SIZE);
 }
