@@ -63,6 +63,7 @@ int puts(const char* s) {
     return 1;
 }
 
+
 int printf(const char* format, ...) {
     va_list args;
     /* string buffer */

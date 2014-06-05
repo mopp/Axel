@@ -13,7 +13,8 @@
 
 extern int printf(const char*, ...);
 extern char* itoa(int, char*, int);
-extern int puts(const char *s);
+extern int puts(const char *);
+extern int putchar(int);
 
 
 #endif
