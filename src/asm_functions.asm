@@ -6,12 +6,14 @@
 ;---------------------------------------------------------------------
     bits 32
 
+KERNEL_VIRTUAL_BASE_ADDR equ 0xC0000000
+
     global io_hlt, io_cli, io_sti
     global io_in8, io_in16, io_in32
     global io_out8, io_out16, io_out32
     global load_gdtr, load_idtr
     global change_segment_selectors
-    global set_cpu_pdt, get_cpu_pdt, flush_tlb
+    global turn_off_4MB_paging, set_cpu_pdt, get_cpu_pdt, flush_tlb
 
 section .text
 
@@ -112,29 +114,31 @@ change_segment_selectors:
     mov SS, AX
     ret
 
-
-; void set_cpu_pdt(uintptr_t addr)
-set_cpu_pdt:
-    mov ebx, [esp + 4]
-    mov cr3, ebx
-
-    ; turn off 4MB paging
+; void turn_off_4MB_paging(void);
+turn_off_4MB_paging:
     mov ecx, cr4
     and ecx, 0xFFFFFFEF
     mov cr4, ecx
+    ret
 
+
+; void set_cpu_pdt(uintptr_t addr)
+; address that is set into cr3 should be physical address.
+set_cpu_pdt:
+    mov ebx, [esp + 4]
+    sub ebx, KERNEL_VIRTUAL_BASE_ADDR;
+    mov cr3, ebx
     ret
 
 
 ; uintptr_t get_cpu_pdt(void)
 get_cpu_pdt:
     mov eax, cr3
+    add eax, KERNEL_VIRTUAL_BASE_ADDR
     ret
 
 
 ; void flush_tlb(uintptr_t addr)
 flush_tlb:
-    cli
     invlpg [esp + 4]
-    sti
     ret

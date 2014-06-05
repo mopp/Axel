@@ -39,28 +39,26 @@
  * And store those data.
  */
 struct page_table_entry {
-    union {
-        struct  {
-            unsigned int preset_flag : 1;                   /* This is allocated phys memory. */
-            unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
-            unsigned int user_supervisor_flag : 1;          /* ページの権限 */
-            unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
-            unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
-            unsigned int access_flag : 1;                   /* ページがアクセスされたか否か */
-            unsigned int dirty_flag : 1;                    /* ページが変更されたか否か */
-            unsigned int page_attr_table_flag : 1;          /* PAT機能で使用される */
-            unsigned int global_flag : 1;                   /* ページがグローバルか否か */
-            unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
-            unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
-        };
-        uint32_t pte;
-    };
+    unsigned int preset_flag : 1;                   /* This is allocated phys memory. */
+    unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
+    unsigned int user_supervisor_flag : 1;          /* Page authority. */
+    unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
+    unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
+    unsigned int access_flag : 1;                   /* Is page accessed. */
+    unsigned int dirty_flag : 1;                    /* Is page changed. */
+    unsigned int page_attr_table_flag : 1;          /* For PAT feature. */
+    unsigned int global_flag : 1;                   /* Is page global. */
+    unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
+    unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
 };
 typedef struct page_table_entry Page_table_entry;
 _Static_assert(sizeof(Page_table_entry) == 4, "Static ERROR : Page_table_entry size is NOT 4 byte(32 bit).");
 
 
-/* typedef Page_table_entry* Page_table; */
+/*
+ * Page table have 1024 page table entry.
+ */
+typedef Page_table_entry* Page_table;
 
 
 /*
@@ -74,16 +72,19 @@ struct page_directory_entry {
     unsigned int page_level_cache_disable_flag : 1;
     unsigned int access_flag : 1;
     unsigned int reserved : 1;
-    unsigned int page_size_flag : 1; /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
-    unsigned int global_flag : 1;
-    unsigned int usable_for_os : 3;
-    unsigned int page_table_addr : 20; /* 管理対象のページテーブルアドレス */
+    unsigned int page_size_flag : 1;   /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
+    unsigned int global_flag : 1;      /* Is page global. */
+    unsigned int os_area : 3;          /* This 3bit is ignored by CPU and OS can use this area. */
+    unsigned int page_table_addr : 20; /* physical address of page table that is included page directory entry. */
 };
 typedef struct page_directory_entry Page_directory_entry;
 _Static_assert(sizeof(Page_directory_entry) == 4, "Static ERROR : Page_directory_entry size is NOT 4 byte(32 bit).");
 
 
-/* typedef Page_directory_entry* Page_directory_table; */
+/*
+ * Page directory table have 1024 page directory entry.
+ */
+typedef Page_directory_entry* Page_directory_table;
 
 
 enum Paging_constants {
@@ -92,6 +93,10 @@ enum Paging_constants {
     PAGE_NUM = 1024,
     PAGE_TABLE_ENTRY_NUM = 1024,
     PAGE_DIRECTORY_ENTRY_NUM = 1024,
+    PDE_PT_ADDR_SHIFT_NUM = 12,
+    PDE_IDX_SHIFT_NUM = 22,
+    PTE_IDX_SHIFT_NUM = 12,
+    PTE_FRAME_ADDR_SHIFT_NUM = 12,
     ALL_PAGE_STRUCT_SIZE = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM * PAGE_DIRECTORY_ENTRY_NUM),
 };
 
@@ -107,7 +112,7 @@ static inline uintptr_t vir_to_phys_addr(uintptr_t addr) {
 
 
 static inline void set_phys_to_vir_addr(void* addr) {
-    uintptr_t* p = addr;
+    uintptr_t* p = (uintptr_t*)addr;
     *p = phys_to_vir_addr(*p);
 }
 
@@ -123,10 +128,8 @@ static inline size_t round_page_size(size_t size) {
 }
 
 
-extern void init_paging(Page_directory_entry*);
+extern void init_paging(Page_directory_table);
 
-
-extern uintptr_t debug;
 
 
 #endif /* _ASSEMBLY */

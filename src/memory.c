@@ -21,8 +21,10 @@ extern uintptr_t const LD_KERNEL_START;
 extern uintptr_t const LD_KERNEL_END;
 extern uintptr_t const LD_KERNEL_SIZE;
 
-// In linker script, I did (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
-// So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START
+/*
+ * In linker script, I did (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
+ * So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START
+ */
 static uintptr_t kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 static uintptr_t kernel_size;
@@ -237,8 +239,7 @@ void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
      * Physical memory managing is just finished.
      * Next, let's set paging.
      */
-    /* init_paging((Page_directory_table)kernel_pdt_addr); */
-    /* init_paging((Page_directory_entry*)kernel_pdt_addr); */
+    init_paging((Page_directory_table)kernel_pdt_addr);
 }
 
 
