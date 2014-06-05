@@ -1,10 +1,11 @@
 #############################################################
-# File: src/Makefile
-# Description: Build Managing file
+# @file Makefile
+# @brief This is used for building Axel.
+# @author mopp
+# @version 0.1
+# @date 2014-06-05
 #############################################################
-# := で 代入時に展開
 
-# command
 export RM 		:= rm -rf
 export CLANG	:= clang
 export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
@@ -71,19 +72,19 @@ default :
 	ctags -R ./*
 
 
-asm_functions.o 		: asm_functions.asm 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)asm_functions.h
-graphic_txt.o			: graphic_txt.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_txt.h
-graphic_vbe.o			: graphic_vbe.c 			$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic_vbe.h
-graphic.o				: graphic.c 				$(MAKEFILE) $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h graphic_vbe.c graphic_txt.c
-interrupt_handler.o 	: interrupt_handler.c 		$(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
-interrupt_handler_asm.o : interrupt_handler_asm.asm $(MAKEFILE) $(AXEL_INCLUDE_PATH)interrupt_handler.h
-kernel.o				: kernel.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h
-memory.o				: memory.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)memory.h
-paging.o				: paging.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)paging.h
-string.o				: string.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)string.h
-stdio.o					: stdio.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)stdio.h
-font.o					: font.c 					$(MAKEFILE) $(AXEL_INCLUDE_PATH)font.h
-keyboard.o				: keyboard.c 				$(MAKEFILE) $(AXEL_INCLUDE_PATH)keyboard.h
+asm_functions.o 		: $(MAKEFILE) asm_functions.asm $(AXEL_INCLUDE_PATH)asm_functions.h
+graphic_txt.o			: $(MAKEFILE) graphic_txt.c $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)point.h
+graphic_vbe.o			: $(MAKEFILE) graphic_vbe.c $(AXEL_INCLUDE_PATH)graphic_vbe.h $(AXEL_INCLUDE_PATH)point.h $(AXEL_INCLUDE_PATH)macros.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)vbe.h $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
+graphic.o				: $(MAKEFILE) graphic.c $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h
+interrupt_handler.o 	: $(MAKEFILE) interrupt_handler.c $(AXEL_INCLUDE_PATH)interrupt_handler.h $(AXEL_INCLUDE_PATH)asm_functions.h
+interrupt_handler_asm.o : $(MAKEFILE) interrupt_handler_asm.asm $(AXEL_INCLUDE_PATH)interrupt_handler.h interrupt_handler.o
+memory.o				: $(MAKEFILE) memory.c $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)list.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h $(AXEL_INCLUDE_PATH)paging.h
+paging.o				: $(MAKEFILE) paging.c $(AXEL_INCLUDE_PATH)paging.h $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h
+string.o				: $(MAKEFILE) string.c $(AXEL_INCLUDE_PATH)string.h
+stdio.o					: $(MAKEFILE) stdio.c $(AXEL_INCLUDE_PATH)stdio.h $(AXEL_INCLUDE_PATH)graphic.h
+font.o					: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
+keyboard.o				: $(MAKEFILE) keyboard.c $(AXEL_INCLUDE_PATH)keyboard.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
+kernel.o				: $(MAKEFILE) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt_handler.o interrupt_handler_asm.o memory.o paging.o string.o stdio.o font.o keyboard.o
 
 
 $(BOOT_OBJ) : $(MAKEFILE)
