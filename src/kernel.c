@@ -116,17 +116,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     if (boot_flags & 0x01) {
         printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
         printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
+        printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
     }
 
     print_mem();
-
-    // size_t size = 83200;
-    // char* str = (char*)malloc(sizeof(char) * size);
-    // for (int i = 0; i < size; i++) {
-    //     str[i] = (char)0xAA;
-    // }
-    // free(str);
-    // printf("test malloc %x\n", (uintptr_t)str);
 
     const uint32_t base_y = 5;
     const uint32_t base_x = get_max_x_resolution();
@@ -138,9 +131,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Point2d const p_num_end = {base_x, base_y + 13};
 
     puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
-
-    // List l;
-    // list_init(&l, 8, NULL);
 
     for (int i = 1;; ++i) {
         /* clean drawing area */

@@ -25,7 +25,7 @@ extern uintptr_t const LD_KERNEL_SIZE;
  * In linker script, I did (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
  * So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START
  */
-static uintptr_t kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
+static uintptr_t const kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 static uintptr_t kernel_size;
 
@@ -97,17 +97,6 @@ static void dummy_free(void* d) {
 }
 
 
-static bool for_each_kernel_area_node(void* d) {
-    Memory_info const* const m = (Memory_info*)d;
-
-    if ((get_kernel_phys_start_addr() <= m->base_addr) && (get_kernel_phys_end_addr() <= (m->base_addr + m->size))) {
-        return true;
-    }
-
-    return false;
-}
-
-
 static size_t for_each_in_malloc_size;
 static bool for_each_in_malloc(void* d) {
     Memory_info const* const m = (Memory_info*)d;
@@ -154,88 +143,47 @@ void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
         mem_list_nodes[i].data = &mem_info[i];
     }
 
+    /*
+     * Set physical 0x000000 to physical kernel end address is allocated.
+     *
+     * But, there are continuou allocated areas in this area.
+     * So, We need alloc to one node.
+     */
+    List_node* kernel_n = list_get_new_memory_node();
+    Memory_info* kernel_mi = (Memory_info*)kernel_n->data;
+    kernel_mi->base_addr = get_kernel_phys_start_addr();
+    kernel_mi->size = get_kernel_phys_end_addr();
+    kernel_mi->state = MEM_INFO_STATE_ALLOC;
+    list_insert_node_last(&mem_manager->list, kernel_n);
+    uintptr_t kernel_node_end_addr = kernel_mi->base_addr + kernel_mi->size;
+
     /* set memory infomation by Multiboot_memory_map. */
     Multiboot_memory_map const* const limit = (Multiboot_memory_map const* const)((uintptr_t)mmap + mmap_len);
 
+    bool first_flag = true;
     for (Multiboot_memory_map const* i = mmap; i < limit; i = (Multiboot_memory_map*)((uintptr_t)i + sizeof(i->size) + i->size)) {
+        if ((i->addr + i->len) < kernel_node_end_addr) {
+            continue;
+        }
         List_node* n = list_get_new_memory_node();
 
         /* set memory_info */
         Memory_info* mi = (Memory_info*)n->data;
-        mi->base_addr = (uintptr_t)i->addr;
-        mi->size = (size_t)i->len;
+        if (first_flag == true && i->addr <= kernel_node_end_addr) {
+            mi->base_addr = kernel_node_end_addr;
+            mi->size = (size_t)((uintptr_t)i->len - (kernel_node_end_addr - (uintptr_t)i->addr));
+            first_flag = false;
+        } else {
+            mi->base_addr = (uintptr_t)i->addr;
+            mi->size = (size_t)i->len;
+        }
         mi->state = (i->type == MULTIBOOT_MEMORY_AVAILABLE) ? MEM_INFO_STATE_FREE : MEM_INFO_STATE_ALLOC;
 
         /* append to list. */
         list_insert_node_last(&mem_manager->list, n);
     }
 
-    /* allocate kernel area. */
-    uintptr_t const ka_start_addr = get_kernel_phys_start_addr(); /* kernel area start address */
-    uintptr_t const ka_end_addr = get_kernel_phys_end_addr();     /* kernel area end address */
-    uintptr_t const ka_size = get_kernel_size();                  /* kernel area size */
 
-    /* search karnel area contain node */
-    List_node* searched = list_for_each(&mem_manager->list, for_each_kernel_area_node, false);
-    if (searched != NULL) {
-        Memory_info* m = (Memory_info*)searched->data;
-
-        if ((m->base_addr == ka_start_addr) && (ka_end_addr == (m->base_addr + m->size))) {
-            /* just fit ! */
-            m->state = MEM_INFO_STATE_ALLOC;
-        } else if (m->base_addr == ka_start_addr) {
-            /* start is same address, but end in node is shorter than ka_end_addr.  */
-            size_t free_area_size = m->size - ka_size;
-
-            m->size = ka_size;
-            m->state = MEM_INFO_STATE_ALLOC;
-
-            /* add next free area after kernel area. */
-            List_node* n = list_get_new_memory_node();
-            Memory_info* free_info = (Memory_info*)n->data;
-
-            free_info->base_addr = ka_start_addr + ka_size;
-            free_info->size = free_area_size;
-            free_info->state = MEM_INFO_STATE_FREE;
-
-            list_insert_node_next(&mem_manager->list, searched, n);
-        } else {
-            // TODO: add node include kernel case and node end_addr equals ka_end_addr case.
-        }
-    }
-
-    /*
-     * Set 0x000000 to 0x100000 area is allocated.
-     * But, there are some allocated in this area.
-     * So, We need alloc to one node.
-     */
-    List_node* n = mem_manager->list.node->next;
-    uintptr_t reserved_limit = 0x100000;
-    while (1) {
-        Memory_info* mi = (Memory_info*)n->data;
-        uintptr_t addr = mi->base_addr;
-        if (reserved_limit <= addr) {
-            if (reserved_limit == addr && mi->state == MEM_INFO_STATE_ALLOC) {
-                /*
-                 * If after 0x100000 area is allocated.
-                 * We includes this area.
-                 * For example, kernel allocated area is absorbed in here.
-                 */
-                reserved_limit += mi->size;
-            } else {
-                break;
-            }
-        }
-
-        phys_free((void*)addr);
-        n = n->next;
-    }
-    Memory_info* mi = (Memory_info*)mem_manager->list.node->data;
-    mi->base_addr = 0x000000;
-    mi->size = reserved_limit;
-    mi->state = MEM_INFO_STATE_ALLOC;
-
-    *(uintptr_t*)(0xC0000000) = reserved_limit;
     /*
      * Physical memory managing is just finished.
      * Next, let's set paging.
