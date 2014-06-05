@@ -41,9 +41,9 @@
     char *: "%s",                           \
     void *: "%p")
 
-#define PRINT(x) printf(PRINTF_DEC_FORMAT(x), x)
-// #define printnl(x) printf(printf_dec_format(x), x), printf("\n");
-#define PRINTNL(x) printf(PRINTF_DEC_FORMAT(x) "\n", x);
+#include <stdio.h>
+#define PRINT(x) printf(PRINTF_DEC_FORMAT(x), (x))
+#define PRINTNL(x) PRINT(x), putchar('\n')
 
 
 /* Get the name of a type */
