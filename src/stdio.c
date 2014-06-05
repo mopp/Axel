@@ -10,15 +10,17 @@
 #include <stdarg.h>
 #include <string.h>
 #include <graphic.h>
+#include <stdint.h>
+#include <macros.h>
 
 
-static inline char* utoa(unsigned int value, char* s, int const radix) {
+static inline char* utoa(uint32_t value, char* s, uint8_t const radix) {
     char* s1 = s;
     char* s2 = s;
 
     do {
-        *s2++ = "0123456789abcdefghijklmnopqrstuvwxyz"[value % (unsigned int)radix];
-        value /= (unsigned int)radix;
+        *s2++ = "0123456789abcdefghijklmnopqrstuvwxyz"[value % radix];
+        value /= radix;
     } while (value > 0);
 
     *s2-- = '\0';
@@ -33,11 +35,11 @@ static inline char* utoa(unsigned int value, char* s, int const radix) {
 }
 
 
-char* itoa(int value, char* s, int radix) {
-    unsigned int t = (unsigned int)value;
+char* itoa_big(int32_t value, char* s, uint8_t radix) {
+    uint32_t t = (uint32_t)value;
     char* ss = s;
 
-    if (value < 0 && radix == 10) {
+    if (radix == 10 && value < 0) {
         *ss++ = '-';
         t = -t;
     }
@@ -45,6 +47,11 @@ char* itoa(int value, char* s, int radix) {
     utoa(t, ss, radix);
 
     return s;
+}
+
+
+char* itoa(int value, char* s, int radix) {
+    return itoa_big(value, s, (uint8_t)radix);
 }
 
 
@@ -56,9 +63,12 @@ int puts(const char* s) {
     return 1;
 }
 
-
 int printf(const char* format, ...) {
     va_list args;
+    /* string buffer */
+    char buf[11];
+    /* char len_modif = 0; */
+    uint8_t r = 0;
 
     va_start(args, format);
 
@@ -67,11 +77,38 @@ int printf(const char* format, ...) {
             putchar(*c);
             continue;
         }
-
         ++c;
+
+        /* check length modifier. */
+        if (*c == 'h') {
+            /* short */
+            ++c;
+            if (*c == 'h') {
+                /* char */
+                ++c;
+            }
+        } else if (*c == 'l') {
+            /* long or wchar_t or double */
+            ++c;
+            if (*c == 'l') {
+                /* long long */
+                ++c;
+            }
+        } else if (*c == 'j') {
+            /* intmax_t */
+            ++c;
+        } else if (*c == 'z') {
+            /* size_t */
+            ++c;
+        } else if (*c == 't') {
+            /* ptrdiff_t */
+            ++c;
+        } else if (*c == 'L') {
+            /* long double */
+            ++c;
+        }
+
         switch (*c) {
-            /* case '\n': */
-            /* putchar('\n'); */
             case 'c':
                 putchar((unsigned char)va_arg(args, int));
             case 's':
@@ -79,14 +116,17 @@ int printf(const char* format, ...) {
                 break;
             case 'd':
             case 'i':
-            case 'x': {  // add local scope
-                /* INT_MAX = +32767 なので最大の5桁以上のバッファを確保 */
-                char buf[10];
-                puts(itoa(va_arg(args, int), buf, (*c == 'x' ? 16 : 10)));
+                puts(itoa_big(va_arg(args, int), buf, 10));
                 break;
-                case '%':
-                    putchar('%');
-            }
+            case 'x':
+            case 'X':
+            case 'u':
+            case 'p':
+                r = ((*c == 'x' || *c == 'X') ? 16 : 10);
+                puts(utoa(va_arg(args, uint32_t), buf, (*c == 'x' ? 16 : 10)));
+                break;
+            case '%':
+                putchar('%');
         }
     }
 

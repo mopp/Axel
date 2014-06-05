@@ -19,13 +19,15 @@
 #include <stdio.h>
 #include <vbe.h>
 
+
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
-static inline void init_gdt(void);
+static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void (*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
-static inline void init_idt(void);
-static inline void init_pic(void);
-static inline void init_pit(void);
-static inline void clear_bss(void);
+static void init_idt(void);
+static void init_pic(void);
+static void init_pit(void);
+static void clear_bss(void);
+
 
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     io_cli();
@@ -94,12 +96,12 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
-    printf("kernel size: %dKB\n", get_kernel_size() / 1024);
-    printf("kernel static size: %dKB\n", get_kernel_static_size() / 1024);
-    printf("kernel vir  start addr: 0x%x\n", get_kernel_vir_start_addr());
-    printf("kernel vir  end   addr: 0x%x\n", get_kernel_vir_end_addr());
-    printf("kernel phys start addr: 0x%x\n", get_kernel_phys_start_addr());
-    printf("kernel phys end   addr: 0x%x\n", get_kernel_phys_end_addr());
+    printf("kernel size: %zuKB\n", get_kernel_size() / 1024);
+    printf("kernel static size: %zuKB\n", get_kernel_static_size() / 1024);
+    printf("kernel vir  start addr: 0x%zx\n", get_kernel_vir_start_addr());
+    printf("kernel vir  end   addr: 0x%zx\n", get_kernel_vir_end_addr());
+    printf("kernel phys start addr: 0x%zx\n", get_kernel_phys_start_addr());
+    printf("kernel phys end   addr: 0x%zx\n", get_kernel_phys_end_addr());
     printf("VBE Address: 0x%x\n", vbe_mode_info->phys_base_ptr);
     printf("All page struct size : %dKB\n", ALL_PAGE_STRUCT_SIZE / 1024);
 
@@ -152,7 +154,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 }
 
 
-static Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t limit, uint32_t base_addr, uint8_t type, uint8_t type_flag, uint8_t pliv, uint8_t p_flag, uint8_t op_flag, uint8_t g_flag) {
+static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t limit, uint32_t base_addr, uint8_t type, uint8_t type_flag, uint8_t pliv, uint8_t p_flag, uint8_t op_flag, uint8_t g_flag) {
     /* セグメントのサイズを設定 */
     /* granularity_flagが1のときlimit * 4KBがセグメントのサイズになる */
     s->limit_low = (limit & 0x0000ffff);
@@ -191,9 +193,9 @@ static Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_
     /* 0で予約されている */
     s->zero_reserved = 0;
     /* 扱う単位を16bitか32bitか設定 */
-    s->default_op_size = IS_FLAG_NOT_ZERO(op_flag);
+    s->default_op_size = IS_ENABLE(op_flag);
     /* セグメントサイズを4KB単位とする */
-    s->granularity_flag = IS_FLAG_NOT_ZERO(g_flag);
+    s->granularity_flag = IS_ENABLE(g_flag);
 
     return s;
 }
@@ -217,22 +219,22 @@ static inline void init_gdt(void) {
 }
 
 
-static Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_type, void (*offset)(void), uint16_t selector_index, uint8_t gate_size, uint8_t pliv, uint8_t p_flag) {
+static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_type, void (*offset)(void), uint16_t selector_index, uint8_t gate_size, uint8_t pliv, uint8_t p_flag) {
     g->offset_low = ((uintptr_t)offset & 0x0000ffff);
-    g->offset_high = (uint16_t)(((uintptr_t)offset >> 16) & 0x0000ffff);
+    g->offset_high = ECAST_UINT16(((uintptr_t)offset >> 16) & 0x0000ffff);
 
-    g->segment_selector = (uint16_t)(selector_index * GDT_ELEMENT_SIZE);
+    g->segment_selector = ECAST_UINT16(selector_index * GDT_ELEMENT_SIZE);
 
-    g->type = (uint8_t)(gate_type & 0x07);
-    g->size = (uint8_t)(gate_size & 0x01);
+    g->type = ECAST_UINT8(gate_type & 0x07);
+    g->size = ECAST_UINT8(gate_size & 0x01);
 
     g->unused_zero = 0x00;
     g->zero_reserved = 0x0;
 
     /* 特権レベルを設定 */
-    g->plivilege_level = (uint8_t)(pliv & 0x01);
+    g->plivilege_level = ECAST_UINT8(pliv & 0x01);
 
-    g->present_flag = IS_FLAG_NOT_ZERO(p_flag);
+    g->present_flag = IS_ENABLE(p_flag);
 
     return g;
 }
@@ -289,5 +291,5 @@ static inline void clear_bss(void) {
     extern uintptr_t const LD_KERNEL_BSS_START;
     extern uintptr_t const LD_KERNEL_BSS_SIZE;
 
-    memset((void*)&LD_KERNEL_BSS_START, 0, (size_t)(uintptr_t)&LD_KERNEL_BSS_SIZE);
+    memset((void*)&LD_KERNEL_BSS_START, 0, (size_t)&LD_KERNEL_BSS_SIZE);
 }

@@ -235,6 +235,7 @@ void init_memory(Multiboot_memory_map const* mmap, size_t mmap_len) {
     mi->size = reserved_limit;
     mi->state = MEM_INFO_STATE_ALLOC;
 
+    *(uintptr_t*)(0xC0000000) = reserved_limit;
     /*
      * Physical memory managing is just finished.
      * Next, let's set paging.
@@ -248,7 +249,7 @@ static bool for_each_in_print(void* d) {
     Memory_info const* const m = (Memory_info*)d;
 
     printf((m->state == MEM_INFO_STATE_FREE) ? "FREE " : "ALLOC");
-    printf(" Base: 0x%x  Size: %dKB\n", m->base_addr, m->size / 1024);
+    printf(" Base: 0x%zx  Size: %zuKB\n", m->base_addr, m->size / 1024);
 
     return false;
 }

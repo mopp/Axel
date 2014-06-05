@@ -51,6 +51,7 @@ extern size_t get_kernel_static_size(void);
 extern void init_memory(Multiboot_memory_map const*, size_t);
 extern void* phys_malloc(size_t);
 extern void phys_free(void*);
+extern void print_mem(void);
 
 
 #endif
