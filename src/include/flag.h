@@ -3,8 +3,8 @@
  * Description: This contains switch flags.
  ************************************************************/
 
-#ifndef FLAG_H
-#define FLAG_H
+#ifndef _FLAG_H_
+#define _FLAG_H_
 
 /* must not enable both flag. */
 // #define TEXT_MODE

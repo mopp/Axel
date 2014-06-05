@@ -3,8 +3,8 @@
  * Description: this provides point structure.
  ************************************************************/
 
-#ifndef POINT_H
-#define POINT_H
+#ifndef _POINT_H_
+#define _POINT_H_
 
 #include <stdint.h>
 

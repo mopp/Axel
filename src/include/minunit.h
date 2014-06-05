@@ -4,8 +4,8 @@
  *  from http://www.jera.com/techinfo/jtns/jtn002.html
  ************************************************************/
 
-#ifndef MINUNIT_H
-#define MINUNIT_H
+#ifndef _MINUNIT_H_
+#define _MINUNIT_H_
 
 
 #include <macros.h>

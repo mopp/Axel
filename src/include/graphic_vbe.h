@@ -3,8 +3,8 @@
  * Description: Graphic Header for VBE2.0+.
  ************************************************************/
 
-#ifndef GRAPHIC_VBE_H
-#define GRAPHIC_VBE_H
+#ifndef _GRAPHIC_VBE_H_
+#define _GRAPHIC_VBE_H_
 
 
 #include <rgb8.h>

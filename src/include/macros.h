@@ -3,8 +3,8 @@
  * Description: This file contains utility macros.
  ************************************************************/
 
-#ifndef MACROS_H
-#define MACROS_H
+#ifndef _MACROS_H_
+#define _MACROS_H_
 
 
 #include <stdint.h>

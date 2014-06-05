@@ -1,11 +1,12 @@
-/** @file keyboard.h
+/**
+ * @file keyboard.h
  * @brief keyboard header.
  * @author mopp
  * @version 0.1
  * @date 2014-04-11
  */
-#ifndef KEYBOARD_H
-#define KEYBOARD_H
+#ifndef _KEYBOARD_H_
+#define _KEYBOARD_H_
 
 
 #include <state_code.h>

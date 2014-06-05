@@ -7,8 +7,8 @@
  ****************************************************************************************/
 
 
-#ifndef STDIO_H
-#define STDIO_H
+#ifndef _STDIO_H_
+#define _STDIO_H_
 
 
 extern int printf(const char*, ...);

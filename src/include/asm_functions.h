@@ -4,8 +4,8 @@
  *              assembly only fanctions
  ************************************************************/
 
-#ifndef ASM_FUNCTIONS_H
-#define ASM_FUNCTIONS_H
+#ifndef _ASM_FUNCTIONS_H_
+#define _ASM_FUNCTIONS_H_
 
 
 

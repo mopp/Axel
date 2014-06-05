@@ -3,8 +3,8 @@
  * Description: There are Axel StateCode.
  ************************************************************/
 
-#ifndef STATE_CODE_H
-#define STATE_CODE_H
+#ifndef _STATE_CODE_H_
+#define _STATE_CODE_H_
 
 
 enum Axel_state_code {

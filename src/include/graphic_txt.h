@@ -4,8 +4,8 @@
  *  global function in this file must be have suffix "txt"
  ************************************************************/
 
-#ifndef GRAPHIC_TXT_H
-#define GRAPHIC_TXT_H
+#ifndef _GRAPHIC_TXT_H_
+#define _GRAPHIC_TXT_H_
 
 #include <stdint.h>
 #include <rgb8.h>

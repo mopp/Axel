@@ -6,8 +6,8 @@
  * @date 2014-04-11
  */
 
-#ifndef FONT_H
-#define FONT_H
+#ifndef _FONT_H_
+#define _FONT_H_
 
 
 #include <stdint.h>

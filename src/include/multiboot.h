@@ -6,8 +6,8 @@
  * @date 2014-05-21
  */
 
-#ifndef _MULTIBOOT_H
-#define _MULTIBOOT_H 1
+#ifndef _MULTIBOOT_H_
+#define _MULTIBOOT_H_
 
 #include <flag.h>
 

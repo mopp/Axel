@@ -3,8 +3,8 @@
  * Description: Drawable objects.
  ************************************************************/
 
-#ifndef DRAWABLE_H
-#define DRAWABLE_H
+#ifndef _DRAWABLE_H_
+#define _DRAWABLE_H_
 
 
 enum Drawable_constants {

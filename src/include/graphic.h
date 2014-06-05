@@ -3,8 +3,8 @@
  * Description: graphic code header.
  ************************************************************/
 
-#ifndef GRAPHIC_H
-#define GRAPHIC_H
+#ifndef _GRAPHIC_H_
+#define _GRAPHIC_H_
 
 
 #include <flag.h>

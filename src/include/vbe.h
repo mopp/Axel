@@ -3,8 +3,8 @@
  * Description: VBE 2.0 Structures
  ************************************************************/
 
-#ifndef VBE_H
-#define VBE_H
+#ifndef _VBE_H_
+#define _VBE_H_
 
 
 #include <stdint.h>

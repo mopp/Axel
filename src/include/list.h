@@ -6,8 +6,8 @@
  * @date 2014-04-25
  */
 
-#ifndef _DOUBLY_CIRCULARLY_LINKED_LIST_H
-#define _DOUBLY_CIRCULARLY_LINKED_LIST_H
+#ifndef _DOUBLY_CIRCULARLY_LINKED_LIST_H_
+#define _DOUBLY_CIRCULARLY_LINKED_LIST_H_
 
 
 #include <stdbool.h>

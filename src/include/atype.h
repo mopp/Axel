@@ -6,8 +6,8 @@
  * @date 2014-05-01
  */
 
-#ifndef _ATYPE_H
-#define _ATYPE_H
+#ifndef _ATYPE_H_
+#define _ATYPE_H_
 
 
 /*

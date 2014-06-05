@@ -6,8 +6,8 @@
  * @date 2014-04-24
  */
 
-#ifndef _QUEUE_H
-#define _QUEUE_H
+#ifndef _QUEUE_H_
+#define _QUEUE_H_
 
 
 #include <list.h>
