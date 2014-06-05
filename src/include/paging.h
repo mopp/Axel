@@ -39,7 +39,7 @@
  * And store those data.
  */
 struct page_table_entry {
-    unsigned int preset_flag : 1;                   /* This is allocated phys memory. */
+    unsigned int present_flag : 1;                   /* This is allocated phys memory. */
     unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
     unsigned int user_supervisor_flag : 1;          /* Page authority. */
     unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
@@ -65,7 +65,7 @@ typedef Page_table_entry* Page_table;
  * This structure corresponds with page directory entry.
  */
 struct page_directory_entry {
-    unsigned int preset_flag : 1;
+    unsigned int present_flag : 1;
     unsigned int read_write_flag : 1;
     unsigned int user_supervisor_flag : 1;
     unsigned int page_level_write_throgh_flag : 1;

@@ -89,17 +89,17 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
  */
 static inline void map_page(Page_directory_table const* const pdt, uintptr_t vaddr, uintptr_t paddr) {
     Page_directory_entry* const pde = get_pde(pdt, vaddr);
-    if (pde->preset_flag == 0) {
+    if (pde->present_flag == 0) {
         /* init */
-        pde->preset_flag = 1;     /* page directory is exist */
+        pde->present_flag = 1;     /* page directory is exist */
         pde->read_write_flag = 1; /* page directory is writeable */
         pde->global_flag = 1;     /* page directory is global */
     }
     Page_table_entry* const pte = get_pte(get_pt(pde), vaddr);
 
-    if (pte->preset_flag == 0) {
+    if (pte->present_flag == 0) {
         /* init */
-        pte->preset_flag = 1;
+        pte->present_flag = 1;
         pte->read_write_flag = 1;
         pte->global_flag = 1;
     }
