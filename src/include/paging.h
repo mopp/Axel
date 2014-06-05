@@ -39,17 +39,22 @@
  * And store those data.
  */
 struct page_table_entry {
-    unsigned int present_flag : 1;                   /* This is allocated phys memory. */
-    unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
-    unsigned int user_supervisor_flag : 1;          /* Page authority. */
-    unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
-    unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
-    unsigned int access_flag : 1;                   /* Is page accessed. */
-    unsigned int dirty_flag : 1;                    /* Is page changed. */
-    unsigned int page_attr_table_flag : 1;          /* For PAT feature. */
-    unsigned int global_flag : 1;                   /* Is page global. */
-    unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
-    unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
+    union {
+        struct {
+            unsigned int present_flag : 1;                  /* This is allocated phys memory. */
+            unsigned int read_write_flag : 1;               /* Read only for 0 or Writeable and Readable for 1. */
+            unsigned int user_supervisor_flag : 1;          /* Page authority. */
+            unsigned int page_level_write_throgh_flag : 1;  /* キャッシュ方式が ライトバック(0), ライトスルー(1) */
+            unsigned int page_level_cache_disable_flag : 1; /* キャッシュを有効にするか否か */
+            unsigned int access_flag : 1;                   /* Is page accessed. */
+            unsigned int dirty_flag : 1;                    /* Is page changed. */
+            unsigned int page_attr_table_flag : 1;          /* For PAT feature. */
+            unsigned int global_flag : 1;                   /* Is page global. */
+            unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
+            unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
+        };
+        uint32_t bit_expr; /* pde bit expression */
+    };
 };
 typedef struct page_table_entry Page_table_entry;
 _Static_assert(sizeof(Page_table_entry) == 4, "Static ERROR : Page_table_entry size is NOT 4 byte(32 bit).");
@@ -65,17 +70,22 @@ typedef Page_table_entry* Page_table;
  * This structure corresponds with page directory entry.
  */
 struct page_directory_entry {
-    unsigned int present_flag : 1;
-    unsigned int read_write_flag : 1;
-    unsigned int user_supervisor_flag : 1;
-    unsigned int page_level_write_throgh_flag : 1;
-    unsigned int page_level_cache_disable_flag : 1;
-    unsigned int access_flag : 1;
-    unsigned int reserved : 1;
-    unsigned int page_size_flag : 1;   /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
-    unsigned int global_flag : 1;      /* Is page global. */
-    unsigned int os_area : 3;          /* This 3bit is ignored by CPU and OS can use this area. */
-    unsigned int page_table_addr : 20; /* physical address of page table that is included page directory entry. */
+    union {
+        struct {
+            unsigned int present_flag : 1;         /* This is allocated phys memory. */
+            unsigned int read_write_flag : 1;      /* Read only for 0 or Writeable and Readable for 1. */
+            unsigned int user_supervisor_flag : 1; /* Page authority. */
+            unsigned int page_level_write_throgh_flag : 1;
+            unsigned int page_level_cache_disable_flag : 1;
+            unsigned int access_flag : 1;
+            unsigned int reserved : 1;
+            unsigned int page_size_flag : 1;   /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
+            unsigned int global_flag : 1;      /* Is page global. */
+            unsigned int os_area : 3;          /* This 3bit is ignored by CPU and OS can use this area. */
+            unsigned int page_table_addr : 20; /* physical address of page table that is included page directory entry. */
+        };
+        uint32_t bit_expr; /* pde bit expression */
+    };
 };
 typedef struct page_directory_entry Page_directory_entry;
 _Static_assert(sizeof(Page_directory_entry) == 4, "Static ERROR : Page_directory_entry size is NOT 4 byte(32 bit).");
@@ -98,6 +108,31 @@ enum Paging_constants {
     PTE_IDX_SHIFT_NUM = 12,
     PTE_FRAME_ADDR_SHIFT_NUM = 12,
     ALL_PAGE_STRUCT_SIZE = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM * PAGE_DIRECTORY_ENTRY_NUM),
+
+    /* PTE flags bit */
+    PTE_FLAG_PRESENT        = 0x001,
+    PTE_FLAG_RW             = 0x002,
+    PTE_FLAG_USER           = 0x004,
+    PTE_FLAG_WRITE_THROGH   = 0x008,
+    PTE_FLAG_CACHE_DISABLE  = 0x010,
+    PTE_FLAG_ACCESS         = 0x020,
+    PTE_FLAG_DIRTY          = 0x040,
+    PTE_FLAG_PAT            = 0x080,
+    PTE_FLAG_GLOBAL         = 0x100,
+    PTE_FLAGS_FOR_KERNEL    = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_GLOBAL,
+    PTE_FLAGS_AREA_MASK     = 0xFFFFF000,
+
+    /* PDE flags bit */
+    PDE_FLAG_PRESENT        = 0x001,
+    PDE_FLAG_RW             = 0x002,
+    PDE_FLAG_USER           = 0x004,
+    PDE_FLAG_WRITE_THROGH   = 0x008,
+    PDE_FLAG_CACHE_DISABLE  = 0x010,
+    PDE_FLAG_ACCESS         = 0x020,
+    PDE_FLAG_SIZE           = 0x080,
+    PDE_FLAG_GLOBAL         = 0x100,
+    PDE_FLAGS_FOR_KERNEL    = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_GLOBAL,
+    PDE_FLAGS_AREA_MASK     = 0xFFFFF000,
 };
 
 
