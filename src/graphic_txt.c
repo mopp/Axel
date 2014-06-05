@@ -6,7 +6,6 @@
 
 #include <graphic_txt.h>
 #include <point.h>
-#include <stdarg.h>
 
 
 /* text mode video ram */
