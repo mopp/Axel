@@ -9,9 +9,9 @@
 
 #include <stdint.h>
 
-#define TO_STR(x) #x
-#define TO_STR2(x) TO_STR(x)
-#define CURRENT_LINE_STR TO_STR2(__LINE__)
+#define QUOTE(x) #x
+#define TO_STR(x) QUOTE(x)
+#define CURRENT_LINE_STR TO_STR(__LINE__)
 #define HERE_STRING (__FILE__ " " CURRENT_LINE_STR ":")
 
 #define IS_ENABLE(x) (((x) != 0) ? 1 : 0)
@@ -22,6 +22,8 @@
 #define ECAST_UINT8(n) ((uint8_t)(0xffu & n))
 #define ECAST_UINT16(n) ((uint16_t)(0xffffu & n))
 #define ECAST_UINT32(n) ((uint32_t)(0xffffffffu & n))
+
+#define BIT(x) (1 << (x))
 
 #define PRINTF_DEC_FORMAT(x) _Generic((x),  \
     char: "%c",                             \

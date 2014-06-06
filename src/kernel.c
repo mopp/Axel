@@ -20,13 +20,147 @@
 #include <vbe.h>
 
 
-static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
+/*
+ * Global Segment Descriptor
+ * Segment limit high + low is 20 bit.
+ * Segment base address low + mid + high is 32 bit.
+ */
+struct segment_descriptor {
+    union {
+        struct {
+            uint16_t limit_low;               /* segment limit low. */
+            uint16_t base_addr_low;           /* segment address low. */
+            uint8_t base_addr_mid;            /* segment address mid. */
+            unsigned int type : 4;            /* this shows segment main configuration. */
+            unsigned int segment_type : 1;    /* If 0, segment is system segment, if 1, segment is code or data segment. */
+            unsigned int plivilege_level : 2; /* This controle accesse level. */
+            unsigned int present : 1;         /* Is it exist on memory */
+            unsigned int limit_hi : 4;        /* segment limit high. */
+            unsigned int available : 1;       /* OS can use this.  */
+            unsigned int zero_reserved : 1;   /* this keeps 0. */
+            unsigned int op_size : 1;         /* If 0, 16bit segment, If 1 32 bit segment. */
+            unsigned int granularity : 1;     /* If 0 unit is 1Byte, If 1 unit is 4KB */
+            uint8_t base_addr_hi;             /* segment address high. */
+        };
+        struct {
+            uint32_t bit_expr_low;
+            uint32_t bit_expr_high;
+        };
+    };
+};
+typedef struct segment_descriptor Segment_descriptor;
+_Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descriptor size is NOT 8 byte(64 bit).");
+
+
+enum GDT_constants {
+    /* 設定先アドレス */
+    GDT_ADDR = 0x00270000 + KERNEL_VIRTUAL_BASE_ADDR,
+
+    GDT_KERNEL_CODE_INDEX = 1,
+    GDT_KERNEL_DATA_INDEX = 2,
+
+    /* セグメントレジスタは16bitで指す先は8byteの要素が配列として並ぶ */
+    SEGMENT_NUM = 2 + 1, /* "+1" is to allocate null descriptor */
+    GDT_LIMIT = sizeof(Segment_descriptor) * SEGMENT_NUM,
+    GDT_FLAG_TYPE_DATA_R = 0x000000,     /* Read-Only */
+    GDT_FLAG_TYPE_DATA_RA = 0x000100,    /* Read-Only, accessed */
+    GDT_FLAG_TYPE_DATA_RW = 0x000200,    /* Read/Write */
+    GDT_FLAG_TYPE_DATA_RWA = 0x000300,   /* Read/Write, accessed */
+    GDT_FLAG_TYPE_DATA_REP = 0x000400,   /* Read-Only, expand-down */
+    GDT_FLAG_TYPE_DATA_REPA = 0x000500,  /* Read-Only, expand-down, accessed */
+    GDT_FLAG_TYPE_DATA_RWEP = 0x000600,  /* Read/Write, expand-down */
+    GDT_FLAG_TYPE_DATA_RWEPA = 0x000700, /* Read/Write, expand-down, accessed */
+    GDT_FLAG_TYPE_CODE_EX = 0x000800,    /* Execute-Only */
+    GDT_FLAG_TYPE_CODE_EXA = 0x000900,   /* Execute-Only, accessed */
+    GDT_FLAG_TYPE_CODE_EXR = 0x000A00,   /* Execute/Read */
+    GDT_FLAG_TYPE_CODE_EXRA = 0x000B00,  /* Execute/Read, accessed */
+    GDT_FLAG_TYPE_CODE_EXC = 0x000C00,   /* Execute-Only, conforming */
+    GDT_FLAG_TYPE_CODE_EXCA = 0x000D00,  /* Execute-Only, conforming, accessed */
+    GDT_FLAG_TYPE_CODE_EXRC = 0x000E00,  /* Execute/Read, conforming */
+    GDT_FLAG_TYPE_CODE_EXRCA = 0x000F00, /* Execute/Read, conforming, accessed */
+    GDT_FLAG_CODE_DATA_SEGMENT = 0x001000,
+    GDT_FLAG_RING0 = 0x000000,
+    GDT_FLAG_RING1 = 0x002000,
+    GDT_FLAG_RING2 = 0x004000,
+    GDT_FLAG_RING3 = 0x006000,
+    GDT_FLAG_PRESENT = 0x008000,
+    GDT_FLAG_AVAILABLE = 0x100000,
+    GDT_FLAG_OP_SIZE = 0x400000,
+    GDT_FLAG_GRANULARIT = 0x800000,
+    GDT_FLAGS_KERNEL_DATA = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAGS_KERNEL_CODE = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+};
+
+
+/* Interrupt Gate Descriptor Table */
+struct gate_descriptor {
+    union {
+        struct {
+            uint16_t offset_low;       /* 割り込みハンドラへのオフセット */
+            uint16_t segment_selector; /* 割り込みハンドラの属するセグメント CSレジスタへ設定される値 */
+            uint8_t unused_zero;       /* 3つのゲートディスクリプタ的に0で固定して良さそう */
+            unsigned int type : 3;     /* 3つのうちどのゲートディスクリプタか */
+            unsigned int size : 1;
+            unsigned int zero_reserved : 1;
+            unsigned int plivilege_level : 2;
+            unsigned int present_flag : 1;
+            uint16_t offset_high;
+        };
+        uint64_t bit_expr;
+    };
+};
+typedef struct gate_descriptor Gate_descriptor;
+_Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.(64 bit)");
+
+
+enum IDT_constants {
+    IDT_ADDR = 0x0026f800 + KERNEL_VIRTUAL_BASE_ADDR,
+    IDT_MAX_NUM = 256,
+    IDT_LIMIT = IDT_MAX_NUM * 8 - 1,
+
+    IDT_GATE_TYPE_TASK = 0x05,
+    IDT_GATE_TYPE_INTERRUPT = 0x06,
+    IDT_GATE_TYPE_TRAP = 0x07,
+
+    IDT_GATE_SIZE_16 = 0x00,
+    IDT_GATE_SIZE_32 = 0x01,
+
+    IDT_RING0 = 0x00,
+    IDT_RING1 = 0x01,
+    IDT_RING2 = 0x02,
+    IDT_RING3 = 0x03,
+
+    IDT_PRESENT = 1,
+    IDT_NOT_PRESENT = 0,
+};
+
+
+/* Programmable Interval Timer */
+enum PIT_constants {
+    PIT_PORT_COUNTER0 = 0x40,
+    PIT_PORT_COUNTER1 = 0x41,
+    PIT_PORT_COUNTER2 = 0x42,
+    PIT_PORT_CONTROL = 0x43,
+
+    /* 制御コマンド */
+    /* パルス生成モード */
+    PIT_ICW = 0x34,
+
+    /* カウンター値 */
+    /* 1193182 / 100 Hz */
+    PIT_COUNTER_VALUE_HIGH = 0x2E,
+    PIT_COUNTER_VALUE_LOW = 0x9C,
+};
+
+
+/* static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t); */
 static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void (*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
 static void init_pic(void);
 static void init_pit(void);
 static void clear_bss(void);
+
 
 
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
@@ -144,6 +278,21 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 }
 
 
+static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t base_addr, uint32_t limit, uint32_t flags) {
+    s->bit_expr_high = flags;
+
+    s->limit_low = (limit & 0x0000ffff);
+    s->limit_hi = (uint8_t)((limit >> 16) & 0xf);
+
+    /* セグメントの開始アドレスを設定 */
+    s->base_addr_low = (uint16_t)(base_addr & 0x0000ffff);
+    s->base_addr_mid = (uint8_t)((base_addr & 0x00ff0000) >> 16);
+    s->base_addr_hi = (uint8_t)((base_addr & 0xff000000) >> 24);
+
+    return s;
+}
+
+#if 0
 static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t limit, uint32_t base_addr, uint8_t type, uint8_t type_flag, uint8_t pliv, uint8_t p_flag, uint8_t op_flag, uint8_t g_flag) {
     /* セグメントのサイズを設定 */
     /* granularity_flagが1のときlimit * 4KBがセグメントのサイズになる */
@@ -189,20 +338,23 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
 
     return s;
 }
+#endif
 
 
 static inline void init_gdt(void) {
     Segment_descriptor* gdt = (Segment_descriptor*)GDT_ADDR;
 
-    /* 全セグメントを初期化 */
-    for (int i = 0; i < GDT_MAX_NUM; ++i) {
-        set_segment_descriptor(gdt + i, 0, 0, 0, 0, 0, 0, 0, 0);
+    /* zero clear Segment_descriptor. */
+    for (int i = 0; i < SEGMENT_NUM; ++i) {
+        memset(gdt + i, 0, sizeof(Segment_descriptor));
     }
 
     /* 全アドレス空間を指定 */
     /* Flat Setup */
-    set_segment_descriptor(gdt + GDT_KERNEL_CODE_INDEX, 0xffffffff, 0x00000000, GDT_TYPE_CODE_EXR, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
-    set_segment_descriptor(gdt + GDT_KERNEL_DATA_INDEX, 0xffffffff, 0x00000000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB);
+    /* set_segment_descriptor(gdt + GDT_KERNEL_CODE_INDEX, 0xffffffff, , GDT_TYPE_CODE_EXR, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB); */
+    /* set_segment_descriptor(gdt + GDT_KERNEL_DATA_INDEX, 0xffffffff, 0x00000000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB); */
+    set_segment_descriptor(gdt + GDT_KERNEL_CODE_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
+    set_segment_descriptor(gdt + GDT_KERNEL_DATA_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
 
     load_gdtr(GDT_LIMIT, GDT_ADDR);
     change_segment_selectors(GDT_KERNEL_DATA_INDEX * 8);
@@ -213,7 +365,7 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t g
     g->offset_low = ((uintptr_t)offset & 0x0000ffff);
     g->offset_high = ECAST_UINT16(((uintptr_t)offset >> 16) & 0x0000ffff);
 
-    g->segment_selector = ECAST_UINT16(selector_index * GDT_ELEMENT_SIZE);
+    g->segment_selector = ECAST_UINT16(selector_index * sizeof(Gate_descriptor));
 
     g->type = ECAST_UINT8(gate_type & 0x07);
     g->size = ECAST_UINT8(gate_size & 0x01);
