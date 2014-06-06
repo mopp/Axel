@@ -53,31 +53,29 @@ _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descript
 
 
 enum GDT_constants {
-    /* 設定先アドレス */
     GDT_ADDR = 0x00270000 + KERNEL_VIRTUAL_BASE_ADDR,
 
-    GDT_KERNEL_CODE_INDEX = 1,
-    GDT_KERNEL_DATA_INDEX = 2,
+    KERNEL_CODE_SEGMENT_INDEX = 1,
+    KERNEL_DATA_SEGMENT_INDEX = 2,
 
-    /* セグメントレジスタは16bitで指す先は8byteの要素が配列として並ぶ */
-    SEGMENT_NUM = 2 + 1, /* "+1" is to allocate null descriptor */
-    GDT_LIMIT = sizeof(Segment_descriptor) * SEGMENT_NUM,
-    GDT_FLAG_TYPE_DATA_R = 0x000000,     /* Read-Only */
-    GDT_FLAG_TYPE_DATA_RA = 0x000100,    /* Read-Only, accessed */
-    GDT_FLAG_TYPE_DATA_RW = 0x000200,    /* Read/Write */
-    GDT_FLAG_TYPE_DATA_RWA = 0x000300,   /* Read/Write, accessed */
-    GDT_FLAG_TYPE_DATA_REP = 0x000400,   /* Read-Only, expand-down */
-    GDT_FLAG_TYPE_DATA_REPA = 0x000500,  /* Read-Only, expand-down, accessed */
-    GDT_FLAG_TYPE_DATA_RWEP = 0x000600,  /* Read/Write, expand-down */
-    GDT_FLAG_TYPE_DATA_RWEPA = 0x000700, /* Read/Write, expand-down, accessed */
-    GDT_FLAG_TYPE_CODE_EX = 0x000800,    /* Execute-Only */
-    GDT_FLAG_TYPE_CODE_EXA = 0x000900,   /* Execute-Only, accessed */
-    GDT_FLAG_TYPE_CODE_EXR = 0x000A00,   /* Execute/Read */
-    GDT_FLAG_TYPE_CODE_EXRA = 0x000B00,  /* Execute/Read, accessed */
-    GDT_FLAG_TYPE_CODE_EXC = 0x000C00,   /* Execute-Only, conforming */
-    GDT_FLAG_TYPE_CODE_EXCA = 0x000D00,  /* Execute-Only, conforming, accessed */
-    GDT_FLAG_TYPE_CODE_EXRC = 0x000E00,  /* Execute/Read, conforming */
-    GDT_FLAG_TYPE_CODE_EXRCA = 0x000F00, /* Execute/Read, conforming, accessed */
+    SEGMENT_NUM = 2 + 1,                                  /* There are "+1" to allocate null descriptor */
+    GDT_LIMIT = sizeof(Segment_descriptor) * SEGMENT_NUM, /* Total Segment_descriptor occuping area size. */
+    GDT_FLAG_TYPE_DATA_R = 0x000000,                      /* Read-Only */
+    GDT_FLAG_TYPE_DATA_RA = 0x000100,                     /* Read-Only, accessed */
+    GDT_FLAG_TYPE_DATA_RW = 0x000200,                     /* Read/Write */
+    GDT_FLAG_TYPE_DATA_RWA = 0x000300,                    /* Read/Write, accessed */
+    GDT_FLAG_TYPE_DATA_REP = 0x000400,                    /* Read-Only, expand-down */
+    GDT_FLAG_TYPE_DATA_REPA = 0x000500,                   /* Read-Only, expand-down, accessed */
+    GDT_FLAG_TYPE_DATA_RWEP = 0x000600,                   /* Read/Write, expand-down */
+    GDT_FLAG_TYPE_DATA_RWEPA = 0x000700,                  /* Read/Write, expand-down, accessed */
+    GDT_FLAG_TYPE_CODE_EX = 0x000800,                     /* Execute-Only */
+    GDT_FLAG_TYPE_CODE_EXA = 0x000900,                    /* Execute-Only, accessed */
+    GDT_FLAG_TYPE_CODE_EXR = 0x000A00,                    /* Execute/Read */
+    GDT_FLAG_TYPE_CODE_EXRA = 0x000B00,                   /* Execute/Read, accessed */
+    GDT_FLAG_TYPE_CODE_EXC = 0x000C00,                    /* Execute-Only, conforming */
+    GDT_FLAG_TYPE_CODE_EXCA = 0x000D00,                   /* Execute-Only, conforming, accessed */
+    GDT_FLAG_TYPE_CODE_EXRC = 0x000E00,                   /* Execute/Read, conforming */
+    GDT_FLAG_TYPE_CODE_EXRCA = 0x000F00,                  /* Execute/Read, conforming, accessed */
     GDT_FLAG_CODE_DATA_SEGMENT = 0x001000,
     GDT_FLAG_RING0 = 0x000000,
     GDT_FLAG_RING1 = 0x002000,
@@ -87,8 +85,8 @@ enum GDT_constants {
     GDT_FLAG_AVAILABLE = 0x100000,
     GDT_FLAG_OP_SIZE = 0x400000,
     GDT_FLAG_GRANULARIT = 0x800000,
-    GDT_FLAGS_KERNEL_DATA = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
-    GDT_FLAGS_KERNEL_CODE = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAGS_KERNEL_CODE = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAGS_KERNEL_DATA = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
 };
 
 
@@ -153,7 +151,7 @@ enum PIT_constants {
 };
 
 
-/* static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t); */
+static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint32_t);
 static void init_gdt(void);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void (*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
@@ -281,64 +279,15 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t base_addr, uint32_t limit, uint32_t flags) {
     s->bit_expr_high = flags;
 
-    s->limit_low = (limit & 0x0000ffff);
-    s->limit_hi = (uint8_t)((limit >> 16) & 0xf);
+    s->limit_low = ECAST_UINT16(limit);
+    s->limit_hi = (limit >> 16) & 0xF;
 
-    /* セグメントの開始アドレスを設定 */
-    s->base_addr_low = (uint16_t)(base_addr & 0x0000ffff);
-    s->base_addr_mid = (uint8_t)((base_addr & 0x00ff0000) >> 16);
-    s->base_addr_hi = (uint8_t)((base_addr & 0xff000000) >> 24);
-
-    return s;
-}
-
-#if 0
-static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t limit, uint32_t base_addr, uint8_t type, uint8_t type_flag, uint8_t pliv, uint8_t p_flag, uint8_t op_flag, uint8_t g_flag) {
-    /* セグメントのサイズを設定 */
-    /* granularity_flagが1のときlimit * 4KBがセグメントのサイズになる */
-    s->limit_low = (limit & 0x0000ffff);
-    s->limit_hi = (uint8_t)((limit >> 16) & 0xf);
-
-    /* セグメントの開始アドレスを設定 */
-    s->base_addr_low = (uint16_t)(base_addr & 0x0000ffff);
-    s->base_addr_mid = (uint8_t)((base_addr & 0x00ff0000) >> 16);
-    s->base_addr_hi = (uint8_t)((base_addr & 0xff000000) >> 24);
-
-    /* アクセス権エラー */
-    if (0xf < type) {
-        return NULL;
-    }
-    /* アクセス権を設定 */
-    s->type = (uint8_t)(type & 0x0f);
-
-    /* セグメントタイプエラー */
-    if (0x1 < type_flag) {
-        return NULL;
-    }
-    /* 0でシステム用, 1でコードかデータ用のセグメントとなる */
-    s->segment_type = (uint8_t)(type_flag & 0x01);
-
-    /* 特権レベルエラー */
-    if (0x3 < pliv) {
-        return NULL;
-    }
-    /* 特権レベルを設定 */
-    s->plivilege_level = (uint8_t)(pliv & 0x03);
-
-    /* メモリに存在する */
-    s->present_flag = (uint8_t)(p_flag & 0x01);
-    /* OSが任意に使用できる */
-    s->available = 0;
-    /* 0で予約されている */
-    s->zero_reserved = 0;
-    /* 扱う単位を16bitか32bitか設定 */
-    s->default_op_size = IS_ENABLE(op_flag);
-    /* セグメントサイズを4KB単位とする */
-    s->granularity_flag = IS_ENABLE(g_flag);
+    s->base_addr_low = ECAST_UINT16(base_addr);
+    s->base_addr_mid = ECAST_UINT8(base_addr >> 16);
+    s->base_addr_hi = ECAST_UINT8(base_addr >> 24);
 
     return s;
 }
-#endif
 
 
 static inline void init_gdt(void) {
@@ -349,15 +298,11 @@ static inline void init_gdt(void) {
         memset(gdt + i, 0, sizeof(Segment_descriptor));
     }
 
-    /* 全アドレス空間を指定 */
-    /* Flat Setup */
-    /* set_segment_descriptor(gdt + GDT_KERNEL_CODE_INDEX, 0xffffffff, , GDT_TYPE_CODE_EXR, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB); */
-    /* set_segment_descriptor(gdt + GDT_KERNEL_DATA_INDEX, 0xffffffff, 0x00000000, GDT_TYPE_DATA_RWA, GDT_TYPE_FOR_CODE_DATA, GDT_RING0, GDT_PRESENT, GDT_DB_OPSIZE_32BIT, GDT_GRANULARITY_4KB); */
-    set_segment_descriptor(gdt + GDT_KERNEL_CODE_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
-    set_segment_descriptor(gdt + GDT_KERNEL_DATA_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
+    /* Setup flat address */
+    set_segment_descriptor(gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
+    set_segment_descriptor(gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
 
     load_gdtr(GDT_LIMIT, GDT_ADDR);
-    change_segment_selectors(GDT_KERNEL_DATA_INDEX * 8);
 }
 
 
@@ -391,9 +336,9 @@ static inline void init_idt(void) {
     }
     load_idtr(IDT_LIMIT, IDT_ADDR);
 
-    set_gate_descriptor(idt + 0x0E, IDT_GATE_TYPE_INTERRUPT, io_hlt, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
-    set_gate_descriptor(idt + 0x20, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x20, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
-    set_gate_descriptor(idt + 0x21, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x21, GDT_KERNEL_CODE_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
+    set_gate_descriptor(idt + 0x0E, IDT_GATE_TYPE_INTERRUPT, io_hlt, KERNEL_CODE_SEGMENT_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
+    set_gate_descriptor(idt + 0x20, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x20, KERNEL_CODE_SEGMENT_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
+    set_gate_descriptor(idt + 0x21, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x21, KERNEL_CODE_SEGMENT_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
 }
 
 

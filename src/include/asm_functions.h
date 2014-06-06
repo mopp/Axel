@@ -25,7 +25,6 @@ extern void io_out32(uint16_t, uint32_t);
 
 extern void load_gdtr(uint32_t, uint32_t);
 extern void load_idtr(uint32_t, uint32_t);
-extern void change_segment_selectors(uint32_t);
 
 extern void turn_off_4MB_paging(void);
 extern void flush_tlb(uintptr_t);

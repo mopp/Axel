@@ -19,11 +19,13 @@
 #define ARRAY_SIZE_OF(a) (sizeof(a) / sizeof(a[0]))
 #define ARRAY_LAST_ELEM(a) ((a) + (ARRAY_SIZE_OF(a) - (size_t)1))
 
-#define ECAST_UINT8(n) ((uint8_t)(0xffu & n))
-#define ECAST_UINT16(n) ((uint16_t)(0xffffu & n))
-#define ECAST_UINT32(n) ((uint32_t)(0xffffffffu & n))
+#define ECAST_UINT8(n)   ((uint8_t)(n & 0x000000FFu))
+#define ECAST_UINT16(n) ((uint16_t)(n & 0x0000FFFFu))
+#define ECAST_UINT32(n) ((uint32_t)(n & 0xFFFFFFFFu))
 
 #define BIT(x) (1 << (x))
+
+#define INF_LOOP() do {} while (1)
 
 #define PRINTF_DEC_FORMAT(x) _Generic((x),  \
     char: "%c",                             \

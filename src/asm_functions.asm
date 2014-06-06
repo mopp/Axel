@@ -6,13 +6,14 @@
 ;---------------------------------------------------------------------
     bits 32
 
-KERNEL_VIRTUAL_BASE_ADDR equ 0xC0000000
+    KERNEL_VIRTUAL_BASE_ADDR    equ 0xC0000000
+    KERNEL_CODE_SEGMENT         equ (1 * 8) ; 8 means the size of segment_descriptor.
+    KERNEL_DATA_SEGMENT         equ (2 * 8)
 
     global io_hlt, io_cli, io_sti
     global io_in8, io_in16, io_in32
     global io_out8, io_out16, io_out32
     global load_gdtr, load_idtr
-    global change_segment_selectors
     global turn_off_4MB_paging, set_cpu_pdt, get_cpu_pdt, flush_tlb
 
 section .text
@@ -88,9 +89,17 @@ io_out32:
 ; 大きさが2byte アドレスが4byte 合わせて6byteをlgdtが読み込む
 ; なので、limit_byteの下位2byteをずらしている。 ldtrも同様
 load_gdtr:
-    mov AX, [ESP + 4]      ; limit
-    mov [ESP + 6], AX
-    lgdt [ESP + 6]
+    mov ax, [esp + 4]      ; limit
+    mov [esp + 6], ax
+    lgdt [esp + 6]
+    jmp KERNEL_CODE_SEGMENT:.chenge_segment_selector
+.chenge_segment_selector:
+    mov ax, KERNEL_DATA_SEGMENT
+    mov es, ax
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
     ret
 
 
@@ -101,18 +110,6 @@ load_idtr:
     lidt [ESP + 6]
     ret
 
-
-; void change_segment_selectors(int data_segment);
-change_segment_selectors:
-    jmp 0x08:.jmp_point
-.jmp_point:
-    mov AX, [ESP + 4]
-    mov ES, AX
-    mov DS, AX
-    mov FS, AX
-    mov GS, AX
-    mov SS, AX
-    ret
 
 ; void turn_off_4MB_paging(void);
 turn_off_4MB_paging:
