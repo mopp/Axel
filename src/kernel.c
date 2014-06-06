@@ -187,12 +187,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     Vbe_info_block* const vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
     Vbe_mode_info_block* const vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
-    uint32_t const boot_flags = boot_info->flags;
+    Multiboot_info_flag const boot_flags = boot_info->flags;
 
     set_phys_to_vir_addr(&vbe_info->video_mode_ptr);
 
-    /* check nmap_* field */
-    if (boot_flags & 0x20) {
+    if (boot_flags.is_mmap_enable) {
         set_phys_to_vir_addr(&boot_info->mmap_addr);
         /* initialize memory. */
         init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
@@ -244,7 +243,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("VBE Address: 0x%x\n", vbe_mode_info->phys_base_ptr);
 
     /* mem_*フィールドを確認 */
-    if (boot_flags & 0x01) {
+    if (boot_flags.is_mem_enable) {
         printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
         printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
         printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
