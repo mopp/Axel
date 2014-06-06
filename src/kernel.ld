@@ -1,6 +1,6 @@
 OUTPUT_FORMAT(elf32-i386)
 
-LD_KERNEL_PHYSICAL_BASE_ADDR   = 0x100000;     /* It is base address before paging enable. */
+LD_KERNEL_PHYSICAL_BASE_ADDR   = 0x00100000;   /* It is base address before paging enable. */
 LD_KERNEL_VIRTUAL_BASE_ADDR    = 0xC0000000;   /* It is base address after paging enable. */
 
 

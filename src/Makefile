@@ -84,7 +84,7 @@ string.o				: $(MAKEFILE) string.c $(AXEL_INCLUDE_PATH)string.h
 stdio.o					: $(MAKEFILE) stdio.c $(AXEL_INCLUDE_PATH)stdio.h $(AXEL_INCLUDE_PATH)graphic.h
 font.o					: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
 keyboard.o				: $(MAKEFILE) keyboard.c $(AXEL_INCLUDE_PATH)keyboard.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
-kernel.o				: $(MAKEFILE) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt_handler.o interrupt_handler_asm.o memory.o paging.o string.o stdio.o font.o keyboard.o
+kernel.o				: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt_handler.o interrupt_handler_asm.o memory.o paging.o string.o stdio.o font.o keyboard.o
 
 
 $(BOOT_OBJ) : $(MAKEFILE)

@@ -1,7 +1,11 @@
-/************************************************************
- * File: kernel.c
- * Description: Kernel code
- ************************************************************/
+/**
+ * @file kernel.c
+ * @brief main Axel codes.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-06-06
+ */
+
 
 #include <asm_functions.h>
 #include <graphic.h>
@@ -15,8 +19,8 @@
 #include <paging.h>
 #include <point.h>
 #include <queue.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 #include <vbe.h>
 
 
@@ -53,40 +57,40 @@ _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descript
 
 
 enum GDT_constants {
-    GDT_ADDR = 0x00270000 + KERNEL_VIRTUAL_BASE_ADDR,
+    GDT_ADDR                   = 0x00270000 + KERNEL_VIRTUAL_BASE_ADDR,
 
-    KERNEL_CODE_SEGMENT_INDEX = 1,
-    KERNEL_DATA_SEGMENT_INDEX = 2,
+    KERNEL_CODE_SEGMENT_INDEX  = 1,
+    KERNEL_DATA_SEGMENT_INDEX  = 2,
 
-    SEGMENT_NUM = 2 + 1,                                  /* There are "+1" to allocate null descriptor */
-    GDT_LIMIT = sizeof(Segment_descriptor) * SEGMENT_NUM, /* Total Segment_descriptor occuping area size. */
-    GDT_FLAG_TYPE_DATA_R = 0x000000,                      /* Read-Only */
-    GDT_FLAG_TYPE_DATA_RA = 0x000100,                     /* Read-Only, accessed */
-    GDT_FLAG_TYPE_DATA_RW = 0x000200,                     /* Read/Write */
-    GDT_FLAG_TYPE_DATA_RWA = 0x000300,                    /* Read/Write, accessed */
-    GDT_FLAG_TYPE_DATA_REP = 0x000400,                    /* Read-Only, expand-down */
-    GDT_FLAG_TYPE_DATA_REPA = 0x000500,                   /* Read-Only, expand-down, accessed */
-    GDT_FLAG_TYPE_DATA_RWEP = 0x000600,                   /* Read/Write, expand-down */
-    GDT_FLAG_TYPE_DATA_RWEPA = 0x000700,                  /* Read/Write, expand-down, accessed */
-    GDT_FLAG_TYPE_CODE_EX = 0x000800,                     /* Execute-Only */
-    GDT_FLAG_TYPE_CODE_EXA = 0x000900,                    /* Execute-Only, accessed */
-    GDT_FLAG_TYPE_CODE_EXR = 0x000A00,                    /* Execute/Read */
-    GDT_FLAG_TYPE_CODE_EXRA = 0x000B00,                   /* Execute/Read, accessed */
-    GDT_FLAG_TYPE_CODE_EXC = 0x000C00,                    /* Execute-Only, conforming */
-    GDT_FLAG_TYPE_CODE_EXCA = 0x000D00,                   /* Execute-Only, conforming, accessed */
-    GDT_FLAG_TYPE_CODE_EXRC = 0x000E00,                   /* Execute/Read, conforming */
-    GDT_FLAG_TYPE_CODE_EXRCA = 0x000F00,                  /* Execute/Read, conforming, accessed */
+    SEGMENT_NUM                = 2 + 1,                                    /* There are "+1" to allocate null descriptor */
+    GDT_LIMIT                  = sizeof(Segment_descriptor) * SEGMENT_NUM, /* Total Segment_descriptor occuping area size. */
+    GDT_FLAG_TYPE_DATA_R       = 0x000000,                                 /* Read-Only */
+    GDT_FLAG_TYPE_DATA_RA      = 0x000100,                                 /* Read-Only, accessed */
+    GDT_FLAG_TYPE_DATA_RW      = 0x000200,                                 /* Read/Write */
+    GDT_FLAG_TYPE_DATA_RWA     = 0x000300,                                 /* Read/Write, accessed */
+    GDT_FLAG_TYPE_DATA_REP     = 0x000400,                                 /* Read-Only, expand-down */
+    GDT_FLAG_TYPE_DATA_REPA    = 0x000500,                                 /* Read-Only, expand-down, accessed */
+    GDT_FLAG_TYPE_DATA_RWEP    = 0x000600,                                 /* Read/Write, expand-down */
+    GDT_FLAG_TYPE_DATA_RWEPA   = 0x000700,                                 /* Read/Write, expand-down, accessed */
+    GDT_FLAG_TYPE_CODE_EX      = 0x000800,                                 /* Execute-Only */
+    GDT_FLAG_TYPE_CODE_EXA     = 0x000900,                                 /* Execute-Only, accessed */
+    GDT_FLAG_TYPE_CODE_EXR     = 0x000A00,                                 /* Execute/Read */
+    GDT_FLAG_TYPE_CODE_EXRA    = 0x000B00,                                 /* Execute/Read, accessed */
+    GDT_FLAG_TYPE_CODE_EXC     = 0x000C00,                                 /* Execute-Only, conforming */
+    GDT_FLAG_TYPE_CODE_EXCA    = 0x000D00,                                 /* Execute-Only, conforming, accessed */
+    GDT_FLAG_TYPE_CODE_EXRC    = 0x000E00,                                 /* Execute/Read, conforming */
+    GDT_FLAG_TYPE_CODE_EXRCA   = 0x000F00,                                 /* Execute/Read, conforming, accessed */
     GDT_FLAG_CODE_DATA_SEGMENT = 0x001000,
-    GDT_FLAG_RING0 = 0x000000,
-    GDT_FLAG_RING1 = 0x002000,
-    GDT_FLAG_RING2 = 0x004000,
-    GDT_FLAG_RING3 = 0x006000,
-    GDT_FLAG_PRESENT = 0x008000,
-    GDT_FLAG_AVAILABLE = 0x100000,
-    GDT_FLAG_OP_SIZE = 0x400000,
-    GDT_FLAG_GRANULARIT = 0x800000,
-    GDT_FLAGS_KERNEL_CODE = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
-    GDT_FLAGS_KERNEL_DATA = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAG_RING0             = 0x000000,
+    GDT_FLAG_RING1             = 0x002000,
+    GDT_FLAG_RING2             = 0x004000,
+    GDT_FLAG_RING3             = 0x006000,
+    GDT_FLAG_PRESENT           = 0x008000,
+    GDT_FLAG_AVAILABLE         = 0x100000,
+    GDT_FLAG_OP_SIZE           = 0x400000,
+    GDT_FLAG_GRANULARIT        = 0x800000,
+    GDT_FLAGS_KERNEL_CODE      = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAGS_KERNEL_DATA      = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
 };
 
 
@@ -104,7 +108,10 @@ struct gate_descriptor {
             unsigned int present_flag : 1;
             uint16_t offset_high;
         };
-        uint64_t bit_expr;
+        struct {
+            uint32_t bit_expr_low;
+            uint32_t bit_expr_high;
+        };
     };
 };
 typedef struct gate_descriptor Gate_descriptor;
@@ -112,42 +119,42 @@ _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor siz
 
 
 enum IDT_constants {
-    IDT_ADDR = 0x0026f800 + KERNEL_VIRTUAL_BASE_ADDR,
-    IDT_MAX_NUM = 256,
-    IDT_LIMIT = IDT_MAX_NUM * 8 - 1,
+    IDT_ADDR                = 0x0026f800 + KERNEL_VIRTUAL_BASE_ADDR,
+    IDT_MAX_NUM             = 256,
+    IDT_LIMIT               = IDT_MAX_NUM * 8 - 1,
 
-    IDT_GATE_TYPE_TASK = 0x05,
+    IDT_GATE_TYPE_TASK      = 0x05,
     IDT_GATE_TYPE_INTERRUPT = 0x06,
-    IDT_GATE_TYPE_TRAP = 0x07,
+    IDT_GATE_TYPE_TRAP      = 0x07,
 
-    IDT_GATE_SIZE_16 = 0x00,
-    IDT_GATE_SIZE_32 = 0x01,
+    IDT_GATE_SIZE_16        = 0x00,
+    IDT_GATE_SIZE_32        = 0x01,
 
-    IDT_RING0 = 0x00,
-    IDT_RING1 = 0x01,
-    IDT_RING2 = 0x02,
-    IDT_RING3 = 0x03,
+    IDT_RING0               = 0x00,
+    IDT_RING1               = 0x01,
+    IDT_RING2               = 0x02,
+    IDT_RING3               = 0x03,
 
-    IDT_PRESENT = 1,
-    IDT_NOT_PRESENT = 0,
+    IDT_PRESENT             = 1,
+    IDT_NOT_PRESENT         = 0,
 };
 
 
 /* Programmable Interval Timer */
 enum PIT_constants {
-    PIT_PORT_COUNTER0 = 0x40,
-    PIT_PORT_COUNTER1 = 0x41,
-    PIT_PORT_COUNTER2 = 0x42,
-    PIT_PORT_CONTROL = 0x43,
+    PIT_PORT_COUNTER0      = 0x40,
+    PIT_PORT_COUNTER1      = 0x41,
+    PIT_PORT_COUNTER2      = 0x42,
+    PIT_PORT_CONTROL       = 0x43,
 
     /* 制御コマンド */
     /* パルス生成モード */
-    PIT_ICW = 0x34,
+    PIT_ICW                = 0x34,
 
     /* カウンター値 */
     /* 1193182 / 100 Hz */
     PIT_COUNTER_VALUE_HIGH = 0x2E,
-    PIT_COUNTER_VALUE_LOW = 0x9C,
+    PIT_COUNTER_VALUE_LOW  = 0x9C,
 };
 
 
@@ -161,6 +168,10 @@ static void clear_bss(void);
 
 
 
+/**
+ * @brief This function is start entry.
+ * @param boot_info boot information by bootstraps loader.
+ */
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     io_cli();
 
@@ -192,6 +203,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_graphic(vbe_info, vbe_mode_info);
     init_pic();
     init_pit();
+    io_sti();
 
     Point2d p0, p1;
     RGB8 c;
@@ -205,11 +217,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     fill_rectangle(set_point2d(&p0, 0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
     fill_rectangle(set_point2d(&p0, 0, max_y - 25), set_point2d(&p1, max_x, max_y), set_rgb_by_color(&c, 0xC6C6C6));
 
-    fill_rectangle(set_point2d(&p0, 3, max_y - 23), set_point2d(&p1, 59, max_y - 23), set_rgb_by_color(&c, 0xFFFFFF));
-    fill_rectangle(set_point2d(&p0, 2, max_y - 23), set_point2d(&p1, 2, max_y - 3), set_rgb_by_color(&c, 0xFFFFFF));
-    fill_rectangle(set_point2d(&p0, 3, max_y - 3), set_point2d(&p1, 59, max_y - 3), set_rgb_by_color(&c, 0x848484));
+    fill_rectangle(set_point2d(&p0, 3,  max_y - 23), set_point2d(&p1, 59, max_y - 23), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, 2,  max_y - 23), set_point2d(&p1,  2, max_y - 3), set_rgb_by_color(&c, 0xFFFFFF));
+    fill_rectangle(set_point2d(&p0, 3,  max_y - 3),  set_point2d(&p1, 59, max_y - 3), set_rgb_by_color(&c, 0x848484));
     fill_rectangle(set_point2d(&p0, 59, max_y - 22), set_point2d(&p1, 59, max_y - 4), set_rgb_by_color(&c, 0x848484));
-    fill_rectangle(set_point2d(&p0, 2, max_y - 2), set_point2d(&p1, 59, max_y - 2), set_rgb_by_color(&c, 0x000000));
+    fill_rectangle(set_point2d(&p0, 2,  max_y - 2),  set_point2d(&p1, 59, max_y - 2), set_rgb_by_color(&c, 0x000000));
     fill_rectangle(set_point2d(&p0, 60, max_y - 23), set_point2d(&p1, 60, max_y - 2), set_rgb_by_color(&c, 0x000000));
 
     fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 23), set_point2d(&p1, max_x - 3, max_y - 23), set_rgb_by_color(&c, 0x848484));
@@ -223,26 +235,13 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
      * }
      */
 
-
-    io_sti();
-
     puts("-------------------- Start Axel ! --------------------\n\n");
 
     printf("kernel size: %zuKB\n", get_kernel_size() / 1024);
     printf("kernel static size: %zuKB\n", get_kernel_static_size() / 1024);
-    printf("kernel vir  start addr: 0x%zx\n", get_kernel_vir_start_addr());
-    printf("kernel vir  end   addr: 0x%zx\n", get_kernel_vir_end_addr());
-    printf("kernel phys start addr: 0x%zx\n", get_kernel_phys_start_addr());
-    printf("kernel phys end   addr: 0x%zx\n", get_kernel_phys_end_addr());
+    printf("kernel virtual  address: 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
+    printf("kernel physical address: 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
     printf("VBE Address: 0x%x\n", vbe_mode_info->phys_base_ptr);
-    printf("All page struct size : %dKB\n", ALL_PAGE_STRUCT_SIZE / 1024);
-
-    // printf("PIC0 State: %x\n", io_in8(PIC0_CMD_STATE_PORT));
-    // printf("PIC0 Data: %x\n", io_in8(PIC0_IMR_DATA_PORT));
-    // printf("PIC1 State: %x\n", io_in8(PIC1_CMD_STATE_PORT));
-    // printf("PIC1 Data: %x\n\n", io_in8(PIC1_IMR_DATA_PORT));
-
-    // printf("BootInfo flags: %x\n", boot_flags); /* 0001 1010 0110 0111 */
 
     /* mem_*フィールドを確認 */
     if (boot_flags & 0x01) {
@@ -280,11 +279,11 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
     s->bit_expr_high = flags;
 
     s->limit_low = ECAST_UINT16(limit);
-    s->limit_hi = (limit >> 16) & 0xF;
+    s->limit_hi  = (limit >> 16) & 0xF;
 
     s->base_addr_low = ECAST_UINT16(base_addr);
     s->base_addr_mid = ECAST_UINT8(base_addr >> 16);
-    s->base_addr_hi = ECAST_UINT8(base_addr >> 24);
+    s->base_addr_hi  = ECAST_UINT8(base_addr >> 24);
 
     return s;
 }
