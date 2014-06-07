@@ -11,8 +11,11 @@ export CLANG	:= clang
 export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
 export NASM 	:= nasm -f elf32
 export AR_R		:= ar r --target elf32-i386
-export QEMU 	:= qemu-system-i386 -monitor stdio -vga std
+export OBJCOPY	:= objcopy
+export QEMU 	:= qemu-system-i386 -monitor stdio -vga std -m 32
+export QEMU_D 	:= qemu-system-i386 -vga std -m 32
 export BOCHS	:= bochs
+export GDB	 	:= gdb
 
 export AXEL_ROOT_DIR		:= $(shell pwd)/
 export AXEL_INCLUDE_PATH 	:= $(AXEL_ROOT_DIR)include/
@@ -21,6 +24,7 @@ export AXEL_LIB_PATH 		:= $(AXEL_ROOT_DIR)lib
 export MAKEFILE 	:= Makefile
 
 AXEL_BIN 			:= axel.bin
+AXEL_SYM 			:= axel.sym
 
 ISO_NAME 			:= axel.iso
 ISO_DIR 			:= $(AXEL_ROOT_DIR)iso_dir/
@@ -45,7 +49,7 @@ LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handle
 # CXXFLAGS    C++ compiler flags
 CPPFLAGS			:= -I$(AXEL_INCLUDE_PATH)
 # W_FLAGS 			:= -Wall -Wextra -Wpadded -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
-W_FLAGS 			:= -Wgnu-designator -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
+W_FLAGS 			:= -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
 # gcc option
 # 	-fdiagnostics-color=always
 # clang option
@@ -93,6 +97,8 @@ $(BOOT_OBJ) : $(MAKEFILE)
 
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(LINK_OBJS)
 	$(LD) $(LINK_OBJS) $(LDFLAGS) -static $(LIBS) -o $@
+	$(OBJCOPY) --only-keep-debug $(AXEL_BIN) $(AXEL_SYM)
+	$(OBJCOPY) --strip-debug $(AXEL_BIN)
 
 
 $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
@@ -116,7 +122,7 @@ clean:
 	@for dir in $(SUB_DIRS) ; \
 		do ($(MAKE) -C $$dir clean); \
 		done
-	$(RM) *.o *.bin *.iso *.map *.lst *.log $(ISO_DIR) tags
+	$(RM) *.o *.bin *.iso *.map *.lst *.log *.sym $(ISO_DIR) tags
 	ctags -R ./*
 
 
@@ -127,12 +133,18 @@ lib: $(STRUCT_DIR)
 
 .PHONY: run_qemu_cdrom
 run_qemu_cdrom: $(MAKEFILE) $(ISO_NAME)
-	$(QEMU) -m 32 -cdrom $(ISO_NAME)
+	$(QEMU) -cdrom $(ISO_NAME)
+
+
+.PHONY: debug_run_qemu
+debug_run_qemu: $(MAKEFILE) $(ISO_NAME)
+	$(QEMU_D) -cdrom $(ISO_NAME) -s -S &
+	$(GDB)
 
 
 .PHONY: run_qemu_kernel
 run_qemu_kernel: $(MAKEFILE) $(AXEL_BIN)
-	$(QEMU) -m 32 -kernel $(AXEL_BIN)
+	$(QEMU) -kernel $(AXEL_BIN)
 
 
 # .PHONY: run_bochs

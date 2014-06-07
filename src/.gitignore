@@ -9,6 +9,7 @@
 
 # allow files
 !.gitignore
+!.gdbinit
 !Makefile
 !bochsrc
 !*.asm
