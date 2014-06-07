@@ -47,7 +47,8 @@ extern uintptr_t const LD_KERNEL_SIZE;
 
 /*
  * In linker script, I did (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
- * So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START
+ * So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START.
+ * And Multiboot_* struct is virtual address 0xC000000~0xC0010000.
  */
 static uintptr_t const kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
@@ -61,15 +62,19 @@ static bool* used_list_node;
 static size_t for_each_in_malloc_size;
 static size_t for_each_in_free_base_addr;
 
+static inline void fix_address(Multiboot_info* const);
 static List_node* list_get_new_memory_node(void);
 static void remove_memory_list_node(List_node*);
 static bool for_each_in_malloc(void*);
 static bool for_each_in_free(void*);
-static bool for_each_in_print(void*);
 
+void init_memory(Multiboot_info* const mb_info) {
+    /*
+     * pointer of Multiboot_info struct has physical address.
+     * So, this function converts physical address to virtual address to avoid pagefault.
+     */
+    fix_address(mb_info);
 
-
-void init_memory(Multiboot_memory_map const* mmap, size_t const mmap_len) {
     /* calculate each variable memory address. */
     uintptr_t const mem_manager_addr = get_kernel_vir_end_addr();
     uintptr_t const mem_list_nodes_addr = mem_manager_addr + sizeof(Memory_manager);
@@ -78,8 +83,8 @@ void init_memory(Multiboot_memory_map const* mmap, size_t const mmap_len) {
     uintptr_t const kernel_pdt_addr = round_page_size(used_list_node_addr + sizeof(bool) * MAX_MEM_NODE_NUM);
     uintptr_t const added_variables_end_addr = kernel_pdt_addr + ALL_PAGE_STRUCT_SIZE;
 
-    kernel_end_addr = added_variables_end_addr;                         /* update virtual kernel end address. */
-    kernel_size = round_page_size(kernel_end_addr - kernel_start_addr); /* update kernel size and round kernel size for paging. */
+    kernel_end_addr = added_variables_end_addr;        /* update virtual kernel end address. */
+    kernel_size = kernel_end_addr - kernel_start_addr; /* update kernel size and round kernel size for paging. */
 
     /* initialize dynamic allocated variables. */
     mem_manager = (Memory_manager*)mem_manager_addr;
@@ -103,9 +108,15 @@ void init_memory(Multiboot_memory_map const* mmap, size_t const mmap_len) {
 
     /*
      * Set physical 0x000000 to physical kernel end address is allocated.
-     *
      * But, there are continuou allocated areas in this area.
      * So, We need alloc to one node.
+     * NOTE from http://wiki.osdev.org/Detecting_Memory_(x86)#Memory_Detection_in_Emulators
+     *      When you tell an emulator how much memory you want emulated,
+     *      the concept is a little "fuzzy" because of the emulated missing bits of RAM below 1M.
+     *      If you tell an emulator to emulate 32M, does that mean your address space definitely goes from 0 to 32M -1, with missing bits? Not necessarily.
+     *      The emulator might assume that you mean 32M of contiguous memory above 1M, so it might end at 33M -1.
+     *      Or it might assume that you mean 32M of total usable RAM, going from 0 to 32M + 384K -1.
+     *      So don't be surprised if you see a "detected memory size" that does not exactly match your expectations.
      */
     List_node* kernel_n = list_get_new_memory_node();
     Memory_info* kernel_mi = (Memory_info*)kernel_n->data;
@@ -115,9 +126,10 @@ void init_memory(Multiboot_memory_map const* mmap, size_t const mmap_len) {
     list_insert_node_last(&mem_manager->list, kernel_n);
     uintptr_t kernel_node_end_addr = kernel_mi->base_addr + kernel_mi->size;
 
-    /* set memory infomation by Multiboot_memory_map. */
+    /* set memory infomation from Multiboot_memory_map. */
+    Multiboot_memory_map const* mmap = (Multiboot_memory_map const*)(uintptr_t)mb_info->mmap_addr;
+    size_t const mmap_len = mb_info->mmap_length;
     Multiboot_memory_map const* const limit = (Multiboot_memory_map const* const)((uintptr_t)mmap + mmap_len);
-
     bool first_flag = true;
     for (Multiboot_memory_map const* i = mmap; i < limit; i = (Multiboot_memory_map*)((uintptr_t)i + sizeof(i->size) + i->size)) {
         if ((i->addr + i->len) < kernel_node_end_addr) {
@@ -141,7 +153,6 @@ void init_memory(Multiboot_memory_map const* mmap, size_t const mmap_len) {
         list_insert_node_last(&mem_manager->list, n);
     }
 
-
     /*
      * Physical memory managing is just finished.
      * Next, let's set paging.
@@ -152,6 +163,12 @@ void init_memory(Multiboot_memory_map const* mmap, size_t const mmap_len) {
 
 void* pmalloc_page_round(size_t size) {
     return pmalloc(round_page_size(size));
+}
+
+
+static bool for_each_in_malloc(void* d) {
+    Memory_info const* const m = (Memory_info*)d;
+    return (m->state == MEM_INFO_STATE_FREE && for_each_in_malloc_size <= m->size) ? true : false;
 }
 
 
@@ -184,6 +201,12 @@ void* pmalloc(size_t size_byte) {
     list_insert_node_next(&mem_manager->list, n, new);
 
     return (void*)mi->base_addr;
+}
+
+
+static bool for_each_in_free(void* d) {
+    Memory_info const* const m = (Memory_info*)d;
+    return (m->state == MEM_INFO_STATE_ALLOC && m->base_addr == for_each_in_free_base_addr) ? true : false;
 }
 
 
@@ -246,6 +269,19 @@ size_t get_kernel_static_size(void) {
 }
 
 
+static inline void fix_address(Multiboot_info* const mb_info) {
+    set_phys_to_vir_addr(&mb_info->cmdline);
+    set_phys_to_vir_addr(&mb_info->mods_addr);
+    set_phys_to_vir_addr(&mb_info->mmap_addr);
+    set_phys_to_vir_addr(&mb_info->drives_addr);
+    set_phys_to_vir_addr(&mb_info->config_table);
+    set_phys_to_vir_addr(&mb_info->boot_loader_name);
+    set_phys_to_vir_addr(&mb_info->apm_table);
+    set_phys_to_vir_addr(&mb_info->vbe_control_info);
+    set_phys_to_vir_addr(&mb_info->vbe_mode_info);
+}
+
+
 /**
  * @brief get new list node.
  *      You MUST use this function while managing memory.
@@ -274,7 +310,7 @@ static List_node* list_get_new_memory_node(void) {
 
 /**
  * @brief remove list node.
-        You MUST use this function while managing memory.
+ You MUST use this function while managing memory.
  *      because default delete_list_node() uses free().
  * @param  target
  * @param  m
@@ -285,32 +321,4 @@ static void remove_memory_list_node(List_node* target) {
 
     /* instead of free(). */
     used_list_node[((uintptr_t)target - (uintptr_t)mem_list_nodes) / sizeof(List_node)] = false;
-}
-
-
-static bool for_each_in_malloc(void* d) {
-    Memory_info const* const m = (Memory_info*)d;
-    return (m->state == MEM_INFO_STATE_FREE && for_each_in_malloc_size <= m->size) ? true : false;
-}
-
-
-static bool for_each_in_free(void* d) {
-    Memory_info const* const m = (Memory_info*)d;
-    return (m->state == MEM_INFO_STATE_ALLOC && m->base_addr == for_each_in_free_base_addr) ? true : false;
-}
-
-
-#include <stdio.h>
-static bool for_each_in_print(void* d) {
-    Memory_info const* const m = (Memory_info*)d;
-
-    printf((m->state == MEM_INFO_STATE_FREE) ? "FREE " : "ALLOC");
-    printf(" Base: 0x%zx  Size: %zuKB\n", m->base_addr, m->size / 1024);
-
-    return false;
-}
-
-
-void print_mem(void) {
-    list_for_each(&mem_manager->list, for_each_in_print, false);
 }

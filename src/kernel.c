@@ -62,7 +62,7 @@ enum GDT_constants {
     KERNEL_CODE_SEGMENT_INDEX  = 1,
     KERNEL_DATA_SEGMENT_INDEX  = 2,
 
-    SEGMENT_NUM                = 2 + 1,                                    /* There are "+1" to allocate null descriptor */
+    SEGMENT_NUM                = 2 + 1,                                    /* There are "+1" to allocate null descriptor. */
     GDT_LIMIT                  = sizeof(Segment_descriptor) * SEGMENT_NUM, /* Total Segment_descriptor occuping area size. */
     GDT_FLAG_TYPE_DATA_R       = 0x000000,                                 /* Read-Only */
     GDT_FLAG_TYPE_DATA_RA      = 0x000100,                                 /* Read-Only, accessed */
@@ -170,36 +170,23 @@ static void clear_bss(void);
 
 /**
  * @brief This function is start entry.
+ *      Initialize system in this.
  * @param boot_info boot information by bootstraps loader.
  */
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
-    io_cli();
+    io_cli();    /* disable Interrupt until setting Interrupt handler. */
+    clear_bss(); /* clear bss section of kernel. */
+    Multiboot_info_flag const flags = boot_info->flags;
 
-    /* clear bss section of kernel. */
-    clear_bss();
-
-    /*
-     * Fix multiboot_info address.
-     * Bacause it is physical address yet.
-     */
-    set_phys_to_vir_addr(&boot_info->vbe_control_info);
-    set_phys_to_vir_addr(&boot_info->vbe_mode_info);
-
-    Vbe_info_block* const vbe_info = (Vbe_info_block*)(uintptr_t)boot_info->vbe_control_info;
-    Vbe_mode_info_block* const vbe_mode_info = (Vbe_mode_info_block*)(uintptr_t)boot_info->vbe_mode_info;
-    Multiboot_info_flag const boot_flags = boot_info->flags;
-
-    set_phys_to_vir_addr(&vbe_info->video_mode_ptr);
-
-    if (boot_flags.is_mmap_enable) {
-        set_phys_to_vir_addr(&boot_info->mmap_addr);
-        /* initialize memory. */
-        init_memory((Multiboot_memory_map*)(uintptr_t)boot_info->mmap_addr, boot_info->mmap_length);
+    if (flags.is_mmap_enable) {
+        init_memory(boot_info);
+    } else {
+        /* TODO: panic */
     }
 
     init_gdt();
     init_idt();
-    init_graphic(vbe_info, vbe_mode_info);
+    init_graphic(boot_info);
     init_pic();
     init_pit();
     io_sti();
@@ -240,16 +227,12 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("kernel static size: %zuKB\n", get_kernel_static_size() / 1024);
     printf("kernel virtual  address: 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
     printf("kernel physical address: 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    printf("VBE Address: 0x%x\n", vbe_mode_info->phys_base_ptr);
 
-    /* mem_*フィールドを確認 */
-    if (boot_flags.is_mem_enable) {
+    if (flags.is_mem_enable) {
         printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
         printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
         printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
     }
-
-    print_mem();
 
     const uint32_t base_y = 5;
     const uint32_t base_x = get_max_x_resolution();

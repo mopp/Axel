@@ -7,11 +7,11 @@
 #include <graphic_txt.h>
 #include <graphic_vbe.h>
 
-Axel_state_code init_graphic(Vbe_info_block const* const in, Vbe_mode_info_block const* const mi) {
+Axel_state_code init_graphic(Multiboot_info const * const info) {
 #ifdef TEXT_MODE
     return AXEL_SUCCESS;
 #else
-    return init_graphic_vbe(in, mi);
+    return init_graphic_vbe(info);
 #endif
 }
 

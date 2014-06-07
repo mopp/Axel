@@ -16,11 +16,10 @@
 #include <multiboot.h>
 
 
-extern void init_memory(Multiboot_memory_map const*, size_t const);
+extern void init_memory(Multiboot_info* const);
 extern void* pmalloc(size_t);
 extern void* pmalloc_page_round(size_t);
 extern void pfree(void*);
-extern void print_mem(void);
 extern uintptr_t get_kernel_vir_start_addr(void);
 extern uintptr_t get_kernel_vir_end_addr(void);
 extern uintptr_t get_kernel_phys_start_addr(void);

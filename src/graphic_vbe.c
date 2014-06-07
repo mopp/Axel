@@ -6,8 +6,6 @@
 #include <graphic_vbe.h>
 #include <asm_functions.h>
 #include <macros.h>
-#include <state_code.h>
-#include <vbe.h>
 #include <point.h>
 #include <font.h>
 #include <drawable.h>
@@ -41,7 +39,9 @@ static inline void set_vram8888(uint32_t const, uint32_t const, RGB8 const* cons
 static inline void set_vram5650(uint32_t const, uint32_t const, RGB8 const* const);
 
 
-Axel_state_code init_graphic_vbe(Vbe_info_block const* const info, Vbe_mode_info_block const* const m_info) {
+Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
+    /* Vbe_info_block const* const info = (Vbe_info_block*)(uintptr_t)mb_info->vbe_control_info; */
+    Vbe_mode_info_block const* const m_info = (Vbe_mode_info_block*)(uintptr_t)mb_info->vbe_mode_info;
     if (m_info->phys_base_ptr == 0) {
         return AXEL_FAILED;
     }
