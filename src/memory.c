@@ -40,16 +40,17 @@ struct memory_manager {
 typedef struct memory_manager Memory_manager;
 
 
-/* These are set by linker. see kernel.ld */
-extern uintptr_t const LD_KERNEL_START;
-extern uintptr_t const LD_KERNEL_END;
-extern uintptr_t const LD_KERNEL_SIZE;
+
 
 /*
- * In linker script, I did (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
+ * LD_* variables are set by linker. see kernel.ld
+ * In kernel.ld, I did calculate (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
  * So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START.
  * And Multiboot_* struct is virtual address 0xC000000~0xC0010000.
  */
+extern uintptr_t const LD_KERNEL_START;
+extern uintptr_t const LD_KERNEL_END;
+extern uintptr_t const LD_KERNEL_SIZE;
 static uintptr_t const kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 static uintptr_t kernel_size;
@@ -62,11 +63,13 @@ static bool* used_list_node;
 static size_t for_each_in_malloc_size;
 static size_t for_each_in_free_base_addr;
 
-static inline void fix_address(Multiboot_info* const);
+static void fix_address(Multiboot_info* const);
 static List_node* list_get_new_memory_node(void);
 static void remove_memory_list_node(List_node*);
 static bool for_each_in_malloc(void*);
 static bool for_each_in_free(void*);
+
+
 
 void init_memory(Multiboot_info* const mb_info) {
     /*

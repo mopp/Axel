@@ -16,7 +16,6 @@
  */
 static Page_directory_table kernel_pdt;
 
-
 static size_t get_pde_index(uintptr_t const);
 static size_t get_pte_index(uintptr_t const);
 static Page_directory_entry* get_pde(Page_directory_table const* const, uintptr_t const);
@@ -26,6 +25,7 @@ static Page_table_entry* set_frame_addr(Page_table_entry* const, uintptr_t const
 static void map_page(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
 static void map_page_area(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
 static void map_page_same_area(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
+
 
 
 void init_paging(Page_directory_table pdt) {
