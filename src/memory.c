@@ -214,6 +214,10 @@ static bool for_each_in_free(void* d) {
 
 
 void pfree(void* object) {
+    if (object == NULL) {
+       return;
+    }
+
     for_each_in_free_base_addr = (uintptr_t)object;
     List_node* n = list_for_each(&mem_manager->list, for_each_in_free, false);
     if (n == NULL) {
@@ -221,24 +225,27 @@ void pfree(void* object) {
     }
     Memory_info* n_mi = (Memory_info*)n->data;
 
-    List_node* prev_node = n->prev;
-    List_node* next_node = n->next;
-    Memory_info* prev_mi = (Memory_info*)prev_node->data;
-    Memory_info* next_mi = (Memory_info*)next_node->data;
+    List_node* const prev_node = n->prev;
+    List_node* const next_node = n->next;
+    Memory_info* const prev_mi = (Memory_info*)prev_node->data;
+    Memory_info* const next_mi = (Memory_info*)next_node->data;
 
-    if (prev_mi->state == MEM_INFO_STATE_FREE) {
+    if (prev_mi->state == MEM_INFO_STATE_FREE && prev_mi->state == MEM_INFO_STATE_FREE) {
+        /* merge next and previous. */
+        prev_mi->size += (n_mi->size + next_mi->size);
+        remove_memory_list_node(n);
+        remove_memory_list_node(next_node);
+    } else if (prev_mi->state == MEM_INFO_STATE_FREE) {
         /* merge previous. */
         prev_mi->size += n_mi->size;
         remove_memory_list_node(n);
     } else if (next_mi->state == MEM_INFO_STATE_FREE) {
         /* merge next. */
-        next_mi->base_addr -= n_mi->size;
-        next_mi->size += n_mi->size;
-        remove_memory_list_node(n);
+        n_mi->size += next_mi->size;
+        remove_memory_list_node(next_node);
     } else {
         n_mi->state = MEM_INFO_STATE_FREE;
     }
-    // TODO: add that can merge next and previous.
 }
 
 
