@@ -111,8 +111,8 @@ void init_memory(Multiboot_info* const mb_info) {
 
     /*
      * Set physical 0x000000 to physical kernel end address is allocated.
-     * But, there are continuou allocated areas in this area.
-     * So, We need alloc to one node.
+     * But, there are continuous allocated areas in this area.
+     * So, We alloc it to one node.
      * NOTE from http://wiki.osdev.org/Detecting_Memory_(x86)#Memory_Detection_in_Emulators
      *      When you tell an emulator how much memory you want emulated,
      *      the concept is a little "fuzzy" because of the emulated missing bits of RAM below 1M.
@@ -313,7 +313,7 @@ static List_node* list_get_new_memory_node(void) {
 
 /**
  * @brief remove list node.
- You MUST use this function while managing memory.
+ *      You MUST use this function while managing memory.
  *      because default delete_list_node() uses free().
  * @param  target
  * @param  m

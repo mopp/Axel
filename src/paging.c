@@ -27,6 +27,10 @@ static void map_page_area(Page_directory_table const* const, uint32_t const, uin
 static void map_page_same_area(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
 
 
+/* virtual memory allocate */
+/* vmalloc */
+/* virtual continuous memory allocate */
+/* vcmalloc */
 
 void init_paging(Page_directory_table pdt) {
     kernel_pdt = pdt;
