@@ -100,6 +100,7 @@ struct gate_descriptor {
         struct {
             uint16_t offset_low;       /* 割り込みハンドラへのオフセット */
             uint16_t segment_selector; /* 割り込みハンドラの属するセグメント CSレジスタへ設定される値 */
+
             uint8_t unused_zero;       /* 3つのゲートディスクリプタ的に0で固定して良さそう */
             unsigned int type : 3;     /* 3つのうちどのゲートディスクリプタか */
             unsigned int size : 1;
@@ -118,25 +119,21 @@ typedef struct gate_descriptor Gate_descriptor;
 _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.(64 bit)");
 
 
-enum IDT_constants {
-    IDT_ADDR = 0x0026f800 + KERNEL_VIRTUAL_BASE_ADDR, /* TODO: dynamic allocated. */
+enum Gate_descriptor_constants {
+    IDT_ADDR = 0x0026F800 + KERNEL_VIRTUAL_BASE_ADDR, /* TODO: dynamic allocated. */
     IDT_MAX_NUM = 256,
     IDT_LIMIT = IDT_MAX_NUM * 8 - 1,
 
-    IDT_GATE_TYPE_TASK = 0x05,
-    IDT_GATE_TYPE_INTERRUPT = 0x06,
-    IDT_GATE_TYPE_TRAP = 0x07,
-
-    IDT_GATE_SIZE_16 = 0x00,
-    IDT_GATE_SIZE_32 = 0x01,
-
-    IDT_RING0 = 0x00,
-    IDT_RING1 = 0x01,
-    IDT_RING2 = 0x02,
-    IDT_RING3 = 0x03,
-
-    IDT_PRESENT = 1,
-    IDT_NOT_PRESENT = 0,
+    GD_FLAG_TYPE_TASK      = 0x00000500,
+    GD_FLAG_TYPE_INTERRUPT = 0x00000600,
+    GD_FLAG_TYPE_TRAP      = 0x00000700,
+    GD_FLAG_SIZE_32        = 0x00000800,
+    GD_FLAG_RING0          = 0x00000000,
+    GD_FLAG_RING1          = 0x00002000,
+    GD_FLAG_RING2          = 0x00004000,
+    GD_FLAG_RING3          = 0x00006000,
+    GD_FLAG_PRESENT        = 0x00008000,
+    GD_FLAGS_IDT           = GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
 };
 
 
@@ -145,7 +142,7 @@ enum PIT_constants {
     PIT_PORT_COUNTER0 = 0x40,
     PIT_PORT_COUNTER1 = 0x41,
     PIT_PORT_COUNTER2 = 0x42,
-    PIT_PORT_CONTROL = 0x43,
+    PIT_PORT_CONTROL  = 0x43,
 
     /* 制御コマンド */
     /* パルス生成モード */
@@ -154,13 +151,13 @@ enum PIT_constants {
     /* カウンター値 */
     /* 1193182 / 100 Hz */
     PIT_COUNTER_VALUE_HIGH = 0x2E,
-    PIT_COUNTER_VALUE_LOW = 0x9C,
+    PIT_COUNTER_VALUE_LOW  = 0x9C,
 };
 
 
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint32_t);
+static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, void*, uint16_t, uint32_t);
 static void init_gdt(void);
-static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, uint8_t, void (*)(void), uint16_t, uint8_t, uint8_t, uint8_t);
 static void init_idt(void);
 static void init_pic(void);
 static void init_pit(void);
@@ -275,9 +272,7 @@ static inline void init_gdt(void) {
     Segment_descriptor* gdt = (Segment_descriptor*)GDT_ADDR;
 
     /* zero clear Segment_descriptor. */
-    for (int i = 0; i < SEGMENT_NUM; ++i) {
-        memset(gdt + i, 0, sizeof(Segment_descriptor));
-    }
+    memset(gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
 
     /* Setup flat address */
     set_segment_descriptor(gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
@@ -287,22 +282,12 @@ static inline void init_gdt(void) {
 }
 
 
-static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t gate_type, void (*offset)(void), uint16_t selector_index, uint8_t gate_size, uint8_t pliv, uint8_t p_flag) {
-    g->offset_low = ((uintptr_t)offset & 0x0000ffff);
-    g->offset_high = ECAST_UINT16(((uintptr_t)offset >> 16) & 0x0000ffff);
+static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* offset, uint16_t selector_index, uint32_t flags) {
+    g->bit_expr_high = flags;
 
-    g->segment_selector = ECAST_UINT16(selector_index * sizeof(Gate_descriptor));
-
-    g->type = ECAST_UINT8(gate_type & 0x07);
-    g->size = ECAST_UINT8(gate_size & 0x01);
-
-    g->unused_zero = 0x00;
-    g->zero_reserved = 0x0;
-
-    /* 特権レベルを設定 */
-    g->plivilege_level = ECAST_UINT8(pliv & 0x01);
-
-    g->present_flag = IS_ENABLE(p_flag);
+    g->offset_low = ECAST_UINT16((uintptr_t)offset);
+    g->offset_high = ECAST_UINT16((uintptr_t)offset >> 16);
+    g->segment_selector = ECAST_UINT16(selector_index * sizeof(Segment_descriptor));
 
     return g;
 }
@@ -311,15 +296,14 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, uint8_t g
 static inline void init_idt(void) {
     Gate_descriptor* idt = (Gate_descriptor*)IDT_ADDR;
 
-    /* 全ゲートディスクリプタ初期化を初期化 */
-    for (int i = 0; i < IDT_MAX_NUM; ++i) {
-        set_gate_descriptor(idt + i, 0, 0, 0, 0, 0, 0);
-    }
-    load_idtr(IDT_LIMIT, IDT_ADDR);
+    /* zero clear Gate_descriptor. */
+    memset(idt, 0, sizeof(Gate_descriptor) * IDT_MAX_NUM);
 
-    set_gate_descriptor(idt + 0x0E, IDT_GATE_TYPE_INTERRUPT, io_hlt, KERNEL_CODE_SEGMENT_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
-    set_gate_descriptor(idt + 0x20, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x20, KERNEL_CODE_SEGMENT_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
-    set_gate_descriptor(idt + 0x21, IDT_GATE_TYPE_INTERRUPT, asm_interrupt_handler0x21, KERNEL_CODE_SEGMENT_INDEX, IDT_GATE_SIZE_32, IDT_RING0, IDT_PRESENT);
+    set_gate_descriptor(idt + 0x0E, io_hlt,                    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x20, asm_interrupt_handler0x20, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x21, asm_interrupt_handler0x21, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+
+    load_idtr(IDT_LIMIT, IDT_ADDR);
 }
 
 
