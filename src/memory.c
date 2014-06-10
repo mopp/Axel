@@ -44,30 +44,26 @@ typedef struct memory_manager Memory_manager;
 
 /*
  * LD_* variables are set by linker. see kernel.ld
- * In kernel.ld, I did calculate (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
- * So, I subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START.
- * And Multiboot_* struct is virtual address 0xC000000~0xC0010000.
+ * In kernel.ld, kernel start address is defined (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
+ * But, I want to make mapping start physical address 0x00000000.
+ * So, I will subtract LD_KERNEL_PHYSICAL_BASE_ADDR from LD_KERNEL_START.
+ * And Multiboot_* struct is positioned at virtual address 0xC000000~0xC0010000.
  */
 extern uintptr_t const LD_KERNEL_START;
 extern uintptr_t const LD_KERNEL_END;
 extern uintptr_t const LD_KERNEL_SIZE;
 static uintptr_t const kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
-static uintptr_t kernel_size;
 
 /* These pointer variables is dynamically allocated at kernel tail. */
 static Memory_manager* mem_manager;
 static List_node* mem_list_nodes;
 static Memory_info* mem_info;
 static bool* used_list_node;
-static size_t for_each_in_malloc_size;
-static size_t for_each_in_free_base_addr;
 
 static void fix_address(Multiboot_info* const);
 static List_node* list_get_new_memory_node(void);
 static void remove_memory_list_node(List_node*);
-static bool for_each_in_malloc(void*);
-static bool for_each_in_free(void*);
 
 
 
@@ -78,31 +74,26 @@ void init_memory(Multiboot_info* const mb_info) {
      */
     fix_address(mb_info);
 
-    /* calculate each variable memory address. */
-    uintptr_t const mem_manager_addr = get_kernel_vir_end_addr();
-    uintptr_t const mem_list_nodes_addr = mem_manager_addr + sizeof(Memory_manager);
-    uintptr_t const mem_info_addr = mem_list_nodes_addr + sizeof(List_node) * MAX_MEM_NODE_NUM;
-    uintptr_t const used_list_node_addr = mem_info_addr + sizeof(Memory_info) * MAX_MEM_NODE_NUM;
-    uintptr_t const kernel_pdt_addr = round_page_size(used_list_node_addr + sizeof(bool) * MAX_MEM_NODE_NUM);
-    uintptr_t const added_variables_end_addr = kernel_pdt_addr + ALL_PAGE_STRUCT_SIZE;
-
-    kernel_end_addr = added_variables_end_addr;        /* update virtual kernel end address. */
-    kernel_size = kernel_end_addr - kernel_start_addr; /* update kernel size and round kernel size for paging. */
+    /*
+     * Allocation Page_directory_table to avoid wast of memory in this.
+     * Bacause size is rounded.
+     */
+    Page_directory_table const kernel_pdt = smalloc_page_round(ALL_PAGE_STRUCT_SIZE);
 
     /* initialize dynamic allocated variables. */
-    mem_manager = (Memory_manager*)mem_manager_addr;
+    mem_manager = smalloc(sizeof(Memory_manager));
     list_init(&mem_manager->list, sizeof(Memory_info), NULL);
 
     /* clear all memory_info. */
-    mem_info = (Memory_info*)mem_info_addr;
+    mem_info = smalloc(sizeof(Memory_info) * MAX_MEM_NODE_NUM);
     memset(mem_info, 0, sizeof(Memory_info) * MAX_MEM_NODE_NUM);
 
     /* clear all used_list_node. */
-    used_list_node = (bool*)used_list_node_addr;
+    used_list_node = smalloc(sizeof(bool) * MAX_MEM_NODE_NUM);
     memset(used_list_node, false, sizeof(bool) * MAX_MEM_NODE_NUM);
 
     /* clear and set memory_info area into list node. */
-    mem_list_nodes = (List_node*)mem_list_nodes_addr;
+    mem_list_nodes = smalloc(sizeof(List_node) * MAX_MEM_NODE_NUM);
     for (size_t i = 0; i < MAX_MEM_NODE_NUM; ++i) {
         mem_list_nodes[i].next = NULL;
         mem_list_nodes[i].prev = NULL;
@@ -160,23 +151,55 @@ void init_memory(Multiboot_info* const mb_info) {
      * Physical memory managing is just finished.
      * Next, let's set paging.
      */
-    init_paging((Page_directory_table)kernel_pdt_addr);
+    init_paging(kernel_pdt);
 }
 
 
-void* pmalloc_page_round(size_t size) {
-    return pmalloc(round_page_size(size));
+static inline void* smalloc_generic(size_t size, bool is_round_page_size) {
+    uintptr_t addr = get_kernel_vir_end_addr();
+
+    if (is_round_page_size == true) {
+        uintptr_t raddr = round_page_size(addr);
+        size += raddr - addr;
+        addr = raddr;
+    }
+
+    kernel_end_addr += size; /* size add to kernel_end_addr to allocate memory. */
+
+    return (void*)addr;
 }
 
 
+/**
+ * @brief Strangely memory allocation.
+ *        This function allocate memory at kernel tail.
+ * @param size allocated memory size.
+ * @return pointer to allocated memory.
+ */
+void* smalloc(size_t size) {
+    return smalloc_generic(size, false);
+}
+
+
+void* smalloc_page_round(size_t size) {
+    return smalloc_generic(size, true);
+}
+
+
+static size_t for_each_in_malloc_size;
 static bool for_each_in_malloc(void* d) {
     Memory_info const* const m = (Memory_info*)d;
     return (m->state == MEM_INFO_STATE_FREE && for_each_in_malloc_size <= m->size) ? true : false;
 }
 
 
-void* pmalloc(size_t size_byte) {
-    size_t size = size_byte * 8;
+/**
+ * @brief Physical memory allocation.
+ * @param size allocated memory size.
+ * @return pointer to allocated memory.
+ */
+void* pmalloc(size_t size) {
+    /* size_t size = size_byte * 8; */
 
     /* search enough size node */
     for_each_in_malloc_size = size;
@@ -207,6 +230,12 @@ void* pmalloc(size_t size_byte) {
 }
 
 
+void* pmalloc_page_round(size_t size) {
+    return pmalloc(round_page_size(size));
+}
+
+
+static size_t for_each_in_free_base_addr;
 static bool for_each_in_free(void* d) {
     Memory_info const* const m = (Memory_info*)d;
     return (m->state == MEM_INFO_STATE_ALLOC && m->base_addr == for_each_in_free_base_addr) ? true : false;
@@ -270,7 +299,7 @@ uintptr_t get_kernel_phys_end_addr(void) {
 
 
 size_t get_kernel_size(void) {
-    return kernel_size;
+    return kernel_end_addr - kernel_start_addr;
 }
 
 
