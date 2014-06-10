@@ -1,8 +1,17 @@
+--------
+| Task |
+--------
 [ ] add handling error.
 [ ] fix file comments.
 [ ] add function comments.
 [ ] make console.
 [ ] add panic function.
 
+
+
+--------
+| Memo |
+--------
 clang option for cross compile
 lib32-glibc-2.14-4
+wc -l ./*.c ./*/*.c ./*.asm ./*/*.asm
