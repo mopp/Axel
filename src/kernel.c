@@ -37,7 +37,7 @@ struct segment_descriptor {
             uint8_t base_addr_mid;            /* segment address mid. */
             unsigned int type : 4;            /* this shows segment main configuration. */
             unsigned int segment_type : 1;    /* If 0, segment is system segment, if 1, segment is code or data segment. */
-            unsigned int plivilege_level : 2; /* This controle accesse level. */
+            unsigned int plivilege_level : 2; /* This controles accesse level. */
             unsigned int present : 1;         /* Is it exist on memory */
             unsigned int limit_hi : 4;        /* segment limit high. */
             unsigned int available : 1;       /* OS can use this.  */
@@ -57,8 +57,6 @@ _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descript
 
 
 enum GDT_constants {
-    GDT_ADDR = 0x00270000 + KERNEL_VIRTUAL_BASE_ADDR, /* TODO: dynamic allocated. */
-
     KERNEL_CODE_SEGMENT_INDEX = 1,
     KERNEL_DATA_SEGMENT_INDEX = 2,
 
@@ -98,16 +96,15 @@ enum GDT_constants {
 struct gate_descriptor {
     union {
         struct {
-            uint16_t offset_low;       /* 割り込みハンドラへのオフセット */
-            uint16_t segment_selector; /* 割り込みハンドラの属するセグメント CSレジスタへ設定される値 */
-
-            uint8_t unused_zero;       /* 3つのゲートディスクリプタ的に0で固定して良さそう */
-            unsigned int type : 3;     /* 3つのうちどのゲートディスクリプタか */
-            unsigned int size : 1;
-            unsigned int zero_reserved : 1;
-            unsigned int plivilege_level : 2;
-            unsigned int present_flag : 1;
-            uint16_t offset_high;
+            uint16_t offset_low;              /* address offset low of interrupt handler.*/
+            uint16_t segment_selector;        /* CS register value. */
+            uint8_t unused_zero;              /* unused area. */
+            unsigned int type : 3;            /* gate type. */
+            unsigned int size : 1;            /* If this is 1, gate size is 32 bit. otherwise it is 16 bit */
+            unsigned int zero_reserved : 1;   /* reserved area. */
+            unsigned int plivilege_level : 2; /* This controles accesse level. */
+            unsigned int present_flag : 1;    /* Is it exist on memory */
+            uint16_t offset_high;             /* address offset high of interrupt handler.*/
         };
         struct {
             uint32_t bit_expr_low;
@@ -120,10 +117,8 @@ _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor siz
 
 
 enum Gate_descriptor_constants {
-    IDT_ADDR = 0x0026F800 + KERNEL_VIRTUAL_BASE_ADDR, /* TODO: dynamic allocated. */
-    IDT_MAX_NUM = 256,
-    IDT_LIMIT = IDT_MAX_NUM * 8 - 1,
-
+    IDT_NUM                = 19 + 12 + 16, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector */
+    IDT_LIMIT              = IDT_NUM * 8 - 1,
     GD_FLAG_TYPE_TASK      = 0x00000500,
     GD_FLAG_TYPE_INTERRUPT = 0x00000600,
     GD_FLAG_TYPE_TRAP      = 0x00000700,
@@ -271,7 +266,7 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
 
 
 static inline void init_gdt(void) {
-    Segment_descriptor* gdt = (Segment_descriptor*)GDT_ADDR;
+    Segment_descriptor* gdt = (Segment_descriptor*)vmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
 
     /* zero clear Segment_descriptor. */
     memset(gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
@@ -280,7 +275,7 @@ static inline void init_gdt(void) {
     set_segment_descriptor(gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
     set_segment_descriptor(gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
 
-    load_gdtr(GDT_LIMIT, GDT_ADDR);
+    load_gdtr(GDT_LIMIT, (uint32_t)gdt);
 }
 
 
@@ -296,16 +291,16 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* off
 
 
 static inline void init_idt(void) {
-    Gate_descriptor* idt = (Gate_descriptor*)IDT_ADDR;
+    Gate_descriptor* idt = (Gate_descriptor*)vmalloc(sizeof(Gate_descriptor) * IDT_NUM);
 
     /* zero clear Gate_descriptor. */
-    memset(idt, 0, sizeof(Gate_descriptor) * IDT_MAX_NUM);
+    memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
     set_gate_descriptor(idt + 0x0E, io_hlt,                    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x20, asm_interrupt_handler0x20, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x21, asm_interrupt_handler0x21, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
 
-    load_idtr(IDT_LIMIT, IDT_ADDR);
+    load_idtr(IDT_LIMIT, (uint32_t)idt);
 }
 
 
