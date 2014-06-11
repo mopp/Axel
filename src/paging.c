@@ -52,8 +52,8 @@ void init_paging(Paging_data const * const pd) {
     }
 
     /* Set kernel area paging and video area paging. */
-    map_page_area(&kernel_pdt, PDE_FLAGS_FOR_KERNEL, PTE_FLAGS_FOR_KERNEL, get_kernel_vir_start_addr(), get_kernel_vir_end_addr(), get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    map_page_same_area(&kernel_pdt, PDE_FLAGS_FOR_KERNEL, PTE_FLAGS_FOR_KERNEL, 0xfd000000, 0xfd000000 + (600 * 800 * 4));
+    map_page_area(&kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, get_kernel_vir_start_addr(), get_kernel_vir_end_addr(), get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    map_page_same_area(&kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, 0xfd000000, 0xfd000000 + (600 * 800 * 4));
 
     /* Switch paging directory table. */
     set_cpu_pdt((uintptr_t)kernel_pdt);
@@ -63,6 +63,7 @@ void init_paging(Paging_data const * const pd) {
     for (size_t i = 0; i < PAGE_INFO_NODE_NUM; ++i) {
         p_list_nodes[i].data = &p_info[i];
     }
+
     /* Set user space. */
     list_init(&p_man->user_area_list, sizeof(Page_info), NULL);
     List_node* n = list_get_new_page_node();
@@ -104,10 +105,8 @@ static bool for_each_in_vmalloc(void* d) {
 }
 
 
-#include <stdio.h>
 void* vmalloc(size_t size) {
     size = round_page_size(size);
-    printf("request size: %zuKB\n", size / 1024);
 
     void* palloced = pmalloc(size);
     if (palloced == NULL) {
@@ -140,10 +139,7 @@ void* vmalloc(size_t size) {
 
     list_insert_node_next(&p_man->kernel_area_list, n, new);
 
-    map_page_area(&kernel_pdt, PDE_FLAGS_FOR_KERNEL, PTE_FLAGS_FOR_KERNEL, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
-
-    printf("Virtual  0x%zx ~ 0x%zx\n", pi->base_addr, pi->base_addr + pi->size);
-    printf("Physical 0x%zx ~ 0x%zx\n", (uintptr_t)palloced, (uintptr_t)palloced + size);
+    map_page_area(&kernel_pdt, PDE_FLAGS_KERNEL & ~PDE_FLAG_GLOBAL, PTE_FLAGS_KERNEL & ~PTE_FLAG_GLOBAL, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
 
     return (void*)pi->base_addr;
 }
@@ -193,48 +189,6 @@ void vfree(void* addr) {
         n_pi->state = PAGE_INFO_STATE_FREE;
     }
 }
-
-
-static bool p(void* d) {
-    Page_info* p = (Page_info*)d;
-    size_t mb = p->size / (1024 * 1024);
-    printf("Base:%zx, Size:%zu%s, State:%s\n", p->base_addr, (mb == 0 ? p->size / 1024 : mb), (mb == 0 ? "KB" : "MB"), (p->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
-    return false;
-}
-
-
-void print_vmem(void) {
-    puts("\n");
-    list_for_each(&p_man->user_area_list, p, false);
-    list_for_each(&p_man->kernel_area_list, p, false);
-
-    puts("\n");
-    size_t const size = 1024 * 1024;
-    char* str = vmalloc(sizeof(char) * size);
-    if (str == NULL) {
-        puts("vmalloc is failed");
-    } else {
-        printf("addr: 0x%zx\n", (uintptr_t)str);
-        /* 0xc0626000 */
-        for (size_t i = 0; i < size; i++) {
-            str[i] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i % 26];
-        }
-    }
-
-    puts("\n");
-    list_for_each(&p_man->user_area_list, p, false);
-    list_for_each(&p_man->kernel_area_list, p, false);
-
-    vfree(str);
-
-    puts("\n");
-    list_for_each(&p_man->user_area_list, p, false);
-    list_for_each(&p_man->kernel_area_list, p, false);
-
-    /* This code must invokes Pagefault. */
-    /* *str = '0'; */
-}
-
 
 
 static List_node* list_get_new_page_node(void) {
@@ -369,4 +323,39 @@ static inline uintptr_t get_vaddr_from_pde_index(size_t const idx) {
 
 static inline uintptr_t get_vaddr_from_pte_index(size_t const idx) {
     return idx <<  PTE_IDX_SHIFT_NUM;
+}
+
+
+
+#include <stdio.h>
+static bool p(void* d) {
+    Page_info* p = (Page_info*)d;
+    size_t mb = p->size / (1024 * 1024);
+    printf("Base:%zx, Size:%zu%s, State:%s\n", p->base_addr, (mb == 0 ? p->size / 1024 : mb), (mb == 0 ? "KB" : "MB"), (p->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
+    return false;
+}
+
+
+void print_vmem(void) {
+    puts("\n");
+    list_for_each(&p_man->user_area_list, p, false);
+    list_for_each(&p_man->kernel_area_list, p, false);
+
+    puts("\n");
+    size_t const size = 1024 * 1024;
+    char* str = vmalloc(sizeof(char) * size);
+    if (str == NULL) {
+        puts("vmalloc is failed");
+    } else {
+        printf("addr: 0x%zx\n", (uintptr_t)str);
+        /* 0xc0626000 */
+        for (size_t i = 0; i < size; i++) {
+            str[i] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i % 26];
+        }
+    }
+
+    vfree(str);
+
+    /* This code must invokes Pagefault. */
+    /* *str = '0'; */
 }

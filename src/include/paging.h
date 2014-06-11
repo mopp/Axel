@@ -121,7 +121,7 @@ enum Paging_constants {
     PTE_FLAG_DIRTY          = 0x040,
     PTE_FLAG_PAT            = 0x080,
     PTE_FLAG_GLOBAL         = 0x100,
-    PTE_FLAGS_FOR_KERNEL    = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_GLOBAL,
+    PTE_FLAGS_KERNEL    = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_GLOBAL,
     PTE_FLAGS_AREA_MASK     = 0xFFFFF000,
 
     /* PDE flags bit */
@@ -133,7 +133,7 @@ enum Paging_constants {
     PDE_FLAG_ACCESS         = 0x020,
     PDE_FLAG_SIZE           = 0x080,
     PDE_FLAG_GLOBAL         = 0x100,
-    PDE_FLAGS_FOR_KERNEL    = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_GLOBAL,
+    PDE_FLAGS_KERNEL    = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_GLOBAL,
     PDE_FLAGS_AREA_MASK     = 0xFFFFF000,
 };
 
