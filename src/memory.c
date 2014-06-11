@@ -103,6 +103,9 @@ void init_memory(Multiboot_info* const mb_info) {
         mem_list_nodes[i].data = &mem_info[i];
     }
 
+    /* FIXME: This is dirty things for vmalloc(). */
+    kernel_end_addr = round_page_size(kernel_end_addr);
+
     /*
      * Set physical 0x000000 to physical kernel end address is allocated.
      * But, there are continuous allocated areas in this area.

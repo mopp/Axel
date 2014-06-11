@@ -31,16 +31,11 @@ static Page_table_entry* set_frame_addr(Page_table_entry* const, uintptr_t const
 static void map_page(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
 static void map_page_area(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
 static void map_page_same_area(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
+static void unmap_page(Page_directory_table const* const, uintptr_t);
+static void unmap_page_area(Page_directory_table const* const, uintptr_t const, uintptr_t const);
 static List_node* list_get_new_page_node(void);
 static void remove_page_list_node(List_node*);
 
-static inline uintptr_t get_vaddr_from_pde_index(size_t const idx) {
-    return idx <<  PDE_IDX_SHIFT_NUM;
-}
-
-static inline uintptr_t get_vaddr_from_pte_index(size_t const idx) {
-    return idx <<  PTE_IDX_SHIFT_NUM;
-}
 
 
 void init_paging(Paging_data const * const pd) {
@@ -109,8 +104,10 @@ static bool for_each_in_vmalloc(void* d) {
 }
 
 
+#include <stdio.h>
 void* vmalloc(size_t size) {
     size = round_page_size(size);
+    printf("request size: %zuKB\n", size / 1024);
 
     void* palloced = pmalloc(size);
     if (palloced == NULL) {
@@ -145,6 +142,9 @@ void* vmalloc(size_t size) {
 
     map_page_area(&kernel_pdt, PDE_FLAGS_FOR_KERNEL, PTE_FLAGS_FOR_KERNEL, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
 
+    printf("Virtual  0x%zx ~ 0x%zx\n", pi->base_addr, pi->base_addr + pi->size);
+    printf("Physical 0x%zx ~ 0x%zx\n", (uintptr_t)palloced, (uintptr_t)palloced + size);
+
     return (void*)pi->base_addr;
 }
 
@@ -167,6 +167,9 @@ void vfree(void* addr) {
         return;
     }
     Page_info* n_pi = (Page_info*)n->data;
+
+    /* fix page directory table infomation. */
+    unmap_page_area(&kernel_pdt, n_pi->base_addr, n_pi->base_addr + n_pi->size);
 
     List_node* const prev_node = n->prev;
     List_node* const next_node = n->next;
@@ -192,8 +195,6 @@ void vfree(void* addr) {
 }
 
 
-
-#include <stdio.h>
 static bool p(void* d) {
     Page_info* p = (Page_info*)d;
     size_t mb = p->size / (1024 * 1024);
@@ -208,9 +209,16 @@ void print_vmem(void) {
     list_for_each(&p_man->kernel_area_list, p, false);
 
     puts("\n");
-    char* str = vmalloc(sizeof(char) * 100);
+    size_t const size = 1024 * 1024;
+    char* str = vmalloc(sizeof(char) * size);
     if (str == NULL) {
         puts("vmalloc is failed");
+    } else {
+        printf("addr: 0x%zx\n", (uintptr_t)str);
+        /* 0xc0626000 */
+        for (size_t i = 0; i < size; i++) {
+            str[i] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i % 26];
+        }
     }
 
     puts("\n");
@@ -222,7 +230,11 @@ void print_vmem(void) {
     puts("\n");
     list_for_each(&p_man->user_area_list, p, false);
     list_for_each(&p_man->kernel_area_list, p, false);
+
+    /* This code must invokes Pagefault. */
+    /* *str = '0'; */
 }
+
 
 
 static List_node* list_get_new_page_node(void) {
@@ -332,4 +344,29 @@ static inline void map_page_area(Page_directory_table const* const pdt, uint32_t
  */
 static inline void map_page_same_area(Page_directory_table const* const pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_addr, uintptr_t const end_addr) {
     map_page_area(pdt, pde_flags, pte_flags, begin_addr, end_addr, begin_addr, end_addr);
+}
+
+
+static inline void unmap_page(Page_directory_table const* const pdt, uintptr_t vaddr) {
+    Page_table_entry* const pte = get_pte(get_pt(get_pde(pdt, vaddr)), vaddr);
+    pte->bit_expr &= PTE_FLAGS_AREA_MASK;
+
+    flush_tlb(vaddr);
+}
+
+
+static inline void unmap_page_area(Page_directory_table const* const pdt, uintptr_t const begin_vaddr, uintptr_t const end_vaddr) {
+    for (uintptr_t vaddr = begin_vaddr; vaddr < end_vaddr; vaddr += PAGE_SIZE) {
+        unmap_page(pdt, vaddr);
+    }
+}
+
+
+static inline uintptr_t get_vaddr_from_pde_index(size_t const idx) {
+    return idx <<  PDE_IDX_SHIFT_NUM;
+}
+
+
+static inline uintptr_t get_vaddr_from_pte_index(size_t const idx) {
+    return idx <<  PTE_IDX_SHIFT_NUM;
 }

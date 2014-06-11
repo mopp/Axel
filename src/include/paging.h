@@ -198,7 +198,9 @@ static inline size_t round_page_size(size_t size) {
 }
 
 
-extern void init_paging(Paging_data const * const);
+extern void init_paging(Paging_data const* const);
+extern void* vmalloc(size_t);
+extern void vfree(void*);
 extern void print_vmem(void);
 
 
