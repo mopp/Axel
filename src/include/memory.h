@@ -26,6 +26,7 @@ extern uintptr_t get_kernel_phys_start_addr(void);
 extern uintptr_t get_kernel_phys_end_addr(void);
 extern size_t get_kernel_size(void);
 extern size_t get_kernel_static_size(void);
+extern void print_pmem(void);
 
 
 

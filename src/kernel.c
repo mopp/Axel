@@ -176,9 +176,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         /* TODO: panic */
     }
 
+    init_graphic(boot_info);
     init_gdt();
     init_idt();
-    init_graphic(boot_info);
     init_pic();
     init_pit();
     io_sti();
@@ -189,7 +189,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     uint32_t const max_y = get_max_y_resolution() - 1;
 
     clean_screen(set_rgb_by_color(&c, 0x3A6EA5));
-    test_draw(set_rgb_by_color(&c, 0x3A6EA5));
+    /* test_draw(set_rgb_by_color(&c, 0x3A6EA5)); */
 
     fill_rectangle(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
     fill_rectangle(set_point2d(&p0, 0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
@@ -207,11 +207,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 2), set_point2d(&p1, max_x - 3, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
     fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
 
-    /* FIXME: please implement paging
-     * if (init_keyboard() == AXEL_FAILED) {
-     *     puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
-     * }
-     */
+    if (init_keyboard() == AXEL_FAILED) {
+        puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
+    }
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
@@ -227,6 +225,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     }
 
     print_vmem();
+    print_pmem();
 
     const uint32_t base_y = 5;
     const uint32_t base_x = get_max_x_resolution();

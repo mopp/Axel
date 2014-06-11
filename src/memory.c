@@ -279,6 +279,7 @@ void pfree(void* object) {
     } else if (next_mi->state == MEM_INFO_STATE_FREE) {
         /* merge next. */
         n_mi->size += next_mi->size;
+        n_mi->state = MEM_INFO_STATE_FREE;
         remove_memory_list_node(next_node);
     } else {
         n_mi->state = MEM_INFO_STATE_FREE;
@@ -368,4 +369,18 @@ static void remove_memory_list_node(List_node* target) {
 
     /* instead of free(). */
     used_list_node[((uintptr_t)target - (uintptr_t)mem_list_nodes) / sizeof(List_node)] = false;
+}
+
+
+#include <stdio.h>
+static bool p(void* d) {
+    Memory_info* m = (Memory_info*)d;
+    printf("Base:%zx, Size:%zuKB, State:%s\n", m->base_addr, m->size / 1024, (m->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
+    return false;
+}
+
+
+void print_pmem(void) {
+    puts("\n");
+    list_for_each(&mem_man->list, p, false);
 }

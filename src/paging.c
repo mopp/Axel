@@ -98,26 +98,35 @@ void init_paging(Paging_data const * const pd) {
 }
 
 
+#include <stdio.h>
 static size_t for_each_in_vmalloc_size;
 static bool for_each_in_vmalloc(void* d) {
     Page_info const* const p = (Page_info*)d;
+    /* size_t mb = p->size / (1024 * 1024); */
+    /* printf("for_each_in_vfree Base:%zx, Size:%zu%s, State:%s\n", p->base_addr, (mb == 0 ? p->size / 1024 : mb), (mb == 0 ? "KB" : "MB"), (p->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc")); */
     return (p->state == PAGE_INFO_STATE_FREE && for_each_in_vmalloc_size <= p->size) ? true : false;
 }
 
 
+
 void* vmalloc(size_t size) {
+    /* printf("Size: %zu ", size); */
     size = round_page_size(size);
+    /* printf("Rounded Size: %zu\n", size); */
 
     void* palloced = pmalloc(size);
     if (palloced == NULL) {
+        /* puts("pmalloc failed"); */
         return NULL;
     }
 
     /* search enough size node in kernel area. */
     for_each_in_vmalloc_size = size;
+    /* printf("search size:%zu\n", for_each_in_vmalloc_size); */
     List_node* n = list_for_each(&p_man->kernel_area_list, for_each_in_vmalloc, false);
     if (n == NULL) {
         pfree(palloced);
+        /* puts("list_for_each failed"); */
         return NULL;
     }
 
@@ -125,6 +134,7 @@ void* vmalloc(size_t size) {
     List_node* new = list_get_new_page_node();
     if (new == NULL) {
         pfree(palloced);
+        /* puts("list_get_new_page_node failed"); */
         return NULL;
     }
     /* allocate new area */
@@ -140,6 +150,9 @@ void* vmalloc(size_t size) {
     list_insert_node_next(&p_man->kernel_area_list, n, new);
 
     map_page_area(&kernel_pdt, PDE_FLAGS_KERNEL & ~PDE_FLAG_GLOBAL, PTE_FLAGS_KERNEL & ~PTE_FLAG_GLOBAL, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
+
+    /* printf("Virtual  base: 0x%zx\n", (uintptr_t)pi->base_addr); */
+    /* printf("Physical base: 0x%zx\n", (uintptr_t)palloced); */
 
     return (void*)pi->base_addr;
 }
@@ -184,6 +197,7 @@ void vfree(void* addr) {
     } else if (next_pi->state == PAGE_INFO_STATE_FREE) {
         /* merge next. */
         n_pi->size += next_pi->size;
+        n_pi->state = PAGE_INFO_STATE_FREE;
         remove_page_list_node(next_node);
     } else {
         n_pi->state = PAGE_INFO_STATE_FREE;
@@ -327,7 +341,6 @@ static inline uintptr_t get_vaddr_from_pte_index(size_t const idx) {
 
 
 
-#include <stdio.h>
 static bool p(void* d) {
     Page_info* p = (Page_info*)d;
     size_t mb = p->size / (1024 * 1024);

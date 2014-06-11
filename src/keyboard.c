@@ -38,7 +38,6 @@ static inline uint8_t read_keyboard_data(void) {
 
 
 Axel_state_code set_keyboard_led(uint8_t led, bool enable) {
-
     // FIXME: store LED state.
     Axel_state_code state = AXEL_SUCCESS;
     state = write_keyboard_command(KEYBOARD_DATA_COMMAND_LED);

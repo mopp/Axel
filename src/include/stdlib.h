@@ -4,12 +4,16 @@
 
 
 #include <stddef.h>
+#include <paging.h>
 
-/* FIXME: this is dummy. */
-static void* malloc(size_t dummy) {
-    return NULL;
+
+static inline void* malloc(size_t size) {
+    return vmalloc(size);
 }
-static void free(void* dummy) {
+
+
+static inline void free(void* addr) {
+    vfree(addr);
 }
 
 

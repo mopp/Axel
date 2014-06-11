@@ -5,6 +5,8 @@ TARGET 		:= libstruct.a
 .SUFFIXES: .c .o
 .c.o:
 	$(CC) -c $< -o $@
+	# $(OBJCOPY) --only-keep-debug $@ $(basename $(@)).sym
+	# $(OBJCOPY) --strip-debug $@
 
 
 .PHONY: default
@@ -16,7 +18,6 @@ $(TARGET): $(OBJS)
 	$(AR_R) $(TARGET) $(OBJS)
 	cp $(TARGET) $(AXEL_LIB_PATH)
 
-
 list.o		: list.c  	$(MAKEFILE) $(AXEL_INCLUDE_PATH)list.h
 queue.o		: queue.c 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)queue.h list.c $(AXEL_INCLUDE_PATH)list.h
 stack.o		: stack.c 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)stack.h
@@ -25,5 +26,5 @@ aqueue.o	: aqueue.c 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)aqueue.h
 
 .PHONY: clean
 clean:
-	# $(RM) *.o *.a
-	# $(RM) $(AXEL_LIB_PATH)$(TARGET)
+	$(RM) *.o *.a *.sym
+	$(RM) $(AXEL_LIB_PATH)$(TARGET)
