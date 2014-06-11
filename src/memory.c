@@ -24,6 +24,7 @@ enum memory_manager_constants {
 };
 #define MOD_MAX_MEM_NODE_NUM(n) (n & 0x04ffu)
 
+
 /* memory infomation structure to managed. */
 struct memory_info {
     uintptr_t base_addr; /* base address */
@@ -41,7 +42,6 @@ typedef struct memory_manager Memory_manager;
 
 
 
-
 /*
  * LD_* variables are set by linker. see kernel.ld
  * In kernel.ld, kernel start address is defined (LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR)
@@ -56,7 +56,7 @@ static uintptr_t const kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 
 /* These pointer variables is dynamically allocated at kernel tail. */
-static Memory_manager* mem_manager;
+static Memory_manager* mem_man;
 static List_node* mem_list_nodes;
 static Memory_info* mem_info;
 static bool* used_list_node;
@@ -64,7 +64,8 @@ static bool* used_list_node;
 static void fix_address(Multiboot_info* const);
 static List_node* list_get_new_memory_node(void);
 static void remove_memory_list_node(List_node*);
-
+static void* smalloc(size_t);
+static void* smalloc_page_round(size_t);
 
 
 void init_memory(Multiboot_info* const mb_info) {
@@ -74,29 +75,31 @@ void init_memory(Multiboot_info* const mb_info) {
      */
     fix_address(mb_info);
 
+    /* allocation memory for paging feature */
+
     /*
      * Allocation Page_directory_table to avoid wast of memory in this.
      * Bacause size is rounded.
      */
-    Page_directory_table const kernel_pdt = smalloc_page_round(ALL_PAGE_STRUCT_SIZE);
+    Paging_data pd = {
+        .pdt          = smalloc_page_round(ALL_PAGE_STRUCT_SIZE),
+        .p_man        = (Page_manager*)smalloc(sizeof(Page_manager)),
+        .p_list_nodes = (List_node*)smalloc(sizeof(List_node) * PAGE_INFO_NODE_NUM),
+        .p_info       = (Page_info*)smalloc(sizeof(Page_info) * PAGE_INFO_NODE_NUM),
+        .used_p_info  = (bool*)smalloc(sizeof(bool) * PAGE_INFO_NODE_NUM),
+    };
 
     /* initialize dynamic allocated variables. */
-    mem_manager = smalloc(sizeof(Memory_manager));
-    list_init(&mem_manager->list, sizeof(Memory_info), NULL);
+    mem_man = smalloc(sizeof(Memory_manager));
+    list_init(&mem_man->list, sizeof(Memory_info), NULL);
 
-    /* clear all memory_info. */
     mem_info = smalloc(sizeof(Memory_info) * MAX_MEM_NODE_NUM);
-    memset(mem_info, 0, sizeof(Memory_info) * MAX_MEM_NODE_NUM);
 
-    /* clear all used_list_node. */
     used_list_node = smalloc(sizeof(bool) * MAX_MEM_NODE_NUM);
-    memset(used_list_node, false, sizeof(bool) * MAX_MEM_NODE_NUM);
 
-    /* clear and set memory_info area into list node. */
+    /* set memory_info area into list node. */
     mem_list_nodes = smalloc(sizeof(List_node) * MAX_MEM_NODE_NUM);
     for (size_t i = 0; i < MAX_MEM_NODE_NUM; ++i) {
-        mem_list_nodes[i].next = NULL;
-        mem_list_nodes[i].prev = NULL;
         mem_list_nodes[i].data = &mem_info[i];
     }
 
@@ -117,7 +120,7 @@ void init_memory(Multiboot_info* const mb_info) {
     kernel_mi->base_addr = get_kernel_phys_start_addr();
     kernel_mi->size = get_kernel_phys_end_addr();
     kernel_mi->state = MEM_INFO_STATE_ALLOC;
-    list_insert_node_last(&mem_manager->list, kernel_n);
+    list_insert_node_last(&mem_man->list, kernel_n);
     uintptr_t kernel_node_end_addr = kernel_mi->base_addr + kernel_mi->size;
 
     /* set memory infomation from Multiboot_memory_map. */
@@ -144,14 +147,14 @@ void init_memory(Multiboot_info* const mb_info) {
         mi->state = (i->type == MULTIBOOT_MEMORY_AVAILABLE) ? MEM_INFO_STATE_FREE : MEM_INFO_STATE_ALLOC;
 
         /* append to list. */
-        list_insert_node_last(&mem_manager->list, n);
+        list_insert_node_last(&mem_man->list, n);
     }
 
     /*
      * Physical memory managing is just finished.
      * Next, let's set paging.
      */
-    init_paging(kernel_pdt);
+    init_paging(&pd);
 }
 
 
@@ -166,6 +169,8 @@ static inline void* smalloc_generic(size_t size, bool is_round_page_size) {
 
     kernel_end_addr += size; /* size add to kernel_end_addr to allocate memory. */
 
+    memset((void*)addr, 0, size);
+
     return (void*)addr;
 }
 
@@ -176,12 +181,12 @@ static inline void* smalloc_generic(size_t size, bool is_round_page_size) {
  * @param size allocated memory size.
  * @return pointer to allocated memory.
  */
-void* smalloc(size_t size) {
+static inline void* smalloc(size_t size) {
     return smalloc_generic(size, false);
 }
 
 
-void* smalloc_page_round(size_t size) {
+static inline void* smalloc_page_round(size_t size) {
     return smalloc_generic(size, true);
 }
 
@@ -203,7 +208,7 @@ void* pmalloc(size_t size) {
 
     /* search enough size node */
     for_each_in_malloc_size = size;
-    List_node* n = list_for_each(&mem_manager->list, for_each_in_malloc, false);
+    List_node* n = list_for_each(&mem_man->list, for_each_in_malloc, false);
     if (n == NULL) {
         return NULL;
     }
@@ -224,7 +229,7 @@ void* pmalloc(size_t size) {
     mi->size = size;
     mi->state = MEM_INFO_STATE_ALLOC;
 
-    list_insert_node_next(&mem_manager->list, n, new);
+    list_insert_node_next(&mem_man->list, n, new);
 
     return (void*)mi->base_addr;
 }
@@ -244,11 +249,11 @@ static bool for_each_in_free(void* d) {
 
 void pfree(void* object) {
     if (object == NULL) {
-       return;
+        return;
     }
 
     for_each_in_free_base_addr = (uintptr_t)object;
-    List_node* n = list_for_each(&mem_manager->list, for_each_in_free, false);
+    List_node* n = list_for_each(&mem_man->list, for_each_in_free, false);
     if (n == NULL) {
         return;
     }
@@ -356,7 +361,7 @@ static List_node* list_get_new_memory_node(void) {
  * @return
  */
 static void remove_memory_list_node(List_node* target) {
-    list_remove_node(&mem_manager->list, target);
+    list_remove_node(&mem_man->list, target);
 
     /* instead of free(). */
     used_list_node[((uintptr_t)target - (uintptr_t)mem_list_nodes) / sizeof(List_node)] = false;

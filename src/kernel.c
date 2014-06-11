@@ -231,6 +231,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
     }
 
+    print_vmem();
+
     const uint32_t base_y = 5;
     const uint32_t base_x = get_max_x_resolution();
     enum {

@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <list.h>
+
 
 /*
  * In x86_64
@@ -136,6 +138,39 @@ enum Paging_constants {
 };
 
 
+enum page_manager_constants {
+    PAGE_INFO_NODE_NUM = 2048,
+    PAGE_INFO_STATE_FREE = 0,
+    PAGE_INFO_STATE_ALLOC,
+};
+#define MOD_MAX_PAGE_INFO_NODE_NUM(n) (n & 0x04ffu)
+
+
+struct page_info {
+    uintptr_t base_addr; /* base address */
+    uint8_t state;       /* managed area state */
+    size_t size;         /* allocated size */
+};
+typedef struct page_info Page_info;
+
+
+struct page_manager {
+    List kernel_area_list;
+    List user_area_list;
+};
+typedef struct page_manager Page_manager;
+
+
+struct paging_data {
+    Page_directory_table pdt;
+    Page_manager* p_man;
+    List_node* p_list_nodes;
+    Page_info* p_info;
+    bool* used_p_info;
+};
+typedef struct paging_data Paging_data;
+
+
 static inline uintptr_t phys_to_vir_addr(uintptr_t addr) {
     return addr + KERNEL_VIRTUAL_BASE_ADDR;
 }
@@ -163,7 +198,8 @@ static inline size_t round_page_size(size_t size) {
 }
 
 
-extern void init_paging(Page_directory_table);
+extern void init_paging(Paging_data const * const);
+extern void print_vmem(void);
 
 
 

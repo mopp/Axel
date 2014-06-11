@@ -26,8 +26,6 @@ extern uintptr_t get_kernel_phys_start_addr(void);
 extern uintptr_t get_kernel_phys_end_addr(void);
 extern size_t get_kernel_size(void);
 extern size_t get_kernel_static_size(void);
-extern void* smalloc(size_t);
-extern void* smalloc_page_round(size_t);
 
 
 
