@@ -6,6 +6,7 @@
 [ ] add function comments.
 [ ] make console.
 [ ] add panic function.
+[ ] fix vmalloc and related function.
 
 
 
