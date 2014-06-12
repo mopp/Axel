@@ -38,7 +38,7 @@ KERNEL_MAP			:= kernel.map
 
 STRUCT_DIR			:= $(AXEL_ROOT_DIR)struct/
 SUB_DIRS 			:= $(BOOT_DIR) $(STRUCT_DIR)
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt_handler.o interrupt_handler_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o memory.o paging.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt.o interrupt_asm.o string.o font.o graphic_txt.o graphic_vbe.o keyboard.o graphic.o stdio.o memory.o paging.o kernel.o
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -76,19 +76,19 @@ default :
 	ctags -R ./*
 
 
-asm_functions.o 		: $(MAKEFILE) asm_functions.asm $(AXEL_INCLUDE_PATH)asm_functions.h
-graphic_txt.o			: $(MAKEFILE) graphic_txt.c $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)point.h
-graphic_vbe.o			: $(MAKEFILE) graphic_vbe.c $(AXEL_INCLUDE_PATH)graphic_vbe.h $(AXEL_INCLUDE_PATH)point.h $(AXEL_INCLUDE_PATH)macros.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)vbe.h $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
-graphic.o				: $(MAKEFILE) graphic.c $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h
-interrupt_handler.o 	: $(MAKEFILE) interrupt_handler.c $(AXEL_INCLUDE_PATH)interrupt_handler.h $(AXEL_INCLUDE_PATH)asm_functions.h
-interrupt_handler_asm.o : $(MAKEFILE) interrupt_handler_asm.asm $(AXEL_INCLUDE_PATH)interrupt_handler.h interrupt_handler.o
-memory.o				: $(MAKEFILE) memory.c $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)list.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h $(AXEL_INCLUDE_PATH)paging.h
-paging.o				: $(MAKEFILE) paging.c $(AXEL_INCLUDE_PATH)paging.h $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h
-string.o				: $(MAKEFILE) string.c $(AXEL_INCLUDE_PATH)string.h
-stdio.o					: $(MAKEFILE) stdio.c $(AXEL_INCLUDE_PATH)stdio.h $(AXEL_INCLUDE_PATH)graphic.h
-font.o					: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
-keyboard.o				: $(MAKEFILE) keyboard.c $(AXEL_INCLUDE_PATH)keyboard.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
-kernel.o				: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt_handler.o interrupt_handler_asm.o memory.o paging.o string.o stdio.o font.o keyboard.o
+asm_functions.o : $(MAKEFILE) asm_functions.asm $(AXEL_INCLUDE_PATH)asm_functions.h
+graphic_txt.o	: $(MAKEFILE) graphic_txt.c $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)point.h
+graphic_vbe.o	: $(MAKEFILE) graphic_vbe.c $(AXEL_INCLUDE_PATH)graphic_vbe.h $(AXEL_INCLUDE_PATH)point.h $(AXEL_INCLUDE_PATH)macros.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)vbe.h $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
+graphic.o		: $(MAKEFILE) graphic.c $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h
+interrupt.o 	: $(MAKEFILE) interrupt.c $(AXEL_INCLUDE_PATH)interrupt.h $(AXEL_INCLUDE_PATH)asm_functions.h
+interrupt_asm.o : $(MAKEFILE) interrupt_asm.asm $(AXEL_INCLUDE_PATH)interrupt.h interrupt.o
+memory.o		: $(MAKEFILE) memory.c $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)list.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h $(AXEL_INCLUDE_PATH)paging.h
+paging.o		: $(MAKEFILE) paging.c $(AXEL_INCLUDE_PATH)paging.h $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h
+string.o		: $(MAKEFILE) string.c $(AXEL_INCLUDE_PATH)string.h
+stdio.o			: $(MAKEFILE) stdio.c $(AXEL_INCLUDE_PATH)stdio.h $(AXEL_INCLUDE_PATH)graphic.h
+font.o			: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
+keyboard.o		: $(MAKEFILE) keyboard.c $(AXEL_INCLUDE_PATH)keyboard.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
+kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt.o interrupt_asm.o memory.o paging.o string.o stdio.o font.o keyboard.o
 
 
 $(BOOT_OBJ) : $(MAKEFILE)
