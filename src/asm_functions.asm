@@ -14,7 +14,8 @@
     global io_in8, io_in16, io_in32
     global io_out8, io_out16, io_out32
     global load_gdtr, load_idtr
-    global turn_off_4MB_paging, set_cpu_pdt, get_cpu_pdt, flush_tlb
+    global turn_off_4MB_paging, set_cpu_pdt, get_cpu_pdt, flush_tlb, flush_tlb_all, turn_on_pge, turn_off_pge
+
 
 section .text
 
@@ -119,12 +120,29 @@ turn_off_4MB_paging:
     ret
 
 
+; void turn_off_pge(void);
+turn_off_pge:
+    mov ecx, cr4
+    and ecx, 0xFFFFFF7F
+    mov cr4, ecx
+    ret
+
+
+; void turn_on_pge(void);
+turn_on_pge:
+    mov ecx, cr4
+    or  ecx, 0x00000080
+    mov cr4, ecx
+    ret
+
+
 ; void set_cpu_pdt(uintptr_t addr)
 ; address that is set into cr3 should be physical address.
 set_cpu_pdt:
     mov ebx, [esp + 4]
     sub ebx, KERNEL_VIRTUAL_BASE_ADDR;
     mov cr3, ebx
+    call turn_on_pge
     ret
 
 
@@ -137,5 +155,16 @@ get_cpu_pdt:
 
 ; void flush_tlb(uintptr_t addr)
 flush_tlb:
+    cli
     invlpg [esp + 4]
+    sti
+    ret
+
+
+; void flush_tlb_all(void)
+flush_tlb_all:
+    call turn_off_pge
+    mov eax, cr3
+    mov cr3, ebx
+    call turn_on_pge
     ret

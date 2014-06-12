@@ -30,6 +30,9 @@ extern void turn_off_4MB_paging(void);
 extern void flush_tlb(uintptr_t);
 extern uintptr_t get_cpu_pdt(void);
 extern void set_cpu_pdt(uintptr_t);
+extern void flush_tlb_all(void);
+extern void turn_on_pge(void);
+extern void turn_off_pge(void);
 
 
 
