@@ -6,10 +6,13 @@
  * @date 2014-04-11
  */
 #include <keyboard.h>
+#include <point.h>
 #include <asm_functions.h>
+#include <graphic.h>
 #include <kernel.h>
+#include <interrupt.h>
 
-Keyboard keyboard;
+static Keyboard keyboard;
 
 
 static inline uint8_t read_keyboard_status(void) {
@@ -77,4 +80,26 @@ Axel_state_code init_keyboard(void) {
     io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & ~PIC_IMR_MASK_IRQ1);
 
     return AXEL_SUCCESS;
+}
+
+
+void interrupt_keybord(uint32_t* esp) {
+    static Point2d const start = {300, 500};
+    static Point2d const sstart = {300 - 10 * 8, 500};
+    static char buf[20] = {0};
+
+    uint8_t key_code = io_in8(KEYBOARD_DATA_PORT);
+    itoa(key_code & 0x3F, buf, 16);
+
+    /* clear drawing area. */
+    static RGB8 c;
+    fill_rectangle(&start, &make_point2d(300 + 20, 500 + 13), set_rgb_by_color(&c, 0x3A6EA5));
+
+    /* draw key code */
+    puts_ascii_font("Key code: ", &sstart);
+    puts_ascii_font(buf, &start);
+
+    aqueue_insert(&keyboard.aqueue, &key_code);
+
+    send_done_interrupt_master();
 }

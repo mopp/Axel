@@ -6,10 +6,10 @@
     bits 32
 
 %macro push_all 0
-        push DS
-        push ES
-        push FS
-        push GS
+        push ds
+        push es
+        push fs
+        push gs
         pushad
         pushfd
 %endmacro
@@ -18,25 +18,25 @@
 %macro pop_all 0
         popfd
         popad
-        pop GS
-        pop FS
-        pop ES
-        pop DS
+        pop gs
+        pop fs
+        pop es
+        pop ds
 %endmacro
 
 
-; macro of interrupt handler.
-%macro asm_interrupt_handler 1
-    global asm_interrupt_handler%1
-    extern interrupt_handler%1
+; macro to make interrupt_handler.
+%macro make_interrupt_handler 1
+    global asm_%1
+    extern %1
 
-asm_interrupt_handler%1:
+asm_%1:
     push_all
 
     ; set stack pointer as function argument.
-    mov EAX, ESP
+    mov eax, esp
 
-    call interrupt_handler%1
+    call %1
 
     pop_all
 
@@ -47,6 +47,6 @@ asm_interrupt_handler%1:
 section .text
 
 ; making interrupt handler.
-; first argument shows interrupt vector number.
-asm_interrupt_handler 0x20
-asm_interrupt_handler 0x21
+; first argument is handler function in C.
+make_interrupt_handler interrupt_keybord
+make_interrupt_handler interrupt_timer

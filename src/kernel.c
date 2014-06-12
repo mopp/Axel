@@ -9,7 +9,7 @@
 
 #include <asm_functions.h>
 #include <graphic.h>
-#include <interrupt_handler.h>
+#include <interrupt.h>
 #include <kernel.h>
 #include <keyboard.h>
 #include <list.h>
@@ -265,7 +265,7 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
 
 
 static inline void init_gdt(void) {
-    Segment_descriptor* gdt = (Segment_descriptor*)vmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
+    Segment_descriptor* const gdt = (Segment_descriptor*)vmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
 
     /* zero clear Segment_descriptor. */
     memset(gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
@@ -283,21 +283,21 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* off
 
     g->offset_low = ECAST_UINT16((uintptr_t)offset);
     g->offset_high = ECAST_UINT16((uintptr_t)offset >> 16);
-    g->segment_selector = ECAST_UINT16(selector_index * sizeof(Segment_descriptor));
+    g->segment_selector = ECAST_UINT16(selector_index * sizeof(Gate_descriptor));
 
     return g;
 }
 
 
 static inline void init_idt(void) {
-    Gate_descriptor* idt = (Gate_descriptor*)vmalloc(sizeof(Gate_descriptor) * IDT_NUM);
+    Gate_descriptor* const idt = (Gate_descriptor*)vmalloc(sizeof(Gate_descriptor) * IDT_NUM);
 
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
-    set_gate_descriptor(idt + 0x0E, io_hlt,                    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x20, asm_interrupt_handler0x20, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x21, asm_interrupt_handler0x21, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x0E, io_hlt,                KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x21, asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
 
     load_idtr(IDT_LIMIT, (uint32_t)idt);
 }

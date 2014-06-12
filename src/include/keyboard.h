@@ -9,6 +9,7 @@
 #define _KEYBOARD_H_
 
 
+
 #include <state_code.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -118,10 +119,9 @@ enum keyboard_constants {
 };
 
 
-extern Keyboard keyboard;
-
 extern Axel_state_code init_keyboard(void);
 extern Axel_state_code set_keyboard_led(uint8_t, bool);
+
 
 
 #endif
