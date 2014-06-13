@@ -63,7 +63,7 @@ Axel_state_code init_keyboard(void) {
        return AXEL_FAILED;
     }
 
-    io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & ~PIC_IMR_MASK_IRQ1);
+    enable_interrupt(PIC_IMR_MASK_IRQ01);
 
     return AXEL_SUCCESS;
 }

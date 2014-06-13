@@ -307,8 +307,7 @@ static inline void init_pit(void) {
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_LOW);
     io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
 
-    /* PITはタイマーでIRQ0なのでMaster PICのIRQ0を解除 */
-    io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & (0xFF & ~PIC_IMR_MASK_IRQ0));
+    enable_interrupt(PIC_IMR_MASK_IRQ00);
 }
 
 

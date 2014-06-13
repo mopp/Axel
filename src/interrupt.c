@@ -5,10 +5,12 @@
 
 #include <stdint.h>
 #include <interrupt.h>
+#include <macros.h>
+#include <asm_functions.h>
 
 
 void init_pic(void) {
-    /* 全割り込みを受けない */
+    /* Disable all interrupt. */
     io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
     io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
 
@@ -24,8 +26,36 @@ void init_pic(void) {
     io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW3);
     io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW4);
 
-    /* IRQ2以外の割り込みを受け付けない */
-    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL & (~PIC_IMR_MASK_IRQ2));
+    /* enable only IRQ02 because IRQ02 connects slave. */
+    enable_interrupt(PIC_IMR_MASK_IRQ02);
+}
+
+
+void enable_interrupt(uint16_t irq_num) {
+    if (irq_num < PIC_IMR_MASK_IRQ08) {
+        io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) & ~ECAST_UINT8(irq_num));
+    } else {
+        io_out8(PIC1_IMR_DATA_PORT, io_in8(PIC1_IMR_DATA_PORT) & ~ECAST_UINT8(irq_num >> 8));
+    }
+}
+
+
+void disable_interrupt(uint16_t irq_num) {
+    if (irq_num < PIC_IMR_MASK_IRQ08) {
+        io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) | ECAST_UINT8(irq_num));
+    } else {
+        io_out8(PIC1_IMR_DATA_PORT, io_in8(PIC1_IMR_DATA_PORT) | ECAST_UINT8(~irq_num >> 8));
+    }
+}
+
+
+void send_done_interrupt_master(void) {
+    io_out8(PIC0_CMD_STATE_PORT, PIC_OCW2_EOI);
+}
+
+
+void send_done_interrupt_slave(void) {
+    io_out8(PIC1_CMD_STATE_PORT, PIC_OCW2_EOI);
 }
 
 

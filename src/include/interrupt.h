@@ -8,63 +8,57 @@
 
 
 
-#include <kernel.h>
-#include <asm_functions.h>
-
-
 /* Programmable Interrupt Controller */
 enum PIC_constants {
-    /* PIC Port Address */
-    PIC0_CMD_STATE_PORT = 0x20,
-    PIC1_CMD_STATE_PORT = 0xA0,
-    PIC0_IMR_DATA_PORT = 0x21,
-    PIC1_IMR_DATA_PORT = 0xA1,
+    PIC0_CMD_STATE_PORT  = 0x20,
+    PIC0_IMR_DATA_PORT   = 0x21,
+    PIC1_CMD_STATE_PORT  = 0xA0,
+    PIC1_IMR_DATA_PORT   = 0xA1,
 
     /* Initialization Control Words */
-    /* PICの設定 */
-    PIC0_ICW1 = 0x11,
-    /* IRQから割り込みベクタへの変換されるベースの番号
-     * x86では3-7bitを使用する
-     * この番号にPICのピン番号が加算された値の例外ハンドラが呼び出される
-     */
-    PIC0_ICW2 = 0x20,
-    /* スレーブと接続されているピン */
-    PIC0_ICW3 = 0x04,
-    /* 動作モードを指定 */
-    PIC0_ICW4 = 0x01,
+    PIC0_ICW1            = 0x11, /* PICの設定 */
+    PIC0_ICW2            = 0x20, /* IRQから割り込みベクタへの変換されるベースの番号
+                                  * x86では3-7bitを使用する
+                                  * この番号にPICのピン番号が加算された値の例外ハンドラが呼び出される
+                                  */
+    PIC0_ICW3            = 0x04, /* スレーブと接続されているピン */
+    PIC0_ICW4            = 0x01, /* 動作モードを指定 */
 
-    PIC1_ICW1 = PIC0_ICW1,
-    PIC1_ICW2 = 0x28,
-    PIC1_ICW3 = 0x02,
-    PIC1_ICW4 = PIC0_ICW4,
+    PIC1_ICW1            = PIC0_ICW1,
+    PIC1_ICW2            = 0x28,
+    PIC1_ICW3            = 0x02,
+    PIC1_ICW4            = PIC0_ICW4,
 
     /* Operation Command Words2 */
-    PIC_OCW2_EOI = 0x20,
+    PIC_OCW2_EOI         = 0x20,
 
-    PIC_IMR_MASK_IRQ0 = 0x01,
-    PIC_IMR_MASK_IRQ1 = 0x02,
-    PIC_IMR_MASK_IRQ2 = 0x04,
-    PIC_IMR_MASK_IRQ3 = 0x08,
-    PIC_IMR_MASK_IRQ4 = 0x10,
-    PIC_IMR_MASK_IRQ5 = 0x20,
-    PIC_IMR_MASK_IRQ6 = 0x40,
-    PIC_IMR_MASK_IRQ7 = 0x80,
+    PIC_IMR_MASK_IRQ00   = 0x0001,
+    PIC_IMR_MASK_IRQ01   = 0x0002,
+    PIC_IMR_MASK_IRQ02   = 0x0004,
+    PIC_IMR_MASK_IRQ03   = 0x0008,
+    PIC_IMR_MASK_IRQ04   = 0x0010,
+    PIC_IMR_MASK_IRQ05   = 0x0020,
+    PIC_IMR_MASK_IRQ06   = 0x0040,
+    PIC_IMR_MASK_IRQ07   = 0x0080,
+
+    PIC_IMR_MASK_IRQ08   = 0x0100,
+    PIC_IMR_MASK_IRQ09   = 0x0200,
+    PIC_IMR_MASK_IRQ10   = 0x0400,
+    PIC_IMR_MASK_IRQ11   = 0x0800,
+    PIC_IMR_MASK_IRQ12   = 0x1000,
+    PIC_IMR_MASK_IRQ13   = 0x2000,
+    PIC_IMR_MASK_IRQ14   = 0x4000,
+    PIC_IMR_MASK_IRQ15   = 0x8000,
+
     PIC_IMR_MASK_IRQ_ALL = 0xFF,
 };
 
 
-
-static inline void send_done_interrupt_master(void) {
-    io_out8(PIC0_CMD_STATE_PORT, PIC_OCW2_EOI);
-}
-
-
-static inline void send_done_interrupt_slave(void) {
-    io_out8(PIC1_CMD_STATE_PORT, PIC_OCW2_EOI);
-}
-
-
 extern void init_pic(void);
+extern void enable_interrupt(uint16_t);
+extern void disable_interrupt(uint16_t);
+extern void send_done_interrupt_master(void);
+extern void send_done_interrupt_slave(void);
 extern void asm_interrupt_timer(void);
 extern void asm_interrupt_keybord(void);
 
