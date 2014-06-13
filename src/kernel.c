@@ -161,7 +161,7 @@ static void clear_bss(void);
 
 /**
  * @brief This function is start entry.
- *      Initialize system in this.
+ *        Initialize system in this.
  * @param boot_info boot information by bootstraps loader.
  */
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
