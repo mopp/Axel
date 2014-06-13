@@ -87,6 +87,11 @@ void interrupt_keybord(uint32_t* esp) {
         puts_ascii_font(buf, &start);
 
         aqueue_insert(&keyboard.aqueue, &key_code);
+        if (aqueue_is_full(&keyboard.aqueue) == true) {
+            while (aqueue_is_empty(&keyboard.aqueue) == false) {
+                aqueue_delete_first(&keyboard.aqueue);
+            }
+        }
     }
 
     send_done_interrupt_master();

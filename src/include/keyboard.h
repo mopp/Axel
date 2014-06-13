@@ -43,7 +43,7 @@ _Static_assert(sizeof(Keyboard_controle_status) == 1, "Keyboard_controle_status 
 
 
 enum keyboard_constants {
-    KEYBOARD_BUFFER_SIZE                = 1024, /* keyboard buffer size */
+    KEYBOARD_BUFFER_SIZE                = 128, /* keyboard buffer size */
 
     KEYBOARD_DATA_PORT                  = 0x60, /* Read: Output from keyboard register, Write: input to keyboard register */
     KEYBOARD_OUTPUT_PORT                = 0x60, /* for Read. */
