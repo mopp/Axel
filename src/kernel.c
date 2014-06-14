@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <vbe.h>
+#include <font.h>
 
 
 /*
@@ -256,6 +257,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Point2d const sp_mus_cnt = {base_x, base_y + 13 * 2};
     Point2d const ep_mus_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 3};
 
+    draw_mouse_cursor(&ep_mus_cnt);
     int i = 0;
     for (;;) {
         /* clean drawing area. */

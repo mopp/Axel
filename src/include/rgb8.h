@@ -14,10 +14,13 @@
 #include <macros.h>
 
 /* This represents Red, Green, Blue and reserved color value(0 - 255). */
-struct RGB8 {
-    uint8_t r, g, b, rsvd;
+union RGB8 {
+    struct {
+        uint8_t r, g, b, rsvd;
+    };
+    uint32_t bit_expr;
 };
-typedef struct RGB8 RGB8;
+typedef union RGB8 RGB8;
 
 
 static inline RGB8* set_rgb_by_color(RGB8* const rgb, uint32_t color) {

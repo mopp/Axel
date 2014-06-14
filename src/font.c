@@ -782,6 +782,60 @@ static uint32_t const s_mplus_font[FONT_SIZE][FONT_HIGHT] = {
 };
 
 
+ /*
+  * [0] = Mouse cursor
+  * [1] =   Mouse cursor shape
+  */
+static uint32_t const mouse[2][21]  = {
+    [0] = {
+        0x0000,
+        0x0000,
+        0x0000,
+        0x2000,
+        0x3000,
+        0x3800,
+        0x3c00,
+        0x3e00,
+        0x3f00,
+        0x3f80,
+        0x3fc0,
+        0x3fe0,
+        0x3ff0,
+        0x3e00,
+        0x3600,
+        0x2300,
+        0x0300,
+        0x0180,
+        0x0180,
+        0x0000,
+        0x0000,
+    },
+    [1] = {
+        0x0000,
+        0x4000,
+        0x6000,
+        0x5000,
+        0x4800,
+        0x4400,
+        0x4200,
+        0x4100,
+        0x4080,
+        0x4040,
+        0x4020,
+        0x4010,
+        0x4008,
+        0x41f8,
+        0x4900,
+        0x5480,
+        0x6480,
+        0x4240,
+        0x0240,
+        0x0180,
+        0x0000,
+    },
+};
+
+
 Drawable_multi_bitmap const mplus_fonts = {
     .height = FONT_HIGHT,
     .width = FONT_WIDTH,
@@ -1046,3 +1100,25 @@ Drawable_multi_bitmap const mplus_fonts = {
         s_mplus_font[0x00FF],
     }
 };
+
+
+Drawable_bitmap const cursors[] = {
+    {
+        .height = 21,
+        .width = 16,
+        .color = {
+            .bit_expr = 0xFFFFFFFF
+        },
+        .data = mouse[0],
+    },
+    {
+        .height = 21,
+        .width = 16,
+        .color = {
+            .bit_expr = 0x00000000
+        },
+        .data = mouse[1],
+    },
+};
+
+Drawable_bitmap const * mouse_cursor = cursors;

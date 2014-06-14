@@ -137,6 +137,13 @@ void draw_nmulti_bitmap(Drawable_multi_bitmap const* const dmbmp, Point2d const*
 }
 
 
+void draw_mouse_cursor(Point2d const* const p) {
+    for (uint8_t i = 0; i < 2; i++) {
+        draw_bitmap(mouse_cursor + i, p);
+    }
+}
+
+
 void draw_multi_bitmap(Drawable_multi_bitmap const* const dmbmp, Point2d const* const p) {
     static Drawable_bitmap tb;
     static Point2d tp;
