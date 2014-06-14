@@ -11,7 +11,7 @@
 #include <graphic.h>
 #include <interrupt.h>
 #include <kernel.h>
-#include <keyboard.h>
+#include <ps2.h>
 #include <list.h>
 #include <macros.h>
 #include <memory.h>
@@ -207,7 +207,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
 
     if (init_keyboard() == AXEL_FAILED) {
-        puts_ascii_font("Keyboard initialize failed", &make_point2d(10, 10));
+        puts("=Keyboard initialize failed=\n");
+    }
+    if (init_mouse() == AXEL_FAILED) {
+        puts("=Mouse initialize failed=\n");
     }
 
     puts("-------------------- Start Axel ! --------------------\n\n");
@@ -236,6 +239,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Point2d const p_num_end = {base_x, base_y + 13};
 
     puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
+
+    printf("irq0: 0x%x\n", io_in8(PIC0_IMR_DATA_PORT));
+    printf("irq1: 0x%x\n", io_in8(PIC1_IMR_DATA_PORT));
 
     for (int i = 1;; ++i) {
         /* clean drawing area */
@@ -297,6 +303,7 @@ static inline void init_idt(void) {
     set_gate_descriptor(idt + 0x0E, io_hlt,                KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x20, asm_interrupt_timer,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x21, asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
 
     load_idtr(IDT_LIMIT, (uint32_t)idt);
 }

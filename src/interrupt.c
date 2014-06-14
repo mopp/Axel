@@ -10,10 +10,6 @@
 
 
 void init_pic(void) {
-    /* Disable all interrupt. */
-    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
-    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
-
     /* Master */
     io_out8(PIC0_CMD_STATE_PORT, PIC0_ICW1);
     io_out8(PIC0_IMR_DATA_PORT, PIC0_ICW2);
@@ -25,6 +21,10 @@ void init_pic(void) {
     io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW2);
     io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW3);
     io_out8(PIC1_IMR_DATA_PORT, PIC1_ICW4);
+
+    /* Disable all interrupt. */
+    io_out8(PIC0_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
+    io_out8(PIC1_IMR_DATA_PORT, PIC_IMR_MASK_IRQ_ALL);
 
     /* enable only IRQ02 because IRQ02 connects slave. */
     enable_interrupt(PIC_IMR_MASK_IRQ02);
@@ -44,7 +44,8 @@ void disable_interrupt(uint16_t irq_num) {
     if (irq_num < PIC_IMR_MASK_IRQ08) {
         io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) | ECAST_UINT8(irq_num));
     } else {
-        io_out8(PIC1_IMR_DATA_PORT, io_in8(PIC1_IMR_DATA_PORT) | ECAST_UINT8(~irq_num >> 8));
+        io_out8(PIC1_IMR_DATA_PORT, io_in8(PIC1_IMR_DATA_PORT) | ECAST_UINT8(irq_num >> 8));
+
     }
 }
 

@@ -49,4 +49,6 @@ section .text
 ; making interrupt handler.
 ; first argument is handler function in C.
 make_interrupt_handler interrupt_keybord
+make_interrupt_handler interrupt_mouse
 make_interrupt_handler interrupt_timer
+

@@ -61,6 +61,7 @@ extern void send_done_interrupt_master(void);
 extern void send_done_interrupt_slave(void);
 extern void asm_interrupt_timer(void);
 extern void asm_interrupt_keybord(void);
+extern void asm_interrupt_mouse(void);
 
 
 
