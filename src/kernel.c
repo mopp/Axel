@@ -11,7 +11,6 @@
 #include <graphic.h>
 #include <interrupt.h>
 #include <kernel.h>
-#include <ps2.h>
 #include <list.h>
 #include <macros.h>
 #include <memory.h>
@@ -150,6 +149,9 @@ enum PIT_constants {
 };
 
 
+Axel_struct axel_s;
+
+
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint32_t);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, void*, uint16_t, uint32_t);
 static void init_gdt(void);
@@ -165,8 +167,8 @@ static void clear_bss(void);
  * @param boot_info boot information by bootstraps loader.
  */
 _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
-    io_cli();    /* disable Interrupt until setting Interrupt handler. */
-    clear_bss(); /* clear bss section of kernel. */
+    io_cli();    /* Disable interrupt until interrupt handler is set. */
+    clear_bss(); /* Clear bss section of kernel. */
     Multiboot_info_flag const flags = boot_info->flags;
 
     if (flags.is_mmap_enable) {
@@ -228,27 +230,54 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     print_vmem();
     print_pmem();
+    printf("IRQ0: 0x%x\n", io_in8(PIC0_IMR_DATA_PORT));
+    printf("IRQ1: 0x%x\n", io_in8(PIC1_IMR_DATA_PORT));
 
-    const uint32_t base_y = 5;
-    const uint32_t base_x = get_max_x_resolution();
+    /* fill background. */
+    set_rgb_by_color(&c, 0x9370db);
+    fill_rectangle(set_point2d(&p0, 400, 0), set_point2d(&p1, max_x, max_y - 28), &c);
+
+    uint32_t base_y = 5;
+    uint32_t base_x = get_max_x_resolution() - (8 * 46);
     enum {
         BUF_SIZE = 20,
     };
     char buf[BUF_SIZE];
-    Point2d const p_num_start = {base_x - (BUF_SIZE * 8), base_y};
-    Point2d const p_num_end = {base_x, base_y + 13};
 
-    puts_ascii_font("hlt counter: ", &make_point2d(base_x - ((13 + BUF_SIZE) * 8), base_y));
+    puts_ascii_font("hlt counter   :",   &make_point2d(base_x, base_y + 13 * 0));
+    puts_ascii_font("keyboard data :", &make_point2d(base_x, base_y + 13 * 1));
+    puts_ascii_font("mouse data    :",    &make_point2d(base_x, base_y + 13 * 2));
+    base_x += 15 * 8;
 
-    printf("irq0: 0x%x\n", io_in8(PIC0_IMR_DATA_PORT));
-    printf("irq1: 0x%x\n", io_in8(PIC1_IMR_DATA_PORT));
+    Point2d const sp_hlt_cnt = {base_x, base_y + 13 * 0};
+    Point2d const ep_hlt_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 1}; /* base_x + str_width */
+    Point2d const sp_kbd_cnt = {base_x, base_y + 13 * 1};
+    Point2d const ep_kbd_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 2};
+    Point2d const sp_mus_cnt = {base_x, base_y + 13 * 2};
+    Point2d const ep_mus_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 3};
 
-    for (int i = 1;; ++i) {
-        /* clean drawing area */
-        fill_rectangle(&p_num_start, &p_num_end, set_rgb_by_color(&c, 0x3A6EA5));
+    int i = 0;
+    for (;;) {
+        /* clean drawing area. */
+        fill_rectangle(&sp_hlt_cnt, &ep_hlt_cnt, &c);
+        fill_rectangle(&sp_mus_cnt, &ep_mus_cnt, &c);
 
-        itoa(i, buf, 10);
-        puts_ascii_font(buf, &p_num_start);
+        puts_ascii_font(itoa(i++, buf, 10), &sp_hlt_cnt);
+        if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
+            fill_rectangle(&sp_kbd_cnt, &ep_kbd_cnt, &c);
+            puts_ascii_font(itoa(*(uint8_t*)aqueue_get_first(&axel_s.keyboard->aqueue), buf, 16), &sp_kbd_cnt);
+            aqueue_delete_first(&axel_s.keyboard->aqueue);
+        } else {
+            puts_ascii_font("Empty", &sp_mus_cnt);
+        }
+
+        if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
+            fill_rectangle(&sp_mus_cnt, &ep_mus_cnt, &c);
+            puts_ascii_font(itoa(*(uint8_t*)aqueue_get_first(&axel_s.mouse->aqueue), buf, 10), &sp_mus_cnt);
+            aqueue_delete_first(&axel_s.mouse->aqueue);
+        } else {
+            puts_ascii_font("Empty", &sp_mus_cnt);
+        }
 
         io_hlt();
     }

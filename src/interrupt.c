@@ -45,7 +45,6 @@ void disable_interrupt(uint16_t irq_num) {
         io_out8(PIC0_IMR_DATA_PORT, io_in8(PIC0_IMR_DATA_PORT) | ECAST_UINT8(irq_num));
     } else {
         io_out8(PIC1_IMR_DATA_PORT, io_in8(PIC1_IMR_DATA_PORT) | ECAST_UINT8(irq_num >> 8));
-
     }
 }
 

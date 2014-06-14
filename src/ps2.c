@@ -9,9 +9,9 @@
 #include <point.h>
 #include <asm_functions.h>
 #include <graphic.h>
-#include <kernel.h>
 #include <interrupt.h>
 #include <string.h>
+#include <kernel.h>
 
 
 union keyboard_controle_status {
@@ -130,6 +130,7 @@ Axel_state_code init_keyboard(void) {
     keyboard.enable_scroll_lock = false;
     keyboard.enable_keybord = false;
     aqueue_init(&keyboard.aqueue, sizeof(uint8_t), KEYBOARD_BUFFER_SIZE, NULL);
+    axel_s.keyboard = &keyboard;
 
     wait_input_buffer_empty();
     wait_output_buffer_empty();
@@ -167,31 +168,12 @@ Axel_state_code init_keyboard(void) {
 
 
 void interrupt_keybord(uint32_t* esp) {
-    static Point2d const start = {300, 500};
-    static Point2d const sstart = {300 - 10 * 8, 500};
-    static char buf[20] = {0};
-
-    while (read_status_reg().output_buf_full == 1) {
-        uint8_t key_code = read_data_reg();
-        itoa(key_code & 0x3F, buf, 16);
-
-        /* clear drawing area. */
-        static RGB8 c;
-        fill_rectangle(&start, &make_point2d(300 + 20, 500 + 13), set_rgb_by_color(&c, 0x3A6EA5));
-
-        /* draw key code */
-        puts_ascii_font("Key code: ", &sstart);
-        puts_ascii_font(buf, &start);
-
-        aqueue_insert(&keyboard.aqueue, &key_code);
-        if (aqueue_is_full(&keyboard.aqueue) == true) {
-            while (aqueue_is_empty(&keyboard.aqueue) == false) {
-                aqueue_delete_first(&keyboard.aqueue);
-            }
-        }
-    }
-
     send_done_interrupt_master();
+
+    do {
+        uint8_t keycode = read_data_reg();
+        aqueue_insert(&keyboard.aqueue, &keycode);
+    } while (read_status_reg().output_buf_full == 1);
 }
 
 
@@ -201,7 +183,8 @@ Axel_state_code init_mouse(void) {
     mouse.phase = 0;
     memset(mouse.packets, 0, 4);
     clear_point2d(&mouse.pos);
-    aqueue_init(&mouse.aqueue, sizeof(uint8_t), KEYBOARD_BUFFER_SIZE, NULL);
+    aqueue_init(&mouse.aqueue, sizeof(uint8_t), MOUSE_BUFFER_SIZE, NULL);
+    axel_s.mouse = &mouse;
 
     wait_input_buffer_empty();
 
@@ -243,11 +226,13 @@ Axel_state_code init_mouse(void) {
 
 
 void interrupt_mouse(void) {
-    uint8_t mdata= read_data_reg();
-    aqueue_insert(&mouse.aqueue, &mdata);
-
     send_done_interrupt_slave();
     send_done_interrupt_master();
+
+    do {
+        uint8_t mdata= read_data_reg();
+        aqueue_insert(&mouse.aqueue, &mdata);
+    } while (read_status_reg().output_buf_full == 1);
 }
 
 
