@@ -3,18 +3,18 @@ Axel Accelerates All For Me !
 
 
 ## Requirement
-clang, nasm, qemu, grub
+clang, nasm, qemu(VBE), grub
 
 
 ## How to use ISO file
 ```shell:variable
-qemu-system-x86_64 -monitor stdio -vga std -cdrom axel.iso
+qemu-system-i386 -monitor stdio -vga std -m 32 -cdrom axel.iso
 ```
 
 ## Setup Environment (NEW)
-Please install Requirement by package manager or build from source.
+Please install requirements by using package manager or building from source.
 If your clang is NOT enable cross-compiling, Please enable it.  
-And If your host architecture is 64bit environment, You should install 32bit libc.  
+And If your host architecture is 64bit environment, You should install 32bit libc and etc.  
 Because, Axel is 32bit yet :(
 
 
