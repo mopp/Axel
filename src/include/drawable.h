@@ -14,20 +14,20 @@ enum Drawable_constants {
 
 
 struct Drawable_bitmap {
-    uint32_t height;
-    uint32_t width;
+    int32_t height;
+    int32_t width;
     RGB8 color;
-    uint32_t const* data;
+    int32_t const* data;
 };
 typedef struct Drawable_bitmap Drawable_bitmap;
 
 
 struct Drawable_multi_bitmap {
-    uint32_t height;
-    uint32_t width;
-    uint32_t size;
+    int32_t height;
+    int32_t width;
+    int32_t size;
     RGB8 color;
-    uint32_t const* data[];
+    int32_t const* data[];
 };
 typedef struct Drawable_multi_bitmap Drawable_multi_bitmap;
 

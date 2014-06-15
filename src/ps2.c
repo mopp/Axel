@@ -162,10 +162,8 @@ Axel_state_code init_keyboard(void) {
 void interrupt_keybord(uint32_t* esp) {
     send_done_interrupt_master();
 
-    do {
-        uint8_t keycode = read_data_reg();
-        aqueue_insert(&keyboard.aqueue, &keycode);
-    } while (read_status_reg().output_buf_full == 1);
+    uint8_t keycode = read_data_reg();
+    aqueue_insert(&keyboard.aqueue, &keycode);
 }
 
 
@@ -212,20 +210,11 @@ Axel_state_code init_mouse(void) {
 
 
 void interrupt_mouse(void) {
-    static bool is_first = true;
     send_done_interrupt_slave();
     send_done_interrupt_master();
 
-    if (is_first == true) {
-        is_first = false;
-        return;
-    }
-
-    /* do { */
-        uint8_t mdata= read_data_reg();
-        aqueue_insert(&mouse.aqueue, &mdata);
-        /* printf("int 0x%x\n", mdata); */
-    /* } while (read_status_reg().output_buf_full == 1); */
+    uint8_t mdata= read_data_reg();
+    aqueue_insert(&mouse.aqueue, &mdata);
 }
 
 

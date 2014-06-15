@@ -9,7 +9,7 @@
 #include <stdint.h>
 
 struct point2d {
-    uint32_t x, y;
+    int32_t x, y;
 };
 typedef struct point2d Point2d;
 
@@ -28,7 +28,7 @@ static inline Point2d* clear_point2d(Point2d* const p) {
 }
 
 
-static inline Point2d* set_point2d(Point2d* const p, uint32_t x, uint32_t y) {
+static inline Point2d* set_point2d(Point2d* const p, int32_t x, int32_t y) {
     p->x = x;
     p->y = y;
 
@@ -36,7 +36,7 @@ static inline Point2d* set_point2d(Point2d* const p, uint32_t x, uint32_t y) {
 }
 
 
-static inline Point2d* add_point2d(Point2d* const p, uint32_t x, uint32_t y) {
+static inline Point2d* add_point2d(Point2d* const p, int32_t x, int32_t y) {
     p->x += x;
     p->y += y;
 
@@ -44,7 +44,7 @@ static inline Point2d* add_point2d(Point2d* const p, uint32_t x, uint32_t y) {
 }
 
 
-static inline Point2d* subs_point2d(Point2d* const p, uint32_t x, uint32_t y) {
+static inline Point2d* subs_point2d(Point2d* const p, int32_t x, int32_t y) {
     p->x -= x;
     p->y -= y;
 

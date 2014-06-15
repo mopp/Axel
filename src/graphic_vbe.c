@@ -25,19 +25,19 @@ struct Color_bit_info {
 };
 typedef struct Color_bit_info Color_bit_info;
 
-static volatile uintptr_t vram;
-static uint8_t byte_per_pixel;
-static uint32_t vram_size;
-static uint32_t max_x_resolution, max_y_resolution, max_xy_resolution;
+static volatile intptr_t vram;
+static int8_t byte_per_pixel;
+static int32_t vram_size;
+static int32_t max_x_resolution, max_y_resolution, max_xy_resolution;
 static Color_bit_info bit_info;
 /* current position in display. */
 /* FIXME: make this detect appropriate draw position. */
 static Point2d pos;
 
-static void (*set_vram)(uint32_t const, uint32_t const, RGB8 const* const);
-static inline void set_vram8880(uint32_t const, uint32_t const, RGB8 const* const);
-static inline void set_vram8888(uint32_t const, uint32_t const, RGB8 const* const);
-static inline void set_vram5650(uint32_t const, uint32_t const, RGB8 const* const);
+static void (*set_vram)(int32_t const, int32_t const, RGB8 const* const);
+static inline void set_vram8880(int32_t const, int32_t const, RGB8 const* const);
+static inline void set_vram8888(int32_t const, int32_t const, RGB8 const* const);
+static inline void set_vram5650(int32_t const, int32_t const, RGB8 const* const);
 
 
 Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
@@ -52,7 +52,7 @@ Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
     max_xy_resolution = max_x_resolution * max_y_resolution;
     byte_per_pixel = (m_info->bits_per_pixel / 8);
     vram_size = max_xy_resolution * byte_per_pixel;
-    vram = (uintptr_t)m_info->phys_base_ptr;
+    vram = (intptr_t)m_info->phys_base_ptr;
 
     /* store bit infomation. */
     bit_info.r_size = m_info->red_mask_size;
@@ -89,27 +89,27 @@ Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
 
 
 void clean_screen_vbe(RGB8 const* const c) {
-    for (uint32_t i = 0; i < max_y_resolution; ++i) {
-        for (uint32_t j = 0; j < max_x_resolution; ++j) {
+    for (int32_t i = 0; i < max_y_resolution; ++i) {
+        for (int32_t j = 0; j < max_x_resolution; ++j) {
             set_vram(j, i, c);
         }
     }
 }
 
 
-uint32_t get_max_x_resolution(void) {
+int32_t get_max_x_resolution(void) {
     return max_x_resolution;
 }
 
 
-uint32_t get_max_y_resolution(void) {
+int32_t get_max_y_resolution(void) {
     return max_y_resolution;
 }
 
 
 void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const* const c) {
-    for (uint32_t y = p0->y; y <= p1->y; ++y) {
-        for (uint32_t x = p0->x; x <= p1->x; ++x) {
+    for (int32_t y = p0->y; y <= p1->y; ++y) {
+        for (int32_t x = p0->x; x <= p1->x; ++x) {
             set_vram(x, y, c);
         }
     }
@@ -117,8 +117,8 @@ void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const
 
 
 void draw_bitmap(Drawable_bitmap const* const dbmp, Point2d const* const p) {
-    for (uint32_t i = 0; i < dbmp->height; i++) {
-        for (uint32_t j = 0; j < dbmp->width; j++) {
+    for (int32_t i = 0; i < dbmp->height; i++) {
+        for (int32_t j = 0; j < dbmp->width; j++) {
             if (1 == (0x01 & (dbmp->data[i] >> (dbmp->width - j - 1)))) {
                 set_vram(p->x + j, p->y + i, &dbmp->color);
             }
@@ -144,13 +144,19 @@ void draw_mouse_cursor(void) {
     }
     axel_s.mouse->is_pos_update = false;
 
-    uint32_t const max_x = get_max_x_resolution() - mouse_cursor->width;
-    uint32_t const max_y = get_max_y_resolution() - mouse_cursor->height;
+    int32_t const max_x = get_max_x_resolution() - mouse_cursor->width;
+    int32_t const max_y = get_max_y_resolution() - mouse_cursor->height;
     if (max_x <= axel_s.mouse->pos.x) {
         axel_s.mouse->pos.x = max_x;
     }
     if (max_y <= axel_s.mouse->pos.y) {
         axel_s.mouse->pos.y = max_y;
+    }
+    if (axel_s.mouse->pos.y < 0) {
+        axel_s.mouse->pos.y = 0;
+    }
+    if (axel_s.mouse->pos.x < 0) {
+        axel_s.mouse->pos.x = 0;
     }
 
     /* static RGB8 const c = {.bit_expr = 0xFFAA00}; */
@@ -169,7 +175,7 @@ void draw_multi_bitmap(Drawable_multi_bitmap const* const dmbmp, Point2d const* 
     tb.height = dmbmp->height;
     tb.width = dmbmp->width;
 
-    for (uint8_t i = 0; i < dmbmp->size; i++) {
+    for (int32_t i = 0; i < dmbmp->size; i++) {
         tb.data = dmbmp->data[i];
         draw_bitmap(&tb, set_point2d(&tp, p->x + (i * dmbmp->width), p->y));
     }
@@ -184,7 +190,7 @@ int put_ascii_font(int const c, Point2d const* const p) {
 
 void puts_ascii_font(char const *c, Point2d const* const p) {
     static Point2d tp;
-    uint32_t cnt = 0;
+    int32_t cnt = 0;
 
     while (*c!= '\0') {
         put_ascii_font(*c, set_point2d(&tp, p->x + (cnt * mplus_fonts.width), p->y));
@@ -195,8 +201,8 @@ void puts_ascii_font(char const *c, Point2d const* const p) {
 
 
 int putchar_vbe(int c) {
-    uint32_t const fwidth = mplus_fonts.width;
-    uint32_t const fheight = mplus_fonts.height;
+    int32_t const fwidth = mplus_fonts.width;
+    int32_t const fheight = mplus_fonts.height;
 
     if (c == '\n' || c == '\r') {
         set_point2d(&pos, 0, pos.y + fheight);
@@ -348,10 +354,10 @@ void test_draw(RGB8 const* const c) {
     };
 
     /* もぷりんOS */
-    uint32_t x = (max_x_resolution / 2) - (16 * 3);
+    int32_t x = (max_x_resolution / 2) - (16 * 3);
     draw_multi_bitmap(&tes, &make_point2d(x, max_y_resolution / 2 + 8));
 
-    uint32_t y = 100;
+    int32_t y = 100;
     puts_ascii_font(" __  __ ",                      &make_point2d(x, y += 13));
     puts_ascii_font("|  \\/  |",                     &make_point2d(x, y += 13));
     puts_ascii_font("| \\  / | ___  _ __  _ __",     &make_point2d(x, y += 13));
@@ -363,7 +369,7 @@ void test_draw(RGB8 const* const c) {
 }
 
 
-static inline uintptr_t get_vram_index(uint32_t const x, uint32_t const y) {
+static inline intptr_t get_vram_index(int32_t const x, int32_t const y) {
     return (x + max_x_resolution * y) * byte_per_pixel;
 }
 
@@ -388,7 +394,7 @@ static inline uint32_t get_shift_rsvd(uint8_t rsvd) {
 }
 
 
-static inline void set_vram8880(uint32_t const x, uint32_t const y, RGB8 const* const c) {
+static inline void set_vram8880(int32_t const x, int32_t const y, RGB8 const* const c) {
     volatile uint32_t* target = (volatile uint32_t*)(vram + get_vram_index(x, y));
 
     /* clear */
@@ -398,12 +404,12 @@ static inline void set_vram8880(uint32_t const x, uint32_t const y, RGB8 const* 
 }
 
 
-static inline void set_vram8888(uint32_t const x, uint32_t const y, RGB8 const* const c) {
+static inline void set_vram8888(int32_t const x, int32_t const y, RGB8 const* const c) {
     *(volatile uint32_t*)(vram + get_vram_index(x, y)) = get_shift_red(c->r) | get_shift_green(c->g) | get_shift_blue(c->b) | get_shift_rsvd(c->rsvd);
 }
 
 
-static inline void set_vram5650(uint32_t const x, uint32_t const y, RGB8 const* const c) {
+static inline void set_vram5650(int32_t const x, int32_t const y, RGB8 const* const c) {
     volatile uint32_t* target = (volatile uint32_t*)(vram + get_vram_index(x, y));
 
     /* clear */

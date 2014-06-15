@@ -188,8 +188,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     Point2d p0, p1;
     RGB8 c;
-    uint32_t const max_x = get_max_x_resolution() - 1;
-    uint32_t const max_y = get_max_y_resolution() - 1;
+    int32_t const max_x = get_max_x_resolution() - 1;
+    int32_t const max_y = get_max_y_resolution() - 1;
 
     clean_screen(set_rgb_by_color(&c, 0x3A6EA5));
     /* test_draw(set_rgb_by_color(&c, 0x3A6EA5)); */
@@ -239,8 +239,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     set_rgb_by_color(&c, 0x9370db);
     fill_rectangle(set_point2d(&p0, 400, 0), set_point2d(&p1, max_x, max_y - 28), &c);
 
-    uint32_t base_y = 5;
-    uint32_t base_x = get_max_x_resolution() - (8 * 46);
+    int32_t base_y = 5;
+    int32_t base_x = get_max_x_resolution() - (8 * 46);
     enum {
         BUF_SIZE = 20,
     };
@@ -281,105 +281,78 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
 static inline void decode_mouse(void) {
     static bool is_discard = false; /* If this is true, discard entire packets. */
-    static int32_t mx = 0, my = 0;
+    static uint8_t discard_cnt = 0;
 
     uint8_t packet = *(uint8_t*)aqueue_get_first(&axel_s.mouse->aqueue);
     aqueue_delete_first(&axel_s.mouse->aqueue);
-    /* printf("decode 0x%x\n", packet); */
+
+    if (is_discard == true) {
+        if (2 < ++discard_cnt) {
+            is_discard = false;
+            discard_cnt = 0;
+        }
+        return;
+    }
 
     switch (axel_s.mouse->phase) {
         case 0:
             /*
-             * bit meaning of first packet is below.
-             * Y overflow, X overflow, Y sign bit, X sign bit, Always 1, Middle button, Right button, Left button
+             * bit meaning of first packet is here.
+             * [Y overflow][X overflow][Y sign bit][X sign bit][Always 1][Middle button][Right button][Left button]
              */
-            axel_s.mouse->phase = 1;
-            if ((packet & 0xC0) != 0) {
-                /*
-                 * Overflow bits is NOT useful.
-                 */
-                is_discard = true;
-                puts("Overflow !");
-                break;
-            }
-
             if ((packet & 0x08) == 0) {
-                /* Check fourth bit. */
-                puts("What !?");
+                /*
+                 * Check fourth bit.
+                 * This bit is always 1.
+                 * Otherwise, happen anything error.
+                 */
                 break;
             }
 
+            /*
+             * Overflow bits is set.
+             * This means that X and Y movement is overflow.
+             * So, discard entire packets.
+             */
+            if ((packet & 0xC0) != 0) {
+                is_discard = true;
+                break;
+            }
+
+            axel_s.mouse->phase = 1;
             axel_s.mouse->packets[0] = packet;
 
             break;
         case 1:
             /* X axis movement. */
             axel_s.mouse->phase = 2;
-
-            if (is_discard == true) {
-                break;
-            }
-
             axel_s.mouse->packets[1] = packet;
 
             break;
         case 2:
             /* Y axis movement. */
-            /* axel_s.mouse->phase = 3; */
             axel_s.mouse->phase = 0;
-
-            if (is_discard == true) {
-                is_discard = false;
-                break;
-            }
-
-            axel_s.mouse->button = (axel_s.mouse->packets[0] & 0x07);
-            if (axel_s.mouse->button != 0) {
-                puts("Button is pressed");
-                return;
-            }
-
             axel_s.mouse->packets[2] = packet;
 
             /*
              * If value is negative, do sign extension.
-             * Y negative is up direction. So, reverse sign.
+             * Y direction is inverse of direction.
              */
             int32_t dx = axel_s.mouse->packets[1];
-            int32_t dy = axel_s.mouse->packets[2];
             if ((axel_s.mouse->packets[0] & 0x10) != 0) {
                 dx |= 0xFFFFFF00;
             }
+
+            int32_t dy = axel_s.mouse->packets[2];
             if ((axel_s.mouse->packets[0] & 0x20) != 0) {
                 dy |= 0xFFFFFF00;
             }
 
-            mx += dx;
-            my += dy * -1;
-
-            if (800 < mx) {
-                mx = 800;
-            } else if (mx < 0){
-                mx = 0;
-            }
-            if (600 < my) {
-                my = 600;
-            } else if (my < 0){
-                my = 0;
-            }
-            axel_s.mouse->pos.x = (uint32_t)mx;
-            axel_s.mouse->pos.y = (uint32_t)my ;
-
+            axel_s.mouse->pos.x += dx;
+            axel_s.mouse->pos.y += (~dy + 1);
+            axel_s.mouse->button = (axel_s.mouse->packets[0] & 0x07);
             axel_s.mouse->is_pos_update = true;
 
-            /* printf("(X, Y)   = (%zd, %zd)\n", axel_s.mouse->pos.x, axel_s.mouse->pos.y); */
-            /* printf("(dX, dY): (%d, %d) ",dx, dy); */
-            /* printf("(X, Y): (%d, %d) Button: 0x%x\n", mx, my, axel_s.mouse->button); */
-            axel_s.mouse->button = 0;
-
-            break;
-        case 3:
-            axel_s.mouse->phase = 0;
             break;
         default:
             /* ERROR */
