@@ -9,6 +9,7 @@
 #include <point.h>
 #include <font.h>
 #include <drawable.h>
+#include <kernel.h>
 
 /* This represents bit size and position infomation from VBE. */
 struct Color_bit_info {
@@ -137,9 +138,26 @@ void draw_nmulti_bitmap(Drawable_multi_bitmap const* const dmbmp, Point2d const*
 }
 
 
-void draw_mouse_cursor(Point2d const* const p) {
+void draw_mouse_cursor(void) {
+    if (axel_s.mouse->is_pos_update == false) {
+        return;
+    }
+    axel_s.mouse->is_pos_update = false;
+
+    uint32_t const max_x = get_max_x_resolution() - mouse_cursor->width;
+    uint32_t const max_y = get_max_y_resolution() - mouse_cursor->height;
+    if (max_x <= axel_s.mouse->pos.x) {
+        axel_s.mouse->pos.x = max_x;
+    }
+    if (max_y <= axel_s.mouse->pos.y) {
+        axel_s.mouse->pos.y = max_y;
+    }
+
+    /* static RGB8 const c = {.bit_expr = 0xFFAA00}; */
+    /* clean_screen_vbe(&c); */
+
     for (uint8_t i = 0; i < 2; i++) {
-        draw_bitmap(mouse_cursor + i, p);
+        draw_bitmap(mouse_cursor + i, &axel_s.mouse->pos);
     }
 }
 
@@ -191,6 +209,8 @@ int putchar_vbe(int c) {
 
     if (max_y_resolution <= (pos.y + fheight)) {
         set_point2d(&pos, 0, 0);
+    static RGB8 const c = {.bit_expr = 0xFFAA00};
+    clean_screen_vbe(&c);
     }
 
     put_ascii_font(c, &pos);

@@ -96,14 +96,6 @@ enum keyboard_constants {
 };
 
 
-enum mouse_constants {
-    MOUSE_BUTTON_NONE= 0,
-    MOUSE_BUTTON_RIGHT,
-    MOUSE_BUTTON_LEFT,
-    MOUSE_BUTTON_MIDDLE,
-};
-
-
 
 static Keyboard keyboard;
 static Mouse mouse;
@@ -181,12 +173,11 @@ Axel_state_code init_mouse(void) {
     mouse.enable_mouse = false;
     mouse.button = MOUSE_BUTTON_NONE;
     mouse.phase = 0;
+    mouse.is_pos_update = false;
     memset(mouse.packets, 0, 4);
     clear_point2d(&mouse.pos);
     aqueue_init(&mouse.aqueue, sizeof(uint8_t), MOUSE_BUFFER_SIZE, NULL);
     axel_s.mouse = &mouse;
-
-    wait_input_buffer_empty();
 
     /* do self test */
     wait_input_buffer_empty();
@@ -213,11 +204,6 @@ Axel_state_code init_mouse(void) {
         return AXEL_FAILED;
     }
 
-
-    if (update_led() == AXEL_FAILED) {
-        return AXEL_FAILED;
-    }
-
     enable_interrupt(PIC_IMR_MASK_IRQ12);
 
     mouse.enable_mouse = true;
@@ -226,13 +212,20 @@ Axel_state_code init_mouse(void) {
 
 
 void interrupt_mouse(void) {
+    static bool is_first = true;
     send_done_interrupt_slave();
     send_done_interrupt_master();
 
-    do {
+    if (is_first == true) {
+        is_first = false;
+        return;
+    }
+
+    /* do { */
         uint8_t mdata= read_data_reg();
         aqueue_insert(&mouse.aqueue, &mdata);
-    } while (read_status_reg().output_buf_full == 1);
+        /* printf("int 0x%x\n", mdata); */
+    /* } while (read_status_reg().output_buf_full == 1); */
 }
 
 

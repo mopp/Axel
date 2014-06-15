@@ -153,6 +153,7 @@ enum PIT_constants {
 Axel_struct axel_s;
 
 
+static void decode_mouse(void);
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint32_t);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, void*, uint16_t, uint32_t);
 static void init_gdt(void);
@@ -245,43 +246,144 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     };
     char buf[BUF_SIZE];
 
-    puts_ascii_font("hlt counter   :",   &make_point2d(base_x, base_y + 13 * 0));
+    puts_ascii_font("hlt counter   :", &make_point2d(base_x, base_y + 13 * 0));
     puts_ascii_font("keyboard data :", &make_point2d(base_x, base_y + 13 * 1));
-    puts_ascii_font("mouse data    :",    &make_point2d(base_x, base_y + 13 * 2));
     base_x += 15 * 8;
 
     Point2d const sp_hlt_cnt = {base_x, base_y + 13 * 0};
-    Point2d const ep_hlt_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 1}; /* base_x + str_width */
-    Point2d const sp_kbd_cnt = {base_x, base_y + 13 * 1};
-    Point2d const ep_kbd_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 2};
-    Point2d const sp_mus_cnt = {base_x, base_y + 13 * 2};
-    Point2d const ep_mus_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 3};
+    Point2d const ep_hlt_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 1};
+    Point2d const sp_kbd = {base_x, base_y + 13 * 1};
+    Point2d const ep_kbd = {base_x + (8 * BUF_SIZE), base_y + 13 * 2};
 
-    draw_mouse_cursor(&ep_mus_cnt);
     int i = 0;
+    /* clean_screen(set_rgb_by_color(&c, 0x3A6EA5)); */
     for (;;) {
         /* clean drawing area. */
         fill_rectangle(&sp_hlt_cnt, &ep_hlt_cnt, &c);
-        fill_rectangle(&sp_mus_cnt, &ep_mus_cnt, &c);
-
         puts_ascii_font(itoa(i++, buf, 10), &sp_hlt_cnt);
+
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
-            fill_rectangle(&sp_kbd_cnt, &ep_kbd_cnt, &c);
-            puts_ascii_font(itoa(*(uint8_t*)aqueue_get_first(&axel_s.keyboard->aqueue), buf, 16), &sp_kbd_cnt);
+            fill_rectangle(&sp_kbd, &ep_kbd, &c);
+            puts_ascii_font(itoa(*(uint8_t*)aqueue_get_first(&axel_s.keyboard->aqueue), buf, 16), &sp_kbd);
             aqueue_delete_first(&axel_s.keyboard->aqueue);
-        } else {
-            puts_ascii_font("Empty", &sp_mus_cnt);
         }
 
         if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
-            fill_rectangle(&sp_mus_cnt, &ep_mus_cnt, &c);
-            puts_ascii_font(itoa(*(uint8_t*)aqueue_get_first(&axel_s.mouse->aqueue), buf, 10), &sp_mus_cnt);
-            aqueue_delete_first(&axel_s.mouse->aqueue);
+            /* decode mouse data */
+            decode_mouse();
         } else {
-            puts_ascii_font("Empty", &sp_mus_cnt);
+            draw_mouse_cursor();
+            io_hlt();
         }
+    }
+}
 
-        io_hlt();
+
+static inline void decode_mouse(void) {
+    static bool is_discard = false; /* If this is true, discard entire packets. */
+    static int32_t mx = 0, my = 0;
+
+    uint8_t packet = *(uint8_t*)aqueue_get_first(&axel_s.mouse->aqueue);
+    aqueue_delete_first(&axel_s.mouse->aqueue);
+    /* printf("decode 0x%x\n", packet); */
+
+    switch (axel_s.mouse->phase) {
+        case 0:
+            /*
+             * bit meaning of first packet is below.
+             * Y overflow, X overflow, Y sign bit, X sign bit, Always 1, Middle button, Right button, Left button
+             */
+            axel_s.mouse->phase = 1;
+            if ((packet & 0xC0) != 0) {
+                /*
+                 * Overflow bits is NOT useful.
+                 */
+                is_discard = true;
+                puts("Overflow !");
+                break;
+            }
+
+            if ((packet & 0x08) == 0) {
+                /* Check fourth bit. */
+                puts("What !?");
+                break;
+            }
+
+            axel_s.mouse->packets[0] = packet;
+
+            break;
+        case 1:
+            /* X axis movement. */
+            axel_s.mouse->phase = 2;
+
+            if (is_discard == true) {
+                break;
+            }
+
+            axel_s.mouse->packets[1] = packet;
+
+            break;
+        case 2:
+            /* Y axis movement. */
+            /* axel_s.mouse->phase = 3; */
+            axel_s.mouse->phase = 0;
+
+            if (is_discard == true) {
+                is_discard = false;
+                break;
+            }
+
+            axel_s.mouse->button = (axel_s.mouse->packets[0] & 0x07);
+            if (axel_s.mouse->button != 0) {
+                puts("Button is pressed");
+                return;
+            }
+
+            axel_s.mouse->packets[2] = packet;
+
+            /*
+             * If value is negative, do sign extension.
+             * Y negative is up direction. So, reverse sign.
+             */
+            int32_t dx = axel_s.mouse->packets[1];
+            int32_t dy = axel_s.mouse->packets[2];
+            if ((axel_s.mouse->packets[0] & 0x10) != 0) {
+                dx |= 0xFFFFFF00;
+            }
+            if ((axel_s.mouse->packets[0] & 0x20) != 0) {
+                dy |= 0xFFFFFF00;
+            }
+
+            mx += dx;
+            my += dy * -1;
+
+            if (800 < mx) {
+                mx = 800;
+            } else if (mx < 0){
+                mx = 0;
+            }
+            if (600 < my) {
+                my = 600;
+            } else if (my < 0){
+                my = 0;
+            }
+            axel_s.mouse->pos.x = (uint32_t)mx;
+            axel_s.mouse->pos.y = (uint32_t)my ;
+
+            axel_s.mouse->is_pos_update = true;
+
+            /* printf("(X, Y)   = (%zd, %zd)\n", axel_s.mouse->pos.x, axel_s.mouse->pos.y); */
+            /* printf("(dX, dY): (%d, %d) ",dx, dy); */
+            /* printf("(X, Y): (%d, %d) Button: 0x%x\n", mx, my, axel_s.mouse->button); */
+            axel_s.mouse->button = 0;
+
+            break;
+        case 3:
+            axel_s.mouse->phase = 0;
+            break;
+        default:
+            /* ERROR */
+            break;
     }
 }
 

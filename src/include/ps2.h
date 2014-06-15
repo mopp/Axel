@@ -32,10 +32,21 @@ struct mouse {
     uint8_t button;
     uint8_t phase;
     uint8_t packets[4];
+    bool is_pos_update;
     Point2d pos;
     Aqueue aqueue;
 };
 typedef struct mouse Mouse;
+
+
+enum mouse_constants {
+    /* These value corresponds to mouse first packet. */
+    MOUSE_BUTTON_NONE   = 0x00,
+    MOUSE_BUTTON_MIDDLE = 0x04,
+    MOUSE_BUTTON_RIGHT  = 0x02,
+    MOUSE_BUTTON_LEFT   = 0x01,
+};
+
 
 
 extern Axel_state_code init_keyboard(void);

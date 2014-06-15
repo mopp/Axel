@@ -35,7 +35,7 @@ extern void draw_multi_bitmap(Drawable_multi_bitmap const* const, Point2d const*
 extern void put_ascii_font(char const, Point2d const* const);
 extern void puts_ascii_font(char const*, Point2d const* const);
 extern void test_draw(RGB8 const* const);
-extern void draw_mouse_cursor(Point2d const* const);
+extern void draw_mouse_cursor(void);
 #endif
 
 
