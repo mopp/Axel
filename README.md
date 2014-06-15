@@ -8,7 +8,7 @@ clang, nasm, qemu(VBE), grub
 
 ## How to use ISO file
 ```shell:variable
-qemu-system-i386 -monitor stdio -vga std -m 32 -cdrom axel.iso
+qemu-system-i386 -vga std -m 32 -cdrom axel.iso
 ```
 
 ## Setup Environment (NEW)
