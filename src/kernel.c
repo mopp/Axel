@@ -258,10 +258,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     int i = 0;
     /* clean_screen(set_rgb_by_color(&c, 0x3A6EA5)); */
     for (;;) {
-        /* clean drawing area. */
-        fill_rectangle(&sp_hlt_cnt, &ep_hlt_cnt, &c);
-        puts_ascii_font(itoa(i++, buf, 10), &sp_hlt_cnt);
-
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
             fill_rectangle(&sp_kbd, &ep_kbd, &c);
             puts_ascii_font(itoa(*(uint8_t*)aqueue_get_first(&axel_s.keyboard->aqueue), buf, 16), &sp_kbd);
@@ -269,11 +265,14 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         }
 
         if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
-            /* decode mouse data */
             decode_mouse();
+        } else if (axel_s.mouse->is_pos_update == false) {
+            /* clean hlt counter area. */
+            fill_rectangle(&sp_hlt_cnt, &ep_hlt_cnt, &c);
+            puts_ascii_font(itoa(++i, buf, 10), &sp_hlt_cnt);
+            io_hlt();
         } else {
             draw_mouse_cursor();
-            io_hlt();
         }
     }
 }
