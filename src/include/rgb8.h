@@ -21,6 +21,7 @@ union RGB8 {
     uint32_t bit_expr;
 };
 typedef union RGB8 RGB8;
+_Static_assert(sizeof(RGB8) == 4, "Size of RGB8 is NOT 4 byte");
 
 
 static inline RGB8* set_rgb_by_color(RGB8* const rgb, uint32_t color) {

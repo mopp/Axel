@@ -7,11 +7,14 @@
 #define _STATE_CODE_H_
 
 
-enum Axel_state_code {
-    AXEL_SUCCESS    = 0x01,
-    AXEL_FAILED     = 0x02,
+
+enum axel_state_code {
+    AXEL_SUCCESS = 0x01,
+    AXEL_FAILED,
+    AXEL_MEMORY_ALLOC_ERROR,
 };
-typedef enum Axel_state_code Axel_state_code;
+typedef enum axel_state_code Axel_state_code;
+
 
 
 #endif

@@ -164,7 +164,8 @@ List* list_insert_node_first(List* l, List_node* new) {
  * @return pointer to list.
  */
 List* list_insert_data_first(List* l, void* data) {
-    return list_insert_node_first(l, list_get_new_node(l, data));
+    List_node* n = list_get_new_node(l, data);
+    return (n == NULL) ? NULL : list_insert_node_first(l, n);
 }
 
 
@@ -193,7 +194,8 @@ List* list_insert_node_last(List* l, List_node* new) {
  * @return pointer to list.
  */
 List* list_insert_data_last(List* l, void* data) {
-    return list_insert_node_last(l, list_get_new_node(l, data));
+    List_node* n = list_get_new_node(l, data);
+    return (n == NULL) ? NULL : list_insert_node_last(l, n);
 }
 
 

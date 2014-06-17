@@ -16,3 +16,8 @@
 clang option for cross compile
 lib32-glibc-2.14-4
 wc -l ./*.c ./*/*.c ./*.asm ./*/*.asm
+
+a=0;foreach f (`find . -name "*.c" -o -name "*.asm"`)
+e=$(du -b $f | sed 's/^\([0-9]*\).*/\1/g')
+a=$((a+e))
+end; echo "$((a/1024))kb"
