@@ -22,6 +22,7 @@
 #include <string.h>
 #include <vbe.h>
 #include <font.h>
+#include <window.h>
 
 
 /*
@@ -186,6 +187,12 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_pit();
     io_sti();
 
+    init_window();
+    alloc_filled_window(&make_point2d(100, 100),  & make_point2d(50, 50), 0, &(RGB8){.bit_expr = 0x00FFBB});
+    alloc_filled_window(&make_point2d(110, 110),  & make_point2d(50, 50), 1, &(RGB8){.bit_expr = 0xFFAA00});
+    alloc_filled_window(&make_point2d(120, 120),  & make_point2d(50, 50), 2, &(RGB8){.bit_expr = 0x00AA00});
+    alloc_filled_window(&make_point2d(130, 130),  & make_point2d(50, 50), 3, &(RGB8){.bit_expr = 0x0000});
+
     Point2d p0, p1;
     RGB8 c;
     int32_t const max_x = get_max_x_resolution() - 1;
@@ -230,10 +237,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
     }
 
-    print_vmem();
-    print_pmem();
-    printf("IRQ0: 0x%x\n", io_in8(PIC0_IMR_DATA_PORT));
-    printf("IRQ1: 0x%x\n", io_in8(PIC1_IMR_DATA_PORT));
+    /* print_vmem(); */
+    /* print_pmem(); */
+    /* printf("IRQ0: 0x%x\n", io_in8(PIC0_IMR_DATA_PORT)); */
+    /* printf("IRQ1: 0x%x\n", io_in8(PIC1_IMR_DATA_PORT)); */
 
     /* fill background. */
     set_rgb_by_color(&c, 0x9370db);
@@ -274,6 +281,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         } else {
             draw_mouse_cursor();
         }
+        update_windows();
     }
 }
 

@@ -38,7 +38,7 @@ KERNEL_MAP			:= kernel.map
 
 STRUCT_DIR			:= $(AXEL_ROOT_DIR)struct/
 SUB_DIRS 			:= $(BOOT_DIR) $(STRUCT_DIR)
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt.o interrupt_asm.o string.o font.o graphic_txt.o graphic_vbe.o ps2.o graphic.o stdio.o memory.o paging.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o interrupt.o interrupt_asm.o string.o font.o graphic_txt.o graphic_vbe.o graphic.o ps2.o window.o stdio.o memory.o paging.o kernel.o
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -88,7 +88,8 @@ string.o		: $(MAKEFILE) string.c $(AXEL_INCLUDE_PATH)string.h
 stdio.o			: $(MAKEFILE) stdio.c $(AXEL_INCLUDE_PATH)stdio.h $(AXEL_INCLUDE_PATH)graphic.h
 font.o			: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
 ps2.o			: $(MAKEFILE) ps2.c $(AXEL_INCLUDE_PATH)ps2.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
-kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt.o interrupt_asm.o memory.o paging.o string.o stdio.o font.o ps2.o
+window.o		: $(MAKEFILE) window.c $(AXEL_INCLUDE_PATH)window.h graphic.o
+kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt.o interrupt_asm.o memory.o paging.o string.o stdio.o font.o ps2.o window.o
 
 
 $(BOOT_OBJ) : $(MAKEFILE)

@@ -30,14 +30,13 @@ static int8_t byte_per_pixel;
 static int32_t vram_size;
 static int32_t max_x_resolution, max_y_resolution, max_xy_resolution;
 static Color_bit_info bit_info;
-/* current position in display. */
-/* FIXME: make this detect appropriate draw position. */
 static Point2d pos;
 
-static void (*set_vram)(int32_t const, int32_t const, RGB8 const* const);
+void (*set_vram)(int32_t const, int32_t const, RGB8 const* const);
 static inline void set_vram8880(int32_t const, int32_t const, RGB8 const* const);
 static inline void set_vram8888(int32_t const, int32_t const, RGB8 const* const);
 static inline void set_vram5650(int32_t const, int32_t const, RGB8 const* const);
+
 
 
 Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
@@ -159,9 +158,6 @@ void draw_mouse_cursor(void) {
         axel_s.mouse->pos.x = 0;
     }
 
-    /* static RGB8 const c = {.bit_expr = 0xFFAA00}; */
-    /* clean_screen_vbe(&c); */
-
     for (uint8_t i = 0; i < 2; i++) {
         draw_bitmap(mouse_cursor + i, &axel_s.mouse->pos);
     }
@@ -215,8 +211,6 @@ int putchar_vbe(int c) {
 
     if (max_y_resolution <= (pos.y + fheight)) {
         set_point2d(&pos, 0, 0);
-    static RGB8 const c = {.bit_expr = 0xFFAA00};
-    clean_screen_vbe(&c);
     }
 
     put_ascii_font(c, &pos);
