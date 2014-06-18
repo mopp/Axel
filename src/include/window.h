@@ -39,7 +39,6 @@ struct window {
         };
         uint8_t flags;
     };
-    uint8_t level;  /* 0 is top */
 };
 typedef struct window Window;
 

@@ -333,7 +333,7 @@ List_node* list_for_each(List* const l, for_each_func const f, bool const is_rev
 static void* search_target;
 static List* search_list;
 static bool search_loop(void* data) {
-    return (0 == memcmp(search_target, data, search_list->data_type_size)) ? true : false;
+    return (data == search_target || 0 == memcmp(search_target, data, search_list->data_type_size)) ? true : false;
 }
 
 
