@@ -256,7 +256,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Point2d const sp_kbd = {base_x, base_y + 13 * 1};
     Point2d const ep_kbd = {base_x + (8 * BUF_SIZE), base_y + 13 * 2};
 
-    Window* w_array[4];
+    Window* w_array[5];
     if (AXEL_SUCCESS != init_window()) {
         puts("init_window is failed\n");
     }
@@ -264,6 +264,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     w_array[1] = alloc_filled_window(&make_point2d(310, 310),  & make_point2d(50, 50), 1, &(RGB8){.bit_expr = 0xFFAA00});
     w_array[2] = alloc_filled_window(&make_point2d(320, 320),  & make_point2d(50, 50), 2, &(RGB8){.bit_expr = 0x00AA00});
     w_array[3] = alloc_filled_window(&make_point2d(330, 330),  & make_point2d(50, 50), 3, &(RGB8){.bit_expr = 0x000000});
+    /* w_array[4] = alloc_filled_window(&make_point2d(0, 0),  & make_point2d(800, 600), 4, &(RGB8){.bit_expr = 0x9370db}); */
 
     int i = 0;
     /* clean_screen(set_rgb_by_color(&c, 0x3A6EA5)); */

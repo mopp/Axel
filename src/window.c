@@ -158,8 +158,16 @@ static bool update_win_for_each(void* d) {
         ++cnt;
         return false;
     }
-    calibrate(&w->pos);
-    calibrate(&w->size);
+    Point2d p = w->pos, s = w->size;
+    calibrate(&p);
+    calibrate(&s);
+    if (p.x  + s.x < display_size.x) {
+        s.x = display_size.x - p.x;
+    }
+    if (p.y  + s.y < display_size.y) {
+        s.y = display_size.y - p.y;
+    }
+
     printf("(x, y) = (%d, %d)\n", w->pos.x, w->pos.y);
 
     int32_t const mstart_y = w->pos.y;
@@ -206,4 +214,5 @@ void update_windows(void) {
             }
         }
     }
+    memset(map, UINT8_MAX, (size_t)(display_size.x * display_size.y)* sizeof(uint8_t));
 }
