@@ -16,6 +16,7 @@
 #include <point.h>
 #include <rgb8.h>
 #include <state_code.h>
+#include <drawable.h>
 
 
 enum windows_constants {
@@ -23,30 +24,10 @@ enum windows_constants {
 };
 
 
-/* typedef void (*event_listener)(Window*); */
-
-struct window {
-    /* 800 * 600 * 4 Byte(sizeof(RGB8)) = 1875KB = 1.8MB*/
-    RGB8* buf;
-    Point2d pos;
-    Point2d size;
-    union {
-        struct {
-            uint8_t lock : 1;
-            uint8_t dirty : 1;
-            uint8_t enable : 1;
-            uint8_t reserved : 5;
-        };
-        uint8_t flags;
-    };
-};
+struct window;
 typedef struct window Window;
 
-
-struct window_manager {
-    List win_list;
-};
-typedef struct window_manager Window_manager;
+/* typedef void (*event_listener)(Window*); */
 
 
 
@@ -55,6 +36,7 @@ Window* alloc_filled_window(Point2d const*, Point2d const*, uint8_t, RGB8 const*
 Axel_state_code init_window(void);
 void free_window(Window*);
 void update_windows(void);
-
+Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const * dw, size_t len);
+void move_window_rel(Window* const w, Point2d const* const p);
 
 #endif

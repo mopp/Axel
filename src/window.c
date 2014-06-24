@@ -15,6 +15,29 @@
 #include <string.h>
 
 
+struct window {
+    /* 800 * 600 * 4 Byte(sizeof(RGB8)) = 1875KB = 1.8MB*/
+    RGB8* buf;
+    Point2d pos;
+    Point2d size;
+    union {
+        struct {
+            uint8_t lock : 1;
+            uint8_t dirty : 1;
+            uint8_t enable : 1;
+            uint8_t reserved : 5;
+        };
+        uint8_t flags;
+    };
+};
+
+
+struct window_manager {
+    List win_list;
+};
+typedef struct window_manager Window_manager;
+
+
 static Window_manager* win_man;
 static Point2d display_size;
 static uint8_t* map;
@@ -76,6 +99,29 @@ Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
 }
 
 
+Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const * dw, size_t len) {
+
+    Window* w = alloc_window(pos, &make_point2d(dw->width, dw->width), 0);
+    if (w == NULL) {
+        return NULL;
+    }
+
+    for (int k = 0; k < len; k++) {
+        for (int32_t i = 0; i < dw[k].height; i++) {
+            for (int32_t j = 0; j < dw[k].width; j++) {
+                /* if bit is 1, draw color */
+                if (1 == (0x01 & (dw[k].data[i] >> (dw[k].width - j - 1)))) {
+                    /* set_vram(p->x + j, p->y + i, &dbmp->color); */
+                    w->buf[j + w->size.y * i] = dw[k].color;
+                }
+            }
+        }
+    }
+
+    return w;
+}
+
+
 Window* alloc_filled_window(Point2d const* pos, Point2d const* size, uint8_t level, RGB8 const* c) {
     Window* w = alloc_window(pos, size, level);
     if (w == NULL) {
@@ -105,12 +151,15 @@ static void win_node_free(void* d) {
 }
 
 
-#include <stdio.h>
+static bool is_re_buffer;
+static Point2d begin_p, end_p; /* check area. */
 Axel_state_code init_window(void) {
     display_size.x = get_max_x_resolution();
     display_size.y = get_max_y_resolution();
+
+    end_p = display_size;
+
     size_t const display_pixel = (size_t)(display_size.x * display_size.y);
-    printf("%zdKB\n", display_pixel / 1024);
 
     display_buffer = vmalloc(sizeof(RGB8) * display_pixel);
     if (display_buffer == NULL) {
@@ -149,70 +198,144 @@ void free_window(Window* w) {
 }
 
 
-static bool is_re_buffer;
-static uint8_t cnt;
+#include <stdio.h>
 static bool update_win_for_each(void* d) {
     Window* w = d;
 
-    if (w->dirty == false || w->enable == false) {
-        ++cnt;
+    /* if (w->dirty == false || w->enable == false) { */
+    if (w->enable == false) {
+        w->enable = true;
         return false;
     }
-    Point2d p = w->pos, s = w->size;
-    calibrate(&p);
-    calibrate(&s);
-    if (p.x  + s.x < display_size.x) {
-        s.x = display_size.x - p.x;
+
+    /* NOTE: These point is NOT points of buffer and are display points.  */
+    /* calculate check area points. */
+    int32_t const ca_bx = (begin_p.x < 0) ? (0) : (begin_p.x);
+    int32_t const ca_by = (begin_p.y < 0) ? (0) : (begin_p.y);
+    int32_t const ca_ex = (display_size.x < end_p.x) ? (display_size.x) : (end_p.x);
+    int32_t const ca_ey = (display_size.y < end_p.y) ? (display_size.y) : (end_p.y);
+    /* calculate buf area points. */
+    int32_t const ba_bx = w->pos.x;
+    int32_t const ba_by = w->pos.y;
+    int32_t const ba_ex = ba_bx + w->size.x;
+    int32_t const ba_ey = ba_by + w->size.y;
+
+    /* puts("--------------------------------------------------\n"); */
+    /* printf("check - begin (%d, %d)\n", ca_bx, ca_by); */
+    /* printf("check - end   (%d, %d)\n", ca_ex, ca_ey); */
+    /* printf("buf   - begin (%d, %d)\n", ba_bx, ba_by); */
+    /* printf("buf   - end   (%d, %d)\n", ba_ex, ba_ey); */
+
+    /* checking Is this window included ? */
+    if (!((ca_bx <= ba_bx || ba_bx <= ca_ex) || (ca_by <= ba_by || ba_by <= ca_ey))) {
+        return false;
     }
-    if (p.y  + s.y < display_size.y) {
-        s.y = display_size.y - p.y;
-    }
 
-    printf("(x, y) = (%d, %d)\n", w->pos.x, w->pos.y);
+    /* calculate drawing area */
+    int32_t const da_bx = (ca_bx <= ba_bx) ? (ba_bx):(ca_bx);
+    int32_t const da_by = (ca_by <= ba_by) ? (ba_by):(ca_by);
+    int32_t const da_ex = (ca_ex <= ba_ex) ? (ca_ex):(ba_ex);
+    int32_t const da_ey = (ca_ex <= ba_ey) ? (ca_ey):(ba_ey);
+    /* printf("draw  - begin (%d, %d)\n", da_bx, da_by); */
+    /* printf("draw  - end   (%d, %d)\n", da_ex, da_ey); */
 
-    int32_t const mstart_y = w->pos.y;
-    int32_t const mstart_x = w->pos.x;
-    int32_t const mlimit_y = w->pos.y + w->size.y;
-    int32_t const mlimit_x = w->pos.x + w->size.x;
-    int32_t const bstart_y = 0;
-    int32_t const bstart_x = 0;
-    int32_t const blimit_y = w->size.y;
-    int32_t const blimit_x = w->size.x;
-
-    for (int32_t mi = mstart_y, bi = bstart_y; mi < mlimit_y && bi < blimit_y; mi++, bi++) {
-        int32_t const mbase = mi * display_size.y;
-        int32_t const bbase = bi * blimit_y;
-        for (int32_t mj = mstart_x, bj = bstart_x; mj < mlimit_x && bj < blimit_x; mj++, bj++) {
-            if (map[mbase + mj] == UINT8_MAX) {
-                map[mbase + mj] = cnt;
-                display_buffer[mbase + mj] = w->buf[bbase + bj];
+    /* (x, y) is points of display */
+    /* (bx, by) is points of buffer in window */
+    for (int32_t y = da_by, by = 0; y < da_ey && by < w->size.y; y++, by++) {
+        const int32_t base = y * display_size.y;
+        const int32_t bbase = by * w->size.y;
+        for (int32_t x = da_bx, bx = 0; x < da_ex && bx < w->size.x; x++, bx++) {
+            RGB8 const c = w->buf[bx + bbase];
+            if (c.bit_expr != 0) {
+                display_buffer[x + base] = c;
             }
         }
     }
 
     w->dirty = false;
     is_re_buffer = true;
-    ++cnt;
 
     return false;
 }
 
 
 void update_windows(void) {
-    cnt = 0;
     list_for_each(&win_man->win_list, update_win_for_each, false);
     if (is_re_buffer == false) {
         return;
     }
     is_re_buffer = false;
 
-    for (int32_t i = 0; i < display_size.y; i++) {
-        int32_t const base = i * display_size.y;
-        for (int32_t j = 0; j < display_size.x; j++) {
-            if (map[base + j] != UINT8_MAX) {
-                set_vram(j, i, &display_buffer[base + j]);
-            }
+    int32_t start_x = (begin_p.x < 0) ? (0) : (begin_p.x);
+    int32_t start_y = (begin_p.y < 0) ? (0) : (begin_p.y);
+    int32_t end_x = (display_size.x < end_p.x) ? (display_size.x) : (end_p.x);
+    int32_t end_y = (display_size.y < end_p.y) ? (display_size.y) : (end_p.y);
+
+    /* printf("start (%d, %d)\n", start_x, start_y); */
+    /* printf("end   (%d, %d)\n", end_x, end_y); */
+
+    for (int32_t y = start_y; y < end_y ; y++) {
+        const int32_t base = y * display_size.y;
+        for (int32_t x = start_x; x < end_x ; x++) {
+            set_vram(x, y, &display_buffer[base + x]);
         }
     }
-    memset(map, UINT8_MAX, (size_t)(display_size.x * display_size.y)* sizeof(uint8_t));
+}
+
+
+void move_window_abs(Window* w, Point2d const * p) {
+    if (0 < (w->pos.x - p->x)) {
+        /* to right */
+        begin_p.x = w->pos.x + p->x;
+    } else {
+        begin_p.x = w->pos.x + p->x;
+    }
+}
+
+
+void move_window_rel(Window* const w, Point2d const* const p) {
+    /* move_window_abs(w, &make_point2d(w->pos.x + p->x, w->pos.y + p->y)); */
+    int32_t const dx = p->x;
+    int32_t const dy = p->y;
+    int32_t const px = w->pos.x;
+    int32_t const py = w->pos.y;
+    int32_t const sx = w->size.x;
+    int32_t const sy = w->size.y;
+
+    /* update value in argument window. */
+    w->pos.x += dx;
+    w->pos.y += dy;
+
+    if (0 < dx) {
+        /* to right */
+        begin_p.x = px;
+        end_p.x = px + sx + dx;
+    } else {
+        /* to left */
+        begin_p.x = px + dx;          // px - (-dx)
+        end_p.x = px + sx;
+    }
+
+    if (0 < dy) {
+        /* to below */
+        begin_p.y = py;
+        end_p.y = py + sy + dy;
+    } else {
+        /* to above */
+        begin_p.y = py + dy;          // py - (-dy)
+        end_p.y = py + sy;
+    }
+    update_windows();
+
+    /* w->dirty = true; */
+
+    begin_p = w->pos;
+    end_p.x = w->pos.x + sx;
+    end_p.y = w->pos.y + sy;
+
+    update_windows();
+
+    /* clear_point2d(&begin_p); */
+    /* end_p = display_size; */
+    /* update_windows(); */
 }

@@ -118,18 +118,18 @@ _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor siz
 
 
 enum Gate_descriptor_constants {
-    IDT_NUM                = 19 + 12 + 16, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector */
-    IDT_LIMIT              = IDT_NUM * 8 - 1,
-    GD_FLAG_TYPE_TASK      = 0x00000500,
+    IDT_NUM = 19 + 12 + 16, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector */
+    IDT_LIMIT = IDT_NUM * 8 - 1,
+    GD_FLAG_TYPE_TASK = 0x00000500,
     GD_FLAG_TYPE_INTERRUPT = 0x00000600,
-    GD_FLAG_TYPE_TRAP      = 0x00000700,
-    GD_FLAG_SIZE_32        = 0x00000800,
-    GD_FLAG_RING0          = 0x00000000,
-    GD_FLAG_RING1          = 0x00002000,
-    GD_FLAG_RING2          = 0x00004000,
-    GD_FLAG_RING3          = 0x00006000,
-    GD_FLAG_PRESENT        = 0x00008000,
-    GD_FLAGS_IDT           = GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
+    GD_FLAG_TYPE_TRAP = 0x00000700,
+    GD_FLAG_SIZE_32 = 0x00000800,
+    GD_FLAG_RING0 = 0x00000000,
+    GD_FLAG_RING1 = 0x00002000,
+    GD_FLAG_RING2 = 0x00004000,
+    GD_FLAG_RING3 = 0x00006000,
+    GD_FLAG_PRESENT = 0x00008000,
+    GD_FLAGS_IDT = GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
 };
 
 
@@ -138,7 +138,7 @@ enum PIT_constants {
     PIT_PORT_COUNTER0 = 0x40,
     PIT_PORT_COUNTER1 = 0x41,
     PIT_PORT_COUNTER2 = 0x42,
-    PIT_PORT_CONTROL  = 0x43,
+    PIT_PORT_CONTROL = 0x43,
 
     /* 制御コマンド */
     /* パルス生成モード */
@@ -147,7 +147,7 @@ enum PIT_constants {
     /* カウンター値 */
     /* 1193182 / 100 Hz */
     PIT_COUNTER_VALUE_HIGH = 0x2E,
-    PIT_COUNTER_VALUE_LOW  = 0x9C,
+    PIT_COUNTER_VALUE_LOW = 0x9C,
 };
 
 
@@ -195,7 +195,13 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     clean_screen(set_rgb_by_color(&c, 0x3A6EA5));
     /* test_draw(set_rgb_by_color(&c, 0x3A6EA5)); */
 
-    fill_rectangle(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
+    if (AXEL_SUCCESS != init_window()) {
+        puts("init_window is failed\n");
+    }
+    alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, &(RGB8){.r = 0x3A, .g = 0x6E, .b = 0xA5});
+    update_windows();
+
+    // fill_rectangle(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
     fill_rectangle(set_point2d(&p0, 0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
     fill_rectangle(set_point2d(&p0, 0, max_y - 25), set_point2d(&p1, max_x, max_y), set_rgb_by_color(&c, 0xC6C6C6));
 
@@ -206,10 +212,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     fill_rectangle(set_point2d(&p0, 2, max_y - 2), set_point2d(&p1, 59, max_y - 2), set_rgb_by_color(&c, 0x000000));
     fill_rectangle(set_point2d(&p0, 60, max_y - 23), set_point2d(&p1, 60, max_y - 2), set_rgb_by_color(&c, 0x000000));
 
-    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 23), set_point2d(&p1, max_x - 3, max_y - 23), set_rgb_by_color(&c, 0x848484));
-    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 22), set_point2d(&p1, max_x - 46, max_y - 3), set_rgb_by_color(&c, 0x848484));
-    fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 2), set_point2d(&p1, max_x - 3, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
-    fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
+    // fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 23), set_point2d(&p1, max_x - 3, max_y - 23), set_rgb_by_color(&c, 0x848484));
+    // fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 22), set_point2d(&p1, max_x - 46, max_y - 3), set_rgb_by_color(&c, 0x848484));
+    // fill_rectangle(set_point2d(&p0, max_x - 46, max_y - 2), set_point2d(&p1, max_x - 3, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
+    // fill_rectangle(set_point2d(&p0, max_x - 2, max_y - 23), set_point2d(&p1, max_x - 2, max_y - 2), set_rgb_by_color(&c, 0xFFFFFF));
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("=Keyboard initialize failed=\n");
@@ -237,8 +243,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     /* printf("IRQ1: 0x%x\n", io_in8(PIC1_IMR_DATA_PORT)); */
 
     /* fill background. */
-    set_rgb_by_color(&c, 0x9370db);
-    fill_rectangle(set_point2d(&p0, 400, 0), set_point2d(&p1, max_x, max_y - 28), &c);
+    /* set_rgb_by_color(&c, 0x9370db); */
+    /* fill_rectangle(set_point2d(&p0, 400, 0), set_point2d(&p1, max_x, max_y - 28), &c); */
+    set_rgb_by_color(&c, 0x3A6EA5);
 
     int32_t base_y = 5;
     int32_t base_x = get_max_x_resolution() - (8 * 46);
@@ -256,15 +263,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Point2d const sp_kbd = {base_x, base_y + 13 * 1};
     Point2d const ep_kbd = {base_x + (8 * BUF_SIZE), base_y + 13 * 2};
 
-    Window* w_array[5];
-    if (AXEL_SUCCESS != init_window()) {
-        puts("init_window is failed\n");
-    }
-    w_array[0] = alloc_filled_window(&make_point2d(300, 300),  & make_point2d(50, 50), 0, &(RGB8){.bit_expr = 0x00FFBB});
-    w_array[1] = alloc_filled_window(&make_point2d(310, 310),  & make_point2d(50, 50), 1, &(RGB8){.bit_expr = 0xFFAA00});
-    w_array[2] = alloc_filled_window(&make_point2d(320, 320),  & make_point2d(50, 50), 2, &(RGB8){.bit_expr = 0x00AA00});
-    w_array[3] = alloc_filled_window(&make_point2d(330, 330),  & make_point2d(50, 50), 3, &(RGB8){.bit_expr = 0x000000});
-    /* w_array[4] = alloc_filled_window(&make_point2d(0, 0),  & make_point2d(800, 600), 4, &(RGB8){.bit_expr = 0x9370db}); */
+    Point2d mouse_p = {get_max_x_resolution() / 2, get_max_y_resolution() / 2};
+    Window* mouse_win = alloc_drawn_window(&mouse_p, mouse_cursor, 2);
+    axel_s.mouse->pos = mouse_p;
 
     int i = 0;
     /* clean_screen(set_rgb_by_color(&c, 0x3A6EA5)); */
@@ -283,12 +284,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
             puts_ascii_font(itoa(++i, buf, 10), &sp_hlt_cnt);
             io_hlt();
         } else {
-            draw_mouse_cursor();
-            for (int i = 0; i < 4; i++) {
-                w_array[i]->pos.x += 1;
-                w_array[i]->dirty = true;
-            }
-            update_windows();
+            /* draw_mouse_cursor(); */
+            Point2d const p = axel_s.mouse->pos;
+            move_window_rel(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
+            mouse_p = axel_s.mouse->pos;
+            axel_s.mouse->is_pos_update = false;
         }
     }
 }
@@ -421,10 +421,10 @@ static inline void init_idt(void) {
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
-    set_gate_descriptor(idt + 0x0E, io_hlt,                KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x0E, io_hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x20, asm_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x21, asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
 
     load_idtr(IDT_LIMIT, (uint32_t)idt);
 }

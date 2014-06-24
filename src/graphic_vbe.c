@@ -118,6 +118,7 @@ void fill_rectangle(Point2d const* const p0, Point2d const* const p1, RGB8 const
 void draw_bitmap(Drawable_bitmap const* const dbmp, Point2d const* const p) {
     for (int32_t i = 0; i < dbmp->height; i++) {
         for (int32_t j = 0; j < dbmp->width; j++) {
+            /* if bit is 1, draw color */
             if (1 == (0x01 & (dbmp->data[i] >> (dbmp->width - j - 1)))) {
                 set_vram(p->x + j, p->y + i, &dbmp->color);
             }
