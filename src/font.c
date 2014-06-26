@@ -790,7 +790,6 @@ static uint32_t const mouse[2][21]  = {
     [0] = {
         0x0000,
         0x0000,
-        0x0000,
         0x2000,
         0x3000,
         0x3800,
@@ -808,10 +807,8 @@ static uint32_t const mouse[2][21]  = {
         0x0180,
         0x0180,
         0x0000,
-        0x0000,
     },
     [1] = {
-        0x0000,
         0x4000,
         0x6000,
         0x5000,
@@ -831,7 +828,6 @@ static uint32_t const mouse[2][21]  = {
         0x4240,
         0x0240,
         0x0180,
-        0x0000,
     },
 };
 
@@ -1104,7 +1100,7 @@ Drawable_multi_bitmap const mplus_fonts = {
 
 Drawable_bitmap const cursors[] = {
     {
-        .height = 21,
+        .height = 19,
         .width = 16,
         .color = {
             .bit_expr = 0xFFFFFFFF

@@ -193,13 +193,12 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     int32_t const max_y = get_max_y_resolution() - 1;
 
     clean_screen(set_rgb_by_color(&c, 0x3A6EA5));
-    /* test_draw(set_rgb_by_color(&c, 0x3A6EA5)); */
 
     if (AXEL_SUCCESS != init_window()) {
         puts("init_window is failed\n");
     }
     alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, &(RGB8){.r = 0x3A, .g = 0x6E, .b = 0xA5});
-    update_windows();
+    flush_windows();
 
     // fill_rectangle(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
     fill_rectangle(set_point2d(&p0, 0, max_y - 26), set_point2d(&p1, max_x, max_y - 26), set_rgb_by_color(&c, 0xFFFFFF));
@@ -286,7 +285,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         } else {
             /* draw_mouse_cursor(); */
             Point2d const p = axel_s.mouse->pos;
-            move_window_rel(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
+            move_window(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
             mouse_p = axel_s.mouse->pos;
             axel_s.mouse->is_pos_update = false;
         }
