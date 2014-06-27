@@ -169,40 +169,13 @@ void move_window(Window* const w, Point2d const* const p) {
     int32_t const sx = w->size.x;
     int32_t const sy = w->size.y;
 
-    if (dx == 0 || dy == 0) {
+    if (dx == 0 && dy == 0) {
         return;
     }
 
     /* update value in argument window. */
     w->pos.x += dx;
     w->pos.y += dy;
-
-    /* update buffer before area */
-    if (0 < dx) {
-        /* to right */
-        begin_p.x = px;
-        end_p.x = px + dx;
-    } else {
-        /* to left */
-        begin_p.x = px + sx + dx;  // px + sx - (-dx)
-        end_p.x = px + sx;
-    }
-    if (0 < dy) {
-        /* to below */
-        begin_p.y = py + sy;
-        end_p.y = py + sy + dy;
-    } else {
-        /* to above */
-        begin_p.y = py + dy;  // py - (-dy)
-        end_p.y = py;
-    }
-    update_window_buffer();
-
-    /* update buffer after area */
-    begin_p = w->pos;
-    end_p.x = w->pos.x + sx;
-    end_p.y = w->pos.y + sy;
-    update_window_buffer();
 
     /* calculate all changed area to apply the window buffer to vram. */
     if (0 < dx) {
@@ -225,11 +198,12 @@ void move_window(Window* const w, Point2d const* const p) {
         end_p.y = py + sy;
     }
 
+    update_window_buffer();
     update_window_vram();
 }
 
 
-Window* window_fill_area(Window* const w, Point2d const * const pos, Point2d const * const size, RGB8 const * const c) {
+Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d const* const size, RGB8 const* const c) {
     Point2d p = *pos;
     Point2d s = *size;
     Point2d end = {w->pos.x + w->size.x, w->pos.y + w->size.y};
@@ -339,12 +313,12 @@ static bool update_win_for_each(void* d) {
     int32_t const limit_x = w->size.x;
     int32_t const limit_y = w->size.y;
     for (int32_t by = 0; by < limit_y; by++) {
-        int32_t const base = by * limit_y;
-        int32_t const dbase = (ba_by + by) * display_size.y;
+        /* these variable is to accelerate calculation. */
+        RGB8* const db = &display_buffer[((ba_by + by) * display_size.y) + ba_bx];
+        RGB8* const b = &w->buf[by * limit_y];
         for (int32_t bx = 0; bx < limit_x; bx++) {
-            RGB8 const c = w->buf[bx + base];
-            if (c.bit_expr != 0) {
-                display_buffer[dbase + (ba_bx + bx)] = c;
+            if (b[bx].bit_expr != 0) {
+                db[bx] = b[bx];
             }
         }
     }
@@ -365,9 +339,9 @@ static inline void update_window_vram(void) {
     int32_t const end_y = (display_size.y < end_p.y) ? (display_size.y) : (end_p.y);
 
     for (int32_t y = start_y; y < end_y; y++) {
-        int32_t const base = y * display_size.y;
+        RGB8* const db = &display_buffer[y * display_size.y];
         for (int32_t x = start_x; x < end_x; x++) {
-            set_vram(x, y, &display_buffer[base + x]);
+            set_vram(x, y, &db[x]);
         }
     }
 }
