@@ -169,6 +169,10 @@ void move_window(Window* const w, Point2d const* const p) {
     int32_t const sx = w->size.x;
     int32_t const sy = w->size.y;
 
+    if (dx == 0 || dy == 0) {
+        return;
+    }
+
     /* update value in argument window. */
     w->pos.x += dx;
     w->pos.y += dy;
@@ -222,6 +226,27 @@ void move_window(Window* const w, Point2d const* const p) {
     }
 
     update_window_vram();
+}
+
+
+Window* window_fill_area(Window* const w, Point2d const * const pos, Point2d const * const size, RGB8 const * const c) {
+    Point2d p = *pos;
+    Point2d s = *size;
+    Point2d end = {w->pos.x + w->size.x, w->pos.y + w->size.y};
+
+    if ((p.x < 0) || (p.y < 0) || (end.x < p.x) || (end.y < p.y) || (end.x < p.x + s.x) || (end.y < p.y + s.y)) {
+        /* invalid arguments. */
+        return NULL;
+    }
+
+    for (int32_t y = p.y; y < s.y; y++) {
+        int32_t const base = y * s.y;
+        for (int32_t x = p.x; x < s.x; x++) {
+            w->buf[base + x] = *c;
+        }
+    }
+
+    return w;
 }
 
 

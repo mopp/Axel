@@ -27,10 +27,11 @@ typedef struct window Window;
 
 Axel_state_code init_window(void);
 Window* alloc_window(Point2d const*, Point2d const*, uint8_t);
-Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const * dw, size_t len);
+Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t len);
 Window* alloc_filled_window(Point2d const*, Point2d const*, uint8_t, RGB8 const*);
 void free_window(Window*);
 void flush_windows(void);
 void move_window(Window* const w, Point2d const* const p);
+Window* window_fill_area(Window* const, Point2d const* const, Point2d const* const, RGB8 const* const);
 
 #endif

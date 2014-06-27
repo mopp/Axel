@@ -197,7 +197,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     if (AXEL_SUCCESS != init_window()) {
         puts("init_window is failed\n");
     }
-    alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, &(RGB8){.r = 0x3A, .g = 0x6E, .b = 0xA5});
+    Window* w = alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, &(RGB8){.r = 0x3A, .g = 0x6E, .b = 0xA5});
+    if (window_fill_area(w, &make_point2d(50, 50), &make_point2d(50, 50), &(RGB8){.r = 0x3A, .g = 0, .b = 0}) == NULL) {
+        puts("fill failed\n");
+    }
     flush_windows();
 
     // fill_rectangle(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, max_y - 27), set_rgb_by_color(&c, 0xC6C6C6));
