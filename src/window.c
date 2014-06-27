@@ -47,6 +47,7 @@ static void calibrate(Point2d* const p);
 static void win_node_free(void*);
 static void update_window_buffer(void);
 static void update_window_vram(void);
+static void flush_area(Point2d const* const, Point2d const* const);
 
 
 
@@ -86,7 +87,7 @@ Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
     calibrate(&w.pos);
     calibrate(&w.size);
 
-    w.buf = vmalloc(sizeof(RGB8) * (size_t)w.size.x * (size_t)w.size.y);
+    w.buf = vmalloc(sizeof(RGB8) * ((size_t)w.size.x * (size_t)w.size.y));
     if (w.buf == NULL) {
         return NULL;
     }
@@ -129,9 +130,12 @@ Window* alloc_filled_window(Point2d const* pos, Point2d const* size, uint8_t lev
     }
 
     /* fill area. */
-    for (int i = 0; i < w->size.y; i++) {
-        for (int j = 0; j < w->size.x; j++) {
-            w->buf[j + w->size.y * i] = *c;
+    int32_t const limit_y = w->size.y;
+    int32_t const limit_x = w->size.x;
+    for (int32_t y = 0; y < limit_y; y++) {
+        RGB8* const b = &w->buf[y * limit_x];
+        for (int32_t x = 0; x < limit_x; x++) {
+            b[x] = *c;
         }
     }
 
@@ -154,10 +158,8 @@ void free_window(Window* w) {
 
 
 void flush_windows(void) {
-    clear_point2d(&begin_p);
-    end_p = display_size;
-    update_window_buffer();
-    update_window_vram();
+    static Point2d const origin = {0, 0};
+    flush_area(&origin, &display_size);
 }
 
 
@@ -204,21 +206,27 @@ void move_window(Window* const w, Point2d const* const p) {
 
 
 Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d const* const size, RGB8 const* const c) {
-    Point2d p = *pos;
-    Point2d s = *size;
-    Point2d end = {w->pos.x + w->size.x, w->pos.y + w->size.y};
+    Point2d const p = *pos;
+    Point2d const s = *size;
+    Point2d const ws = w->size;
+    Point2d const end = {w->pos.x + w->size.x, w->pos.y + w->size.y};
 
-    if ((p.x < 0) || (p.y < 0) || (end.x < p.x) || (end.y < p.y) || (end.x < p.x + s.x) || (end.y < p.y + s.y)) {
+    if ((p.x < 0) || (p.y < 0) || (ws.x < p.x) || (ws.y < p.y) || (end.x < p.x + s.x) || (end.y < p.y + s.y)) {
         /* invalid arguments. */
         return NULL;
     }
 
-    for (int32_t y = p.y; y < s.y; y++) {
-        int32_t const base = y * s.y;
-        for (int32_t x = p.x; x < s.x; x++) {
-            w->buf[base + x] = *c;
+    int32_t limit_x = p.x + s.x;
+    int32_t limit_y = p.y + s.y;
+    for (int32_t y = p.y; y < limit_y; y++) {
+        RGB8* const b = &w->buf[y * w->size.x];
+        for (int32_t x = p.x; x < limit_x; x++) {
+            b[x] = *c;
         }
     }
+
+    /* convert display point. */
+    flush_area(&make_point2d(w->pos.x + p.x, w->pos.y + p.y), &s);
 
     return w;
 }
@@ -314,8 +322,8 @@ static bool update_win_for_each(void* d) {
     int32_t const limit_y = w->size.y;
     for (int32_t by = 0; by < limit_y; by++) {
         /* these variable is to accelerate calculation. */
-        RGB8* const db = &display_buffer[((ba_by + by) * display_size.y) + ba_bx];
-        RGB8* const b = &w->buf[by * limit_y];
+        RGB8* const db = &display_buffer[((ba_by + by) * display_size.x) + ba_bx];
+        RGB8* const b = &w->buf[by * limit_x];
         for (int32_t bx = 0; bx < limit_x; bx++) {
             if (b[bx].bit_expr != 0) {
                 db[bx] = b[bx];
@@ -339,9 +347,18 @@ static inline void update_window_vram(void) {
     int32_t const end_y = (display_size.y < end_p.y) ? (display_size.y) : (end_p.y);
 
     for (int32_t y = start_y; y < end_y; y++) {
-        RGB8* const db = &display_buffer[y * display_size.y];
+        RGB8* const db = &display_buffer[y * display_size.x];
         for (int32_t x = start_x; x < end_x; x++) {
             set_vram(x, y, &db[x]);
         }
     }
+}
+
+
+static inline void flush_area(Point2d const* const pos, Point2d const* const size) {
+    begin_p = *pos;
+    end_p.x = pos->x + size->x;
+    end_p.y = pos->y + size->y;
+    update_window_buffer();
+    update_window_vram();
 }
