@@ -200,13 +200,14 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, &(RGB8){.r = 0x3A, .g = 0x6E, .b = 0xA5});
 
     Window* const status_bar = alloc_filled_window(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, 27), 0, set_rgb_by_color(&c, 0xC6C6C6));
+    flush_windows();
+
     /* 60x20 Button */
     window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1, 60,  1), set_rgb_by_color(&c, 0xFFFFFF));    // above edge.
     window_fill_area(status_bar, set_point2d(&p0, 3, 23), set_point2d(&p1, 60,  2), set_rgb_by_color(&c, 0x848484));    // below edge.
     window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0xFFFFFF));    // left edge.
     window_fill_area(status_bar, set_point2d(&p0, 61, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x848484));    // right edge.
     window_fill_area(status_bar, set_point2d(&p0, 62, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge.
-    flush_windows();
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("=Keyboard initialize failed=\n");
@@ -230,12 +231,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     /* print_vmem(); */
     /* print_pmem(); */
-    /* printf("IRQ0: 0x%x\n", io_in8(PIC0_IMR_DATA_PORT)); */
-    /* printf("IRQ1: 0x%x\n", io_in8(PIC1_IMR_DATA_PORT)); */
 
-    /* fill background. */
-    /* set_rgb_by_color(&c, 0x9370db); */
-    /* fill_rectangle(set_point2d(&p0, 400, 0), set_point2d(&p1, max_x, max_y - 28), &c); */
     set_rgb_by_color(&c, 0x3A6EA5);
 
     int32_t base_y = 5;
@@ -259,7 +255,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     axel_s.mouse->pos = mouse_p;
 
     int i = 0;
-    /* clean_screen(set_rgb_by_color(&c, 0x3A6EA5)); */
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
             fill_rectangle(&sp_kbd, &ep_kbd, &c);
@@ -406,13 +401,23 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* off
 }
 
 
+static void hlt(void) {
+    io_cli();
+    *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 0xf5f5f5f5;
+    while (1) {
+       io_hlt();
+    }
+}
+
+
 static inline void init_idt(void) {
     Gate_descriptor* const idt = (Gate_descriptor*)vmalloc(sizeof(Gate_descriptor) * IDT_NUM);
 
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
-    set_gate_descriptor(idt + 0x0E, io_hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 13, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x0E, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x20, asm_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x21, asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);

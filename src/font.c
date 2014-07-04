@@ -1108,7 +1108,7 @@ Drawable_bitmap const cursors[] = {
         .data = mouse[0],
     },
     {
-        .height = 21,
+        .height = 19,
         .width = 16,
         .color = {
             .bit_expr = 0x00000001

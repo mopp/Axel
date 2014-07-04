@@ -186,8 +186,8 @@ void move_window(Window* const w, Point2d const* const p) {
         end_p.x = px + sx + dx;
     } else {
         /* to left */
-        begin_p.x = px + dx;     // px - (-dx)
-        end_p.x = px + sx - dx;  // px + sx + (-dx)
+        begin_p.x = px + dx;  // px - (-dx)
+        end_p.x = px + sx;
     }
 
     if (0 < dy) {
@@ -200,15 +200,18 @@ void move_window(Window* const w, Point2d const* const p) {
         end_p.y = py + sy;
     }
 
+    calibrate(&begin_p);
+    calibrate(&end_p);
+
     update_window_buffer();
     update_window_vram();
 }
 
 
 Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d const* const size, RGB8 const* const c) {
-    Point2d const p = *pos;
-    Point2d const s = *size;
-    Point2d const ws = w->size;
+    Point2d const p   = *pos;
+    Point2d const s   = *size;
+    Point2d const ws  = w->size;
     Point2d const end = {w->pos.x + w->size.x, w->pos.y + w->size.y};
 
     if ((p.x < 0) || (p.y < 0) || (ws.x < p.x) || (ws.y < p.y) || (end.x < p.x + s.x) || (end.y < p.y + s.y)) {
@@ -251,82 +254,91 @@ static inline void calibrate(Point2d* const p) {
 
 
 static bool update_win_for_each(void* d) {
-    Window* w = d;
+    Window* const w = d;
 
-    if (w->enable == false) {
-        return false;
-    }
+    /* NOTE: These point is NOT points of buffer and these is display points. */
+    /* NOTE: This function supposes that "begin_p" and "end_p" is already calibrated to accelerate. */
 
-    /* NOTE: These point is NOT points of buffer and are display points.  */
-    /* calculate check area points. */
-    int32_t const ca_bx = (begin_p.x < 0) ? (0) : (begin_p.x);
-    int32_t const ca_by = (begin_p.y < 0) ? (0) : (begin_p.y);
-    int32_t const ca_ex = (display_size.x < end_p.x) ? (display_size.x) : (end_p.x);
-    int32_t const ca_ey = (display_size.y < end_p.y) ? (display_size.y) : (end_p.y);
-    /* calculate buf area points. */
-    int32_t const ba_bx = w->pos.x;
-    int32_t const ba_by = w->pos.y;
-    int32_t const ba_ex = ba_bx + w->size.x;
-    int32_t const ba_ey = ba_by + w->size.y;
+    /* Check area points. */
+    int32_t const ca_bx = begin_p.x;
+    int32_t const ca_by = begin_p.y;
+    int32_t const ca_ex = end_p.x;
+    int32_t const ca_ey = end_p.y;
+
+    Point2d wbp = w->pos;
+    Point2d wep = {w->pos.x + w->size.x, w->pos.y + w->size.y};
+    calibrate(&wbp);
+    calibrate(&wep);
+
+    /* Window area points. */
+    int32_t wa_bx = wbp.x;
+    int32_t wa_by = wbp.y;
+    int32_t wa_ex = wep.x;
+    int32_t wa_ey = wep.y;
 
     /* checking Is this window included ? */
-    if (!((ca_bx <= ba_bx || ba_bx <= ca_ex) || (ca_by <= ba_by || ba_by <= ca_ey))) {
+    if (ca_ex < wa_bx || ca_ey < wa_by || wa_ex < ca_bx || wa_ey < ca_by) {
         return false;
     }
 
     /* consider lapping between check area and this window area. */
-    int32_t da_bx = 0;
-    int32_t da_by = 0;
-    int32_t da_ex = 0;
-    int32_t da_ey = 0;
+    int32_t da_bx;
+    int32_t da_by;
+    int32_t da_ex;
+    int32_t da_ey;
 
-    if ((ca_bx <= ba_bx) && (ca_by <= ba_by) && (ba_ex <= ca_ex) && (ba_ey <= ca_ey)) {
-        /* Check area contains this buffer area. */
-        da_bx = ba_bx;
-        da_by = ba_by;
-        da_ex = ba_ex;
-        da_ey = ba_ex;
-    } else if ((ba_bx <= ca_bx) && (ba_by <= ca_by) && (ca_ex <= ba_ex) && (ca_ey <= ba_ey)) {
-        /* This buffer area contains check area. */
+    if ((ca_bx <= wa_bx) && (ca_by <= wa_by) && (wa_ex <= ca_ex) && (wa_ey <= ca_ey)) {
+        /* Check area contains this window area. */
+        da_bx = wa_bx;
+        da_by = wa_by;
+        da_ex = wa_ex;
+        da_ey = wa_ey;
+    } else if ((wa_bx <= ca_bx) && (wa_by <= ca_by) && (ca_ex <= wa_ex) && (ca_ey <= wa_ey)) {
+        /* This window area contains check area. */
         da_bx = ca_bx;
         da_by = ca_by;
         da_ex = ca_ex;
-        da_ey = ca_ex;
+        da_ey = ca_ey;
     } else {
-        if (ca_bx <= ba_bx) {
-            /* buffer area is on the right side of check area. */
-            da_bx = ba_bx;
-            da_ex = ca_ex;
-        } else {
-            /* buffer area is on the left side of check area. */
-            da_bx = ca_bx;
-            da_ex = ba_ex;
-        }
+        /* Is window area on the right side or left side against check area ? */
+        da_bx = (ca_bx <= wa_bx) ? (wa_bx) : (ca_bx);
+        da_ex = (ca_ex <= wa_ex) ? (wa_ex) : (ca_ex);
 
-        if (ca_by <= ba_by) {
-            /* buffer area is below check area. */
-            da_by = ba_by;
-            da_ey = ca_ey;
-        } else {
-            /* buffer area is above check area. */
-            da_by = ca_by;
-            da_ey = ba_ey;
-        }
+        /* Is window area on the below or above against check area ? */
+        da_by = (ca_by <= wa_by) ? (wa_by) : (ca_by);
+        da_ey = (ca_ey <= wa_ey) ? (wa_ey) : (ca_ey);
     }
 
+    /* Begin and end position of display. */
+    int32_t const dbegin_x = da_bx;
+    int32_t const dbegin_y = da_by;
+    int32_t const dend_x   = da_ex;
+    int32_t const dend_y   = da_ey;
+
     /*
-     * (x, y) is points of display
-     * (bx, by) is points of buffer in window
+     * Begin and end position of buffer in this window.
+     * First, converting display coordinate to buffer coordinate.
+     * Then adding position difference to consider specifically case that there are window outside of display.
      */
-    int32_t const limit_x = w->size.x;
-    int32_t const limit_y = w->size.y;
-    for (int32_t by = 0; by < limit_y; by++) {
+    int32_t const diff_x = (w->pos.x < 0) ? (-w->pos.x) : (0);
+    int32_t const diff_y = (w->pos.y < 0) ? (-w->pos.y) : (0);
+    int32_t const bbegin_x = (da_bx - wa_bx) + diff_x;
+    int32_t const bbegin_y = (da_by - wa_by) + diff_y;
+    int32_t const bend_x   = (da_ex - wa_bx) + diff_x;
+    int32_t const bend_y   = (da_ey - wa_by) + diff_y;
+
+    /*
+     * (bx, by) is points of buffer in window.
+     * (dx, dy) is points of display.
+     */
+    int32_t const win_size_x = w->size.x;
+    for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
         /* these variable is to accelerate calculation. */
-        RGB8* const db = &display_buffer[((ba_by + by) * display_size.x) + ba_bx];
-        RGB8* const b = &w->buf[by * limit_x];
-        for (int32_t bx = 0; bx < limit_x; bx++) {
+        RGB8* const db = &display_buffer[dy * display_size.x];
+        RGB8* const b = &w->buf[by * win_size_x];
+        for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
             if (b[bx].bit_expr != 0) {
-                db[bx] = b[bx];
+                db[dx] = b[bx];
             }
         }
     }
