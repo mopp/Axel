@@ -30,30 +30,28 @@
  * Segment limit high + low is 20 bit.
  * Segment base address low + mid + high is 32 bit.
  */
-struct segment_descriptor {
-    union {
-        struct {
-            uint16_t limit_low;               /* segment limit low. */
-            uint16_t base_addr_low;           /* segment address low. */
-            uint8_t base_addr_mid;            /* segment address mid. */
-            unsigned int type : 4;            /* this shows segment main configuration. */
-            unsigned int segment_type : 1;    /* If 0, segment is system segment, if 1, segment is code or data segment. */
-            unsigned int plivilege_level : 2; /* This controles accesse level. */
-            unsigned int present : 1;         /* Is it exist on memory */
-            unsigned int limit_hi : 4;        /* segment limit high. */
-            unsigned int available : 1;       /* OS can use this.  */
-            unsigned int zero_reserved : 1;   /* this keeps 0. */
-            unsigned int op_size : 1;         /* If 0, 16bit segment, If 1 32 bit segment. */
-            unsigned int granularity : 1;     /* If 0 unit is 1Byte, If 1 unit is 4KB */
-            uint8_t base_addr_hi;             /* segment address high. */
-        };
-        struct {
-            uint32_t bit_expr_low;
-            uint32_t bit_expr_high;
-        };
+union segment_descriptor {
+    struct {
+        uint16_t limit_low;               /* segment limit low. */
+        uint16_t base_addr_low;           /* segment address low. */
+        uint8_t base_addr_mid;            /* segment address mid. */
+        unsigned int type : 4;            /* this shows segment main configuration. */
+        unsigned int segment_type : 1;    /* If 0, segment is system segment, if 1, segment is code or data segment. */
+        unsigned int plivilege_level : 2; /* This controles accesse level. */
+        unsigned int present : 1;         /* Is it exist on memory */
+        unsigned int limit_hi : 4;        /* segment limit high. */
+        unsigned int available : 1;       /* OS can use this.  */
+        unsigned int zero_reserved : 1;   /* this keeps 0. */
+        unsigned int op_size : 1;         /* If 0, 16bit segment, If 1 32 bit segment. */
+        unsigned int granularity : 1;     /* If 0 unit is 1Byte, If 1 unit is 4KB */
+        uint8_t base_addr_hi;             /* segment address high. */
+    };
+    struct {
+        uint32_t bit_expr_low;
+        uint32_t bit_expr_high;
     };
 };
-typedef struct segment_descriptor Segment_descriptor;
+typedef union segment_descriptor Segment_descriptor;
 _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descriptor size is NOT 8 byte(64 bit).");
 
 
@@ -94,26 +92,24 @@ enum GDT_constants {
 
 
 /* Interrupt Gate Descriptor Table */
-struct gate_descriptor {
-    union {
-        struct {
-            uint16_t offset_low;              /* address offset low of interrupt handler.*/
-            uint16_t segment_selector;        /* CS register value. */
-            uint8_t unused_zero;              /* unused area. */
-            unsigned int type : 3;            /* gate type. */
-            unsigned int size : 1;            /* If this is 1, gate size is 32 bit. otherwise it is 16 bit */
-            unsigned int zero_reserved : 1;   /* reserved area. */
-            unsigned int plivilege_level : 2; /* This controles accesse level. */
-            unsigned int present_flag : 1;    /* Is it exist on memory */
-            uint16_t offset_high;             /* address offset high of interrupt handler.*/
-        };
-        struct {
-            uint32_t bit_expr_low;
-            uint32_t bit_expr_high;
-        };
+union gate_descriptor {
+    struct {
+        uint16_t offset_low;              /* address offset low of interrupt handler.*/
+        uint16_t segment_selector;        /* CS register value. */
+        uint8_t unused_zero;              /* unused area. */
+        unsigned int type : 3;            /* gate type. */
+        unsigned int size : 1;            /* If this is 1, gate size is 32 bit. otherwise it is 16 bit */
+        unsigned int zero_reserved : 1;   /* reserved area. */
+        unsigned int plivilege_level : 2; /* This controles accesse level. */
+        unsigned int present_flag : 1;    /* Is it exist on memory */
+        uint16_t offset_high;             /* address offset high of interrupt handler.*/
+    };
+    struct {
+        uint32_t bit_expr_low;
+        uint32_t bit_expr_high;
     };
 };
-typedef struct gate_descriptor Gate_descriptor;
+typedef union gate_descriptor Gate_descriptor;
 _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.(64 bit)");
 
 
@@ -232,42 +228,21 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     /* print_vmem(); */
     /* print_pmem(); */
 
-    set_rgb_by_color(&c, 0x3A6EA5);
-
-    int32_t base_y = 5;
-    int32_t base_x = get_max_x_resolution() - (8 * 46);
-    enum {
-        BUF_SIZE = 20,
-    };
-    char buf[BUF_SIZE];
-
-    puts_ascii_font("hlt counter   :", &make_point2d(base_x, base_y + 13 * 0));
-    puts_ascii_font("keyboard data :", &make_point2d(base_x, base_y + 13 * 1));
-    base_x += 15 * 8;
-
-    Point2d const sp_hlt_cnt = {base_x, base_y + 13 * 0};
-    Point2d const ep_hlt_cnt = {base_x + (8 * BUF_SIZE), base_y + 13 * 1};
-    Point2d const sp_kbd = {base_x, base_y + 13 * 1};
-    Point2d const ep_kbd = {base_x + (8 * BUF_SIZE), base_y + 13 * 2};
-
     Point2d mouse_p = {get_max_x_resolution() / 2, get_max_y_resolution() / 2};
     Window* mouse_win = alloc_drawn_window(&mouse_p, mouse_cursor, 2);
     axel_s.mouse->pos = mouse_p;
 
-    int i = 0;
+    Window* box = alloc_filled_window(&make_point2d(0, 300), &make_point2d(50, 50), 0, &(RGB8){.r = 0xA, .g = 0xE, .b = 0x0});
+
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
-            fill_rectangle(&sp_kbd, &ep_kbd, &c);
-            puts_ascii_font(itoa(*(uint8_t*)aqueue_get_first(&axel_s.keyboard->aqueue), buf, 16), &sp_kbd);
             aqueue_delete_first(&axel_s.keyboard->aqueue);
         }
 
         if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
             decode_mouse();
         } else if (axel_s.mouse->is_pos_update == false) {
-            /* clean hlt counter area. */
-            fill_rectangle(&sp_hlt_cnt, &ep_hlt_cnt, &c);
-            puts_ascii_font(itoa(++i, buf, 10), &sp_hlt_cnt);
+            move_window(box, &make_point2d(1, 0));
             io_hlt();
         } else {
             /* draw_mouse_cursor(); */
@@ -405,7 +380,7 @@ static void hlt(void) {
     io_cli();
     *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 0xf5f5f5f5;
     while (1) {
-       io_hlt();
+        io_hlt();
     }
 }
 
