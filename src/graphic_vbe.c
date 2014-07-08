@@ -212,6 +212,8 @@ int putchar_vbe(int c) {
 
     if (max_y_resolution <= (pos.y + fheight)) {
         set_point2d(&pos, 0, 0);
+        /* static const RGB8 cc = {.r = 0x3A, .g = 0x6E, .b = 0xA5}; */
+        /* clean_screen_vbe(&cc); */
     }
 
     put_ascii_font(c, &pos);

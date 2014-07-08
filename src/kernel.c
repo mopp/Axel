@@ -214,25 +214,24 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
-    printf("kernel size: %zuKB\n", get_kernel_size() / 1024);
-    printf("kernel static size: %zuKB\n", get_kernel_static_size() / 1024);
-    printf("kernel virtual  address: 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-    printf("kernel physical address: 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    // printf("kernel size: %zuKB\n", get_kernel_size() / 1024);
+    // printf("kernel static size: %zuKB\n", get_kernel_static_size() / 1024);
+    // printf("kernel virtual  address: 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
+    // printf("kernel physical address: 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
 
     if (flags.is_mem_enable) {
-        printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
-        printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
-        printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
+        // printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
+        // printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
+        // printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
     }
 
     /* print_vmem(); */
     /* print_pmem(); */
 
-    Point2d mouse_p = {get_max_x_resolution() / 2, get_max_y_resolution() / 2};
+    Point2d mouse_p = {get_max_x_resolution() / 2 - 100, get_max_y_resolution() / 2};
     Window* mouse_win = alloc_drawn_window(&mouse_p, mouse_cursor, 2);
     axel_s.mouse->pos = mouse_p;
-
-    Window* box = alloc_filled_window(&make_point2d(0, 300), &make_point2d(50, 50), 0, &(RGB8){.r = 0xA, .g = 0xE, .b = 0x0});
+    flush_windows();
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
@@ -242,7 +241,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
             decode_mouse();
         } else if (axel_s.mouse->is_pos_update == false) {
-            move_window(box, &make_point2d(1, 0));
             io_hlt();
         } else {
             /* draw_mouse_cursor(); */

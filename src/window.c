@@ -15,23 +15,6 @@
 #include <string.h>
 
 
-struct window {
-    /* 800 * 600 * 4 Byte(sizeof(RGB8)) = 1875KB = 1.8MB*/
-    RGB8* buf;
-    Point2d pos;
-    Point2d size;
-    union {
-        struct {
-            uint8_t lock : 1;
-            uint8_t dirty : 1;
-            uint8_t enable : 1;
-            uint8_t reserved : 5;
-        };
-        uint8_t flags;
-    };
-};
-
-
 struct window_manager {
     List win_list;
 };
@@ -175,6 +158,20 @@ void move_window(Window* const w, Point2d const* const p) {
         return;
     }
 
+    /* Window which will move must be top(list last). */
+    if ((Window*)win_man->win_list.node->prev->data != w) {
+        List_node* n = list_search_node(&win_man->win_list, w);
+        if (n == NULL) {
+            /* maybe error. */
+            return; 
+        }
+
+        /* exchange pointer to window. */
+        void* t = win_man->win_list.node->prev->data;
+        win_man->win_list.node->prev->data = n->data;
+        n->data = t;
+    }
+
     /* update value in argument window. */
     w->pos.x += dx;
     w->pos.y += dy;
@@ -302,11 +299,11 @@ static bool update_win_for_each(void* d) {
     } else {
         /* Is window area on the right side or left side against check area ? */
         da_bx = (ca_bx <= wa_bx) ? (wa_bx) : (ca_bx);
-        da_ex = (ca_ex <= wa_ex) ? (wa_ex) : (ca_ex);
+        da_ex = (ca_ex <= wa_ex) ? (ca_ex) : (wa_ex);
 
         /* Is window area on the below or above against check area ? */
         da_by = (ca_by <= wa_by) ? (wa_by) : (ca_by);
-        da_ey = (ca_ey <= wa_ey) ? (wa_ey) : (ca_ey);
+        da_ey = (ca_ey <= wa_ey) ? (ca_ey) : (wa_ey);
     }
 
     /* Begin and end position of display. */

@@ -19,7 +19,21 @@
 #include <drawable.h>
 
 
-struct window;
+struct window {
+    /* 800 * 600 * 4 Byte(sizeof(RGB8)) = 1875KB = 1.8MB*/
+    RGB8* buf;
+    Point2d pos;
+    Point2d size;
+    union {
+        struct {
+            uint8_t lock : 1;
+            uint8_t dirty : 1;
+            uint8_t enable : 1;
+            uint8_t reserved : 5;
+        };
+        uint8_t flags;
+    };
+};
 typedef struct window Window;
 
 /* typedef void (*event_listener)(Window*); */
