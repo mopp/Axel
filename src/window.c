@@ -18,10 +18,10 @@
 
 struct window_manager {
     List win_list;
-    Point2d display_size; /* This storing display size. */
+    Point2d display_size;  /* This storing display size. */
     struct {
-        Point2d begin, end; /* This is checking area in update_win_for_each. */
-    } check_area;
+        Point2d begin, end;
+    } check_area;          /* This is checking area in update_win_for_each. */
     RGB8* display_buffer;  /* For double buffering. */
     List_node* mouse_node; /* This is always top on other windows. */
 };
@@ -259,6 +259,10 @@ Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d cons
 
 
 void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) {
+    if (w == NULL || dw == NULL || len == 0) {
+       return; 
+    }
+
     for (int k = 0; k < len; k++) {
         for (int32_t y = 0; y < dw[k].height; y++) {
             for (int32_t x = 0; x < dw[k].width; x++) {
@@ -268,6 +272,68 @@ void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) 
                 }
             }
         }
+    }
+}
+
+
+void window_draw_line(Window* const w, Point2d const* const begin, Point2d const* const end, RGB8 const* const c) {
+    /* adjusted begin and end. */
+    Point2d abegin = make_point2d(((begin->x < 0) ? (0) : (begin->x)), ((begin->y < 0) ? (0) : (begin->y)));
+    Point2d aend = make_point2d(((w->size.x < end->x) ? (w->size.x) : (end->x)), ((w->size.y < end->y) ? (w->size.y) : (end->y)));
+
+    /* making end points always right of begin. */
+    if (aend.x < abegin.x) {
+        /* swap */
+        Point2d t = abegin;
+        abegin = aend;
+        aend = t;
+    }
+
+    int32_t dx = aend.x - abegin.x;
+    int32_t dy = aend.y - abegin.y;
+
+    if (dx == 0 && dy == 0) {
+        /* This case is NOT a line. */
+        return; 
+    }
+
+    if (dx == 0) {
+        /* vertical line. */
+        RGB8* const b = &w->buf[abegin.x];
+        int32_t size_x = w->size.x;
+        for (int32_t y = abegin.y; y < aend.y; y++) {
+            b[y * size_x] = *c;
+        }
+    } else if (dy == 0) {
+        /* horizontal line. */
+        RGB8* const b = &w->buf[abegin.y * w->size.x];
+        for (int x = abegin.x; x < aend.x; x++) {
+            b[x] = *c;
+        }
+    }
+
+    /* Using Bresenham's line algorithm. */
+    int32_t bold = 1;
+
+    for (int i = 0; i < bold; i++) {
+        int32_t diff = (2 * dy) - dx;
+        int32_t direction = ((0 < dy) ? (1) : (-1));    /* Is line right down or right up ? */
+        w->buf[abegin.x + (abegin.y * w->size.x)] = *c; /* plot first point. */
+        for (int32_t x = abegin.x + 1, y = abegin.y; x < aend.x; x++) {
+            if (0 < (diff * direction)) {
+                y += direction;
+                diff += 2 * dy - 2 * dx;
+            } else {
+                diff += 2 * dy;
+            }
+
+            w->buf[x + (y * w->size.x)] = *c;
+        }
+
+        abegin.y += 1;
+        abegin.x += 1;
+        /* aend.y += 1; */
+        /* aend.x += 1; */
     }
 }
 

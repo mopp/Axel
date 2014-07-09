@@ -230,7 +230,15 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Window* mouse_win = get_mouse_window();
     Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
 
-    Window* const w = alloc_filled_window(set_point2d(&p0, 100, 100), set_point2d(&p1, 50, 40), 0, set_rgb_by_color(&c, 0xA000A0));
+    flush_windows();
+    Window* const console = alloc_filled_window(set_point2d(&p0, 100, 100), set_point2d(&p1, 100, 100), 0, set_rgb_by_color(&c,0xec6d71));
+    /* title bar */
+    /* window_fill_area(console, set_point2d(&p0, 0, 0), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge. */
+    window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 90, 70), set_rgb_by_color(&c, 0x19448e));
+    window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 10, 90), set_rgb_by_color(&c, 0x19448e));
+    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 10, 1), set_rgb_by_color(&c, 0x19448e));
+    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 1, 10), set_rgb_by_color(&c, 0x19448e));
+    window_draw_line(console, set_point2d(&p0, 100, 100), set_point2d(&p1, 0, 0), set_rgb_by_color(&c, 0x448e));
     flush_windows();
 
     for (;;) {
