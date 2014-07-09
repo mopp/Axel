@@ -29,7 +29,8 @@ struct window {
             uint8_t lock : 1;
             uint8_t dirty : 1;
             uint8_t enable : 1;
-            uint8_t reserved : 5;
+            uint8_t has_inv_color : 1;
+            uint8_t reserved : 4;
         };
         uint8_t flags;
     };
@@ -37,12 +38,15 @@ struct window {
 typedef struct window Window;
 
 /* typedef void (*event_listener)(Window*); */
+static RGB8 const inv_color = {.bit_expr = 0};
 
 
 Axel_state_code init_window(void);
 Window* alloc_window(Point2d const*, Point2d const*, uint8_t);
 Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t len);
 Window* alloc_filled_window(Point2d const*, Point2d const*, uint8_t, RGB8 const*);
+Window* get_mouse_window(void);
+void window_draw_bitmap(Window* const , Drawable_bitmap const *, size_t);
 void free_window(Window*);
 void flush_windows(void);
 void move_window(Window* const w, Point2d const* const p);

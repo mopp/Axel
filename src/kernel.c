@@ -193,10 +193,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     int32_t const max_y = get_max_y_resolution();
 
     /* allocate background. */
-    alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, &(RGB8){.r = 0x3A, .g = 0x6E, .b = 0xA5});
+    alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, set_rgb_by_color(&c, 0x3A6EA5));
 
     Window* const status_bar = alloc_filled_window(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, 27), 0, set_rgb_by_color(&c, 0xC6C6C6));
-    flush_windows();
 
     /* 60x20 Button */
     window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1, 60,  1), set_rgb_by_color(&c, 0xFFFFFF));    // above edge.
@@ -228,9 +227,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     /* print_vmem(); */
     /* print_pmem(); */
 
-    Point2d mouse_p = {get_max_x_resolution() / 2 - 100, get_max_y_resolution() / 2};
-    Window* mouse_win = alloc_drawn_window(&mouse_p, mouse_cursor, 2);
-    axel_s.mouse->pos = mouse_p;
+    Window* mouse_win = get_mouse_window();
+    Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
+
+    Window* const w = alloc_filled_window(set_point2d(&p0, 100, 100), set_point2d(&p1, 50, 40), 0, set_rgb_by_color(&c, 0xA000A0));
     flush_windows();
 
     for (;;) {
@@ -243,7 +243,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         } else if (axel_s.mouse->is_pos_update == false) {
             io_hlt();
         } else {
-            /* draw_mouse_cursor(); */
             Point2d const p = axel_s.mouse->pos;
             move_window(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
             mouse_p = axel_s.mouse->pos;

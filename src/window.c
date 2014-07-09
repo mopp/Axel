@@ -13,18 +13,22 @@
 #include <atype.h>
 #include <state_code.h>
 #include <string.h>
+#include <font.h>
 
 
 struct window_manager {
     List win_list;
+    Point2d display_size; /* This storing display size. */
+    struct {
+        Point2d begin, end; /* This is checking area in update_win_for_each. */
+    } check_area;
+    RGB8* display_buffer;  /* For double buffering. */
+    List_node* mouse_node; /* This is always top on other windows. */
 };
 typedef struct window_manager Window_manager;
 
 
 static Window_manager* win_man; /* Window manager. */
-static Point2d display_size;    /* This storing display size. */
-static RGB8* display_buffer;    /* For double buffering. */
-static Point2d begin_p, end_p;  /* This is checking area in update_win_for_each. */
 
 static void calibrate(Point2d* const p);
 static void win_node_free(void*);
@@ -35,29 +39,53 @@ static void flush_area(Point2d const* const, Point2d const* const);
 
 
 Axel_state_code init_window(void) {
-    display_size.x = get_max_x_resolution();
-    display_size.y = get_max_y_resolution();
-
-    size_t const display_pixel = (size_t)(display_size.x * display_size.y);
-
-    display_buffer = vmalloc(sizeof(RGB8) * display_pixel);
-    if (display_buffer == NULL) {
-        return AXEL_MEMORY_ALLOC_ERROR;
-    }
-    memset(display_buffer, 0, sizeof(RGB8) * display_pixel);
-
     win_man = vmalloc(sizeof(Window_manager));
     if (NULL == win_man) {
         return AXEL_MEMORY_ALLOC_ERROR;
     }
+    memset(win_man, 0, sizeof(Window_manager)); /* clear all member. */
+    win_man->mouse_node = NULL;
+    win_man->display_size = make_point2d(get_max_x_resolution(), get_max_y_resolution());
+
+    size_t const size = sizeof(RGB8) * (size_t)(win_man->display_size.x * win_man->display_size.y);
+    win_man->display_buffer = vmalloc(size);
+    if (win_man->display_buffer == NULL) {
+        return AXEL_MEMORY_ALLOC_ERROR;
+    }
+    memset(win_man->display_buffer, 0, size);
+
     list_init(&win_man->win_list, sizeof(Window), win_node_free);
+
+    /* alloc mouse */
+    Window mouse_win = {
+        .buf      = vmalloc(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->width)),
+        .pos      = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2),
+        .size     = make_point2d(mouse_cursor->width, mouse_cursor->height),
+        .lock     = false,
+        .dirty    = true,
+        .enable   = true,
+        .has_inv_color = true,
+        .reserved = 0,
+    };
+    if (mouse_win.buf == NULL) {
+        return AXEL_MEMORY_ALLOC_ERROR; 
+    }
+    window_draw_bitmap(&mouse_win, mouse_cursor, 2);
+
+    list_insert_data_last(&win_man->win_list, &mouse_win);
+    win_man->mouse_node = win_man->win_list.node;
 
     return AXEL_SUCCESS;
 }
 
 
+Window* get_mouse_window(void) {
+    return (Window*)win_man->mouse_node->data;
+}
+
+
 Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
-    Window w = {.lock = false, .dirty = true, .enable = true, .reserved = 0};
+    Window w = {.lock = false, .dirty = true, .enable = true, .has_inv_color = false, .reserved = 0};
 
     if (size->x <= 0 || size->y <= 0) {
         /* invalid size. */
@@ -70,17 +98,17 @@ Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
     calibrate(&w.pos);
     calibrate(&w.size);
 
-    w.buf = vmalloc(sizeof(RGB8) * ((size_t)w.size.x * (size_t)w.size.y));
+    size_t const ssize = sizeof(RGB8) * (size_t)(w.size.x * w.size.y);
+    w.buf = vmalloc(ssize);
+    memset(w.buf, 0, ssize);
     if (w.buf == NULL) {
         return NULL;
     }
 
-    List* l = list_insert_data_last(&win_man->win_list, &w);
-    if (l == NULL) {
-        return NULL;
-    }
+    /* all window is leaved behind mouse. */
+    List_node* n = list_insert_data_prev(&win_man->win_list, win_man->mouse_node, &w);
 
-    return win_man->win_list.node->prev->data;
+    return (n == NULL) ? (NULL) : ((Window*)n->data);
 }
 
 
@@ -90,17 +118,7 @@ Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t
         return NULL;
     }
 
-    for (int k = 0; k < len; k++) {
-        for (int32_t i = 0; i < dw[k].height; i++) {
-            for (int32_t j = 0; j < dw[k].width; j++) {
-                /* if bit is 1, draw color */
-                if (1 == (0x01 & (dw[k].data[i] >> (dw[k].width - j - 1)))) {
-                    /* set_vram(p->x + j, p->y + i, &dbmp->color); */
-                    w->buf[j + w->size.y * i] = dw[k].color;
-                }
-            }
-        }
-    }
+    window_draw_bitmap(w, dw, len);
 
     return w;
 }
@@ -142,7 +160,7 @@ void free_window(Window* w) {
 
 void flush_windows(void) {
     static Point2d const origin = {0, 0};
-    flush_area(&origin, &display_size);
+    flush_area(&origin, &win_man->display_size);
 }
 
 
@@ -158,24 +176,25 @@ void move_window(Window* const w, Point2d const* const p) {
         return;
     }
 
-    /* Window which will move must be top(list last). */
-    if ((Window*)win_man->win_list.node->prev->data != w) {
-        List_node* n = list_search_node(&win_man->win_list, w);
-        if (n == NULL) {
-            /* maybe error. */
-            return; 
-        }
+    /* FIXME: Window which will move must be mouse below(list last). */
+    // if ((Window*)win_man->win_list.node->prev->data != w) {
+    //     List_node* n = list_search_node(&win_man->win_list, w);
+    //     if (n == NULL) {
+    //         /* maybe error. */
+    //         return;
+    //     }
 
-        /* exchange pointer to window. */
-        void* t = win_man->win_list.node->prev->data;
-        win_man->win_list.node->prev->data = n->data;
-        n->data = t;
-    }
+    //     /* exchange pointer to window. */
+    //     void* t = win_man->win_list.node->prev->data;
+    //     win_man->win_list.node->prev->data = n->data;
+    //     n->data = t;
+    // }
 
     /* update value in argument window. */
     w->pos.x += dx;
     w->pos.y += dy;
 
+    Point2d begin_p, end_p;
     /* calculate all changed area to apply the window buffer to vram. */
     if (0 < dx) {
         /* to right */
@@ -200,15 +219,22 @@ void move_window(Window* const w, Point2d const* const p) {
     calibrate(&begin_p);
     calibrate(&end_p);
 
+    win_man->check_area.begin = begin_p;
+    win_man->check_area.end = end_p;
+
     update_window_buffer();
     update_window_vram();
 }
 
 
+// void updown_window(Window const* const w, bool is_down) {
+// }
+
+
 Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d const* const size, RGB8 const* const c) {
-    Point2d const p   = *pos;
-    Point2d const s   = *size;
-    Point2d const ws  = w->size;
+    Point2d const p = *pos;
+    Point2d const s = *size;
+    Point2d const ws = w->size;
     Point2d const end = {w->pos.x + w->size.x, w->pos.y + w->size.y};
 
     if ((p.x < 0) || (p.y < 0) || (ws.x < p.x) || (ws.y < p.y) || (end.x < p.x + s.x) || (end.y < p.y + s.y)) {
@@ -232,6 +258,20 @@ Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d cons
 }
 
 
+void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) {
+    for (int k = 0; k < len; k++) {
+        for (int32_t y = 0; y < dw[k].height; y++) {
+            for (int32_t x = 0; x < dw[k].width; x++) {
+                /* if bit is 1, draw color */
+                if (1 == (0x01 & (dw[k].data[y] >> (dw[k].width - x - 1)))) {
+                    w->buf[x + w->size.x * y] = dw[k].color;
+                }
+            }
+        }
+    }
+}
+
+
 static void win_node_free(void* d) {
     if (d == NULL) {
         return;
@@ -245,8 +285,8 @@ static void win_node_free(void* d) {
 
 
 static inline void calibrate(Point2d* const p) {
-    p->x = ((p->x < 0) ? (0) : ((display_size.x < p->x) ? (display_size.x) : (p->x)));
-    p->y = ((p->y < 0) ? (0) : ((display_size.y < p->y) ? (display_size.y) : (p->y)));
+    p->x = ((p->x < 0) ? (0) : ((win_man->display_size.x < p->x) ? (win_man->display_size.x) : (p->x)));
+    p->y = ((p->y < 0) ? (0) : ((win_man->display_size.y < p->y) ? (win_man->display_size.y) : (p->y)));
 }
 
 
@@ -257,10 +297,10 @@ static bool update_win_for_each(void* d) {
     /* NOTE: This function supposes that "begin_p" and "end_p" is already calibrated to accelerate. */
 
     /* Check area points. */
-    int32_t const ca_bx = begin_p.x;
-    int32_t const ca_by = begin_p.y;
-    int32_t const ca_ex = end_p.x;
-    int32_t const ca_ey = end_p.y;
+    int32_t const ca_bx = win_man->check_area.begin.x;
+    int32_t const ca_by = win_man->check_area.begin.y;
+    int32_t const ca_ex = win_man->check_area.end.x;
+    int32_t const ca_ey = win_man->check_area.end.y;
 
     Point2d wbp = w->pos;
     Point2d wep = {w->pos.x + w->size.x, w->pos.y + w->size.y};
@@ -317,8 +357,8 @@ static bool update_win_for_each(void* d) {
      * First, converting display coordinate to buffer coordinate.
      * Then adding position difference to consider specifically case that there are window outside of display.
      */
-    int32_t const diff_x = (w->pos.x < 0) ? (-w->pos.x) : (0);
-    int32_t const diff_y = (w->pos.y < 0) ? (-w->pos.y) : (0);
+    int32_t const diff_x   = (w->pos.x < 0) ? (-w->pos.x) : (0);
+    int32_t const diff_y   = (w->pos.y < 0) ? (-w->pos.y) : (0);
     int32_t const bbegin_x = (da_bx - wa_bx) + diff_x;
     int32_t const bbegin_y = (da_by - wa_by) + diff_y;
     int32_t const bend_x   = (da_ex - wa_bx) + diff_x;
@@ -329,12 +369,23 @@ static bool update_win_for_each(void* d) {
      * (dx, dy) is points of display.
      */
     int32_t const win_size_x = w->size.x;
-    for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
-        /* these variable is to accelerate calculation. */
-        RGB8* const db = &display_buffer[dy * display_size.x];
-        RGB8* const b = &w->buf[by * win_size_x];
-        for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
-            if (b[bx].bit_expr != 0) {
+    if (w->has_inv_color == true) {
+        for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
+            /* these variable is to accelerate calculation. */
+            RGB8* const db = &win_man->display_buffer[dy * win_man->display_size.x];
+            RGB8* const b = &w->buf[by * win_size_x];
+            for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
+                if (b[bx].bit_expr != inv_color.bit_expr) {
+                    db[dx] = b[bx];
+                }
+            }
+        }
+    } else {
+        for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
+            /* these variable is to accelerate calculation. */
+            RGB8* const db = &win_man->display_buffer[dy * win_man->display_size.x];
+            RGB8* const b = &w->buf[by * win_size_x];
+            for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
                 db[dx] = b[bx];
             }
         }
@@ -345,18 +396,19 @@ static bool update_win_for_each(void* d) {
 
 
 static inline void update_window_buffer(void) {
-    list_for_each(&win_man->win_list, update_win_for_each, false);
+    list_node_for_each(&win_man->win_list, win_man->mouse_node->next, update_win_for_each, false);
 }
 
 
 static inline void update_window_vram(void) {
-    int32_t const start_x = (begin_p.x < 0) ? (0) : (begin_p.x);
-    int32_t const start_y = (begin_p.y < 0) ? (0) : (begin_p.y);
-    int32_t const end_x = (display_size.x < end_p.x) ? (display_size.x) : (end_p.x);
-    int32_t const end_y = (display_size.y < end_p.y) ? (display_size.y) : (end_p.y);
+    Point2d const display_size = win_man->display_size;
+    int32_t const start_x = (win_man->check_area.begin.x < 0) ? (0) : (win_man->check_area.begin.x);
+    int32_t const start_y = (win_man->check_area.begin.y < 0) ? (0) : (win_man->check_area.begin.y);
+    int32_t const end_x = (display_size.x < win_man->check_area.end.x) ? (display_size.x) : (win_man->check_area.end.x);
+    int32_t const end_y = (display_size.y < win_man->check_area.end.y) ? (display_size.y) : (win_man->check_area.end.y);
 
     for (int32_t y = start_y; y < end_y; y++) {
-        RGB8* const db = &display_buffer[y * display_size.x];
+        RGB8* const db = &win_man->display_buffer[y * display_size.x];
         for (int32_t x = start_x; x < end_x; x++) {
             set_vram(x, y, &db[x]);
         }
@@ -365,9 +417,9 @@ static inline void update_window_vram(void) {
 
 
 static inline void flush_area(Point2d const* const pos, Point2d const* const size) {
-    begin_p = *pos;
-    end_p.x = pos->x + size->x;
-    end_p.y = pos->y + size->y;
+    win_man->check_area.begin = *pos;
+    win_man->check_area.end.x = pos->x + size->x;
+    win_man->check_area.end.y = pos->y + size->y;
     update_window_buffer();
     update_window_vram();
 }
