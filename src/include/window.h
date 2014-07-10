@@ -47,7 +47,7 @@ Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t
 Window* alloc_filled_window(Point2d const*, Point2d const*, uint8_t, RGB8 const*);
 Window* get_mouse_window(void);
 void window_draw_bitmap(Window* const, Drawable_bitmap const*, size_t);
-void window_draw_line(Window* const, Point2d const* const, Point2d const* const, RGB8 const* const);
+void window_draw_line(Window* const, Point2d const* const, Point2d const* const, RGB8 const* const, int32_t bold);
 void free_window(Window*);
 void flush_windows(void);
 void move_window(Window* const w, Point2d const* const p);

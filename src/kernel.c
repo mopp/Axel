@@ -234,11 +234,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Window* const console = alloc_filled_window(set_point2d(&p0, 100, 100), set_point2d(&p1, 100, 100), 0, set_rgb_by_color(&c,0xec6d71));
     /* title bar */
     /* window_fill_area(console, set_point2d(&p0, 0, 0), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge. */
-    window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 90, 70), set_rgb_by_color(&c, 0x19448e));
-    window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 10, 90), set_rgb_by_color(&c, 0x19448e));
-    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 10, 1), set_rgb_by_color(&c, 0x19448e));
-    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 1, 10), set_rgb_by_color(&c, 0x19448e));
-    window_draw_line(console, set_point2d(&p0, 100, 100), set_point2d(&p1, 0, 0), set_rgb_by_color(&c, 0x448e));
+    /* window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 90, 70), set_rgb_by_color(&c, 0x19448e), 1); */
+    /* window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 10, 90), set_rgb_by_color(&c, 0x19448e)); */
+    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 10, 1), set_rgb_by_color(&c, 0x19448e), 5);
+    window_draw_line(console, set_point2d(&p0, 10, 10), set_point2d(&p1, 10, 100), set_rgb_by_color(&c, 0x19448e), 10);
+    /* window_draw_line(console, set_point2d(&p0, 100, 100), set_point2d(&p1, 0, 0), set_rgb_by_color(&c, 0x448e)); */
     flush_windows();
 
     for (;;) {

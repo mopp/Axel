@@ -276,7 +276,7 @@ void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) 
 }
 
 
-void window_draw_line(Window* const w, Point2d const* const begin, Point2d const* const end, RGB8 const* const c) {
+void window_draw_line(Window* const w, Point2d const* const begin, Point2d const* const end, RGB8 const* const c, int32_t bold) {
     /* adjusted begin and end. */
     Point2d abegin = make_point2d(((begin->x < 0) ? (0) : (begin->x)), ((begin->y < 0) ? (0) : (begin->y)));
     Point2d aend = make_point2d(((w->size.x < end->x) ? (w->size.x) : (end->x)), ((w->size.y < end->y) ? (w->size.y) : (end->y)));
@@ -292,32 +292,63 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
     int32_t dx = aend.x - abegin.x;
     int32_t dy = aend.y - abegin.y;
 
-    if (dx == 0 && dy == 0) {
+    if ((dx == 0 && dy == 0) || bold == 0) {
         /* This case is NOT a line. */
         return; 
     }
 
+    int32_t size_x = w->size.x;
+    int32_t d = bold > 1;// (bold / 2)
     if (dx == 0) {
         /* vertical line. */
-        RGB8* const b = &w->buf[abegin.x];
-        int32_t size_x = w->size.x;
+        abegin.x -= d;
+        aend.x += d;
+        /* this is mod 2 = 0 that means bold is even number. */
+        if ((bold & 0x03) == 0) {
+            aend.x -= 1;
+        }
+        if (abegin.x < 0) {
+            abegin.x = 0;
+        }
+        if (w->size.x < abegin.x) {
+            abegin.x = w->size.x;
+        }
+        printf("abegin (%d, %d)\n", abegin.x, abegin.y);
+        printf("aend   (%d, %d)\n", aend.x, aend.y);
+
         for (int32_t y = abegin.y; y < aend.y; y++) {
-            b[y * size_x] = *c;
+            RGB8* const b = &w->buf[y * size_x];
+            for (int x = abegin.x; x <= aend.x; x++) {
+                b[x] = *c;
+            }
         }
     } else if (dy == 0) {
         /* horizontal line. */
-        RGB8* const b = &w->buf[abegin.y * w->size.x];
-        for (int x = abegin.x; x < aend.x; x++) {
-            b[x] = *c;
+        abegin.y -= d;
+        aend.y += d;
+        /* this is mod 2 = 0 that means bold is even number. */
+        if ((bold & 0x03) == 0) {
+            aend.y -= 1;
+        }
+        if (abegin.y < 0) {
+            abegin.y = 0;
+        }
+        if (w->size.y < abegin.y) {
+            abegin.y = w->size.y;
+        }
+
+        for (int32_t y = abegin.y; y <= aend.y; y++) {
+            RGB8* const b = &w->buf[y * size_x];
+            for (int x = abegin.x; x < aend.x; x++) {
+                b[x] = *c;
+            }
         }
     }
 
-    /* Using Bresenham's line algorithm. */
-    int32_t bold = 1;
-
     for (int i = 0; i < bold; i++) {
+        /* Using Bresenham's line algorithm. */
         int32_t diff = (2 * dy) - dx;
-        int32_t direction = ((0 < dy) ? (1) : (-1));    /* Is line right down or right up ? */
+        int32_t direction = ((0 < dy) ? (1) : (-1));    /* Is line right down(1) or right up(-1) ? */
         w->buf[abegin.x + (abegin.y * w->size.x)] = *c; /* plot first point. */
         for (int32_t x = abegin.x + 1, y = abegin.y; x < aend.x; x++) {
             if (0 < (diff * direction)) {
@@ -330,10 +361,8 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
             w->buf[x + (y * w->size.x)] = *c;
         }
 
-        abegin.y += 1;
-        abegin.x += 1;
-        /* aend.y += 1; */
-        /* aend.x += 1; */
+        abegin.y += direction;
+        aend.y += direction;
     }
 }
 
