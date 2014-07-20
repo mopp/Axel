@@ -121,6 +121,7 @@ kernel_init_page_directory_table:
 ; This allocate initial kernel stack witch is 4KB.
 section .bss
 KERNEL_INIT_STACK_SIZE equ 0x1000
+global kernel_init_stack_top
 kernel_init_stack_bottom:
     resb KERNEL_INIT_STACK_SIZE
 kernel_init_stack_top:

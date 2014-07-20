@@ -1,11 +1,11 @@
 # bochsrc
-#
-megs: 64
-#
+
+megs: 32
+
 mouse: enabled=1
-#
+
 # ata0-master: .txttype=disk, path="c.img", mode=flat, cylinders=609, heads=16, spt=63
-ata0: enabled = 1, ioaddr1 = 0x1f0,  ioaddr2 = 0x3f0,  irq = 14
+# ata0: enabled = 1, ioaddr1 = 0x1f0,  ioaddr2 = 0x3f0, irq = 14
 ata0-master: type=cdrom, path=./axel.iso, status=inserted
 
 boot: cdrom
@@ -18,7 +18,7 @@ display_library: x, options="gui_debug"
 
 mouse: enabled=0
 
-# panic: action=ask
-# error: action=report
-# info: action=ignore
-# debug: action=ignore
+panic: action=ask
+error: action=report
+info: action=report
+debug: action=report

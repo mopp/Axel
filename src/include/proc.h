@@ -14,6 +14,7 @@
 
 
 Axel_state_code init_process(void);
+void switch_context(void);
 
 
 #endif

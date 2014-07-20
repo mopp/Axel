@@ -168,3 +168,11 @@ flush_tlb_all:
     mov cr3, ebx
     call turn_on_pge
     ret
+
+
+; void asm_switch_context(uint32_t esp);
+asm_switch_context:
+    cli
+    mov eax, [esp + 4]
+
+; uintptr_t get_current_esp(void);

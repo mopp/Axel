@@ -23,6 +23,7 @@
 #include <vbe.h>
 #include <font.h>
 #include <window.h>
+#include <proc.h>
 
 
 /*
@@ -58,36 +59,40 @@ _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descript
 enum GDT_constants {
     KERNEL_CODE_SEGMENT_INDEX = 1,
     KERNEL_DATA_SEGMENT_INDEX = 2,
+    USER_CODE_SEGMENT_INDEX   = 3,
+    USER_DATA_SEGMENT_INDEX   = 4,
 
-    SEGMENT_NUM = 2 + 1,                                  /* There are "+1" to allocate null descriptor. */
-    GDT_LIMIT = sizeof(Segment_descriptor) * SEGMENT_NUM, /* Total Segment_descriptor occuping area size. */
-    GDT_FLAG_TYPE_DATA_R = 0x000000,                      /* Read-Only */
-    GDT_FLAG_TYPE_DATA_RA = 0x000100,                     /* Read-Only, accessed */
-    GDT_FLAG_TYPE_DATA_RW = 0x000200,                     /* Read/Write */
-    GDT_FLAG_TYPE_DATA_RWA = 0x000300,                    /* Read/Write, accessed */
-    GDT_FLAG_TYPE_DATA_REP = 0x000400,                    /* Read-Only, expand-down */
-    GDT_FLAG_TYPE_DATA_REPA = 0x000500,                   /* Read-Only, expand-down, accessed */
-    GDT_FLAG_TYPE_DATA_RWEP = 0x000600,                   /* Read/Write, expand-down */
-    GDT_FLAG_TYPE_DATA_RWEPA = 0x000700,                  /* Read/Write, expand-down, accessed */
-    GDT_FLAG_TYPE_CODE_EX = 0x000800,                     /* Execute-Only */
-    GDT_FLAG_TYPE_CODE_EXA = 0x000900,                    /* Execute-Only, accessed */
-    GDT_FLAG_TYPE_CODE_EXR = 0x000A00,                    /* Execute/Read */
-    GDT_FLAG_TYPE_CODE_EXRA = 0x000B00,                   /* Execute/Read, accessed */
-    GDT_FLAG_TYPE_CODE_EXC = 0x000C00,                    /* Execute-Only, conforming */
-    GDT_FLAG_TYPE_CODE_EXCA = 0x000D00,                   /* Execute-Only, conforming, accessed */
-    GDT_FLAG_TYPE_CODE_EXRC = 0x000E00,                   /* Execute/Read, conforming */
-    GDT_FLAG_TYPE_CODE_EXRCA = 0x000F00,                  /* Execute/Read, conforming, accessed */
+    SEGMENT_NUM                = 4 + 1, /* There are "+1" to allocate null descriptor. */
+    GDT_LIMIT                  = sizeof(Segment_descriptor) * SEGMENT_NUM,  /* Total Segment_descriptor occuping area size. */
+    GDT_FLAG_TYPE_DATA_R       = 0x000000,  /* Read-Only */
+    GDT_FLAG_TYPE_DATA_RA      = 0x000100,  /* Read-Only, accessed */
+    GDT_FLAG_TYPE_DATA_RW      = 0x000200,  /* Read/Write */
+    GDT_FLAG_TYPE_DATA_RWA     = 0x000300,  /* Read/Write, accessed */
+    GDT_FLAG_TYPE_DATA_REP     = 0x000400,  /* Read-Only, expand-down */
+    GDT_FLAG_TYPE_DATA_REPA    = 0x000500,  /* Read-Only, expand-down, accessed */
+    GDT_FLAG_TYPE_DATA_RWEP    = 0x000600,  /* Read/Write, expand-down */
+    GDT_FLAG_TYPE_DATA_RWEPA   = 0x000700,  /* Read/Write, expand-down, accessed */
+    GDT_FLAG_TYPE_CODE_EX      = 0x000800,  /* Execute-Only */
+    GDT_FLAG_TYPE_CODE_EXA     = 0x000900,  /* Execute-Only, accessed */
+    GDT_FLAG_TYPE_CODE_EXR     = 0x000A00,  /* Execute/Read */
+    GDT_FLAG_TYPE_CODE_EXRA    = 0x000B00,  /* Execute/Read, accessed */
+    GDT_FLAG_TYPE_CODE_EXC     = 0x000C00,  /* Execute-Only, conforming */
+    GDT_FLAG_TYPE_CODE_EXCA    = 0x000D00,  /* Execute-Only, conforming, accessed */
+    GDT_FLAG_TYPE_CODE_EXRC    = 0x000E00,  /* Execute/Read, conforming */
+    GDT_FLAG_TYPE_CODE_EXRCA   = 0x000F00,  /* Execute/Read, conforming, accessed */
     GDT_FLAG_CODE_DATA_SEGMENT = 0x001000,
-    GDT_FLAG_RING0 = 0x000000,
-    GDT_FLAG_RING1 = 0x002000,
-    GDT_FLAG_RING2 = 0x004000,
-    GDT_FLAG_RING3 = 0x006000,
-    GDT_FLAG_PRESENT = 0x008000,
-    GDT_FLAG_AVAILABLE = 0x100000,
-    GDT_FLAG_OP_SIZE = 0x400000,
-    GDT_FLAG_GRANULARIT = 0x800000,
-    GDT_FLAGS_KERNEL_CODE = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
-    GDT_FLAGS_KERNEL_DATA = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAG_RING0             = 0x000000,
+    GDT_FLAG_RING1             = 0x002000,
+    GDT_FLAG_RING2             = 0x004000,
+    GDT_FLAG_RING3             = 0x006000,
+    GDT_FLAG_PRESENT           = 0x008000,
+    GDT_FLAG_AVAILABLE         = 0x100000,
+    GDT_FLAG_OP_SIZE           = 0x400000,
+    GDT_FLAG_GRANULARIT        = 0x800000,
+    GDT_FLAGS_KERNEL_CODE      = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAGS_KERNEL_DATA      = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAGS_USER_CODE        = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING3 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
+    GDT_FLAGS_USER_DATA        = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING3 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
 };
 
 
@@ -95,7 +100,7 @@ enum GDT_constants {
 union gate_descriptor {
     struct {
         uint16_t offset_low;              /* address offset low of interrupt handler.*/
-        uint16_t segment_selector;        /* CS register value. */
+        uint16_t segment_selector;        /* segment selector register(CS, DS, SS and etc) value. */
         uint8_t unused_zero;              /* unused area. */
         unsigned int type : 3;            /* gate type. */
         unsigned int size : 1;            /* If this is 1, gate size is 32 bit. otherwise it is 16 bit */
@@ -114,18 +119,19 @@ _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor siz
 
 
 enum Gate_descriptor_constants {
-    IDT_NUM = 19 + 12 + 16, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector */
-    IDT_LIMIT = IDT_NUM * 8 - 1,
-    GD_FLAG_TYPE_TASK = 0x00000500,
+    IDT_NUM                = 19 + 12 + 16, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector */
+    IDT_LIMIT              = IDT_NUM * 8 - 1,
+    GD_FLAG_TYPE_TASK      = 0x00000500,
     GD_FLAG_TYPE_INTERRUPT = 0x00000600,
-    GD_FLAG_TYPE_TRAP = 0x00000700,
-    GD_FLAG_SIZE_32 = 0x00000800,
-    GD_FLAG_RING0 = 0x00000000,
-    GD_FLAG_RING1 = 0x00002000,
-    GD_FLAG_RING2 = 0x00004000,
-    GD_FLAG_RING3 = 0x00006000,
-    GD_FLAG_PRESENT = 0x00008000,
-    GD_FLAGS_IDT = GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
+    GD_FLAG_TYPE_TRAP      = 0x00000700,
+    GD_FLAG_SIZE_32        = 0x00000800,
+    GD_FLAG_RING0          = 0x00000000,
+    GD_FLAG_RING1          = 0x00002000,
+    GD_FLAG_RING2          = 0x00004000,
+    GD_FLAG_RING3          = 0x00006000,
+    GD_FLAG_PRESENT        = 0x00008000,
+    GD_FLAGS_IDT           = GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
+    GD_FLAGS_IDT_TRAP      = GD_FLAG_TYPE_TRAP | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
 };
 
 
@@ -179,6 +185,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_graphic(boot_info);
     init_gdt();
     init_idt();
+    init_process();
     init_pic();
     init_pit();
     io_sti();
@@ -203,6 +210,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0xFFFFFF));    // left edge.
     window_fill_area(status_bar, set_point2d(&p0, 61, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x848484));    // right edge.
     window_fill_area(status_bar, set_point2d(&p0, 62, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge.
+    Window* const console = alloc_filled_window(set_point2d(&p0, 400, 100), set_point2d(&p1, 100, 100), 0, set_rgb_by_color(&c,0xec6d71));
+    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 10, 1), set_rgb_by_color(&c, 0x19448e), 5);
+    window_draw_line(console, set_point2d(&p0, 10, 10), set_point2d(&p1, 10, 100), set_rgb_by_color(&c, 0x19448e), 10);
+    flush_windows();
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("=Keyboard initialize failed=\n");
@@ -210,36 +221,25 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     if (init_mouse() == AXEL_FAILED) {
         puts("=Mouse initialize failed=\n");
     }
+    Window* mouse_win = get_mouse_window();
+    Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
-    // printf("kernel size: %zuKB\n", get_kernel_size() / 1024);
-    // printf("kernel static size: %zuKB\n", get_kernel_static_size() / 1024);
-    // printf("kernel virtual  address: 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-    // printf("kernel physical address: 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    printf("kernel size          : %zuKB\n", get_kernel_size() / 1024);
+    printf("kernel static size   : %zuKB\n", get_kernel_static_size() / 1024);
+    printf("kernel virtual  addr : 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
+    printf("kernel physical addr : 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    printf("GDT addr             : 0x%zx\n", (size_t)axel_s.gdt);
 
     if (flags.is_mem_enable) {
-        // printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
-        // printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
-        // printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
+        printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
+        printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
+        printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
     }
 
     /* print_vmem(); */
     /* print_pmem(); */
-
-    Window* mouse_win = get_mouse_window();
-    Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
-
-    flush_windows();
-    Window* const console = alloc_filled_window(set_point2d(&p0, 100, 100), set_point2d(&p1, 100, 100), 0, set_rgb_by_color(&c,0xec6d71));
-    /* title bar */
-    /* window_fill_area(console, set_point2d(&p0, 0, 0), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge. */
-    /* window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 90, 70), set_rgb_by_color(&c, 0x19448e), 1); */
-    /* window_draw_line(console, set_point2d(&p0, 50, 50), set_point2d(&p1, 10, 90), set_rgb_by_color(&c, 0x19448e)); */
-    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 10, 1), set_rgb_by_color(&c, 0x19448e), 5);
-    window_draw_line(console, set_point2d(&p0, 10, 10), set_point2d(&p1, 10, 100), set_rgb_by_color(&c, 0x19448e), 10);
-    /* window_draw_line(console, set_point2d(&p0, 100, 100), set_point2d(&p1, 0, 0), set_rgb_by_color(&c, 0x448e)); */
-    flush_windows();
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
@@ -357,16 +357,18 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
 
 
 static inline void init_gdt(void) {
-    Segment_descriptor* const gdt = (Segment_descriptor*)vmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
+    axel_s.gdt = (Segment_descriptor*)vmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
 
     /* zero clear Segment_descriptor. */
-    memset(gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
+    memset(axel_s.gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
 
-    /* Setup flat address */
-    set_segment_descriptor(gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
-    set_segment_descriptor(gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
+    /* Setup flat address model. */
+    set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
+    set_segment_descriptor(axel_s.gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
+    set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX,   0x00000000, 0xffffffff, GDT_FLAGS_USER_CODE);
+    set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX,   0x00000000, 0xffffffff, GDT_FLAGS_USER_DATA);
 
-    load_gdtr(GDT_LIMIT, (uint32_t)gdt);
+    load_gdtr(GDT_LIMIT, (uint32_t)(uintptr_t)axel_s.gdt);
 }
 
 
@@ -396,11 +398,11 @@ static inline void init_idt(void) {
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
-    set_gate_descriptor(idt + 13, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x0E, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x20, asm_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 13,   hlt,                   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x0E, hlt,                   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT_TRAP);
     set_gate_descriptor(idt + 0x21, asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
 
     load_idtr(IDT_LIMIT, (uint32_t)idt);
 }

@@ -7,6 +7,7 @@
 #include <interrupt.h>
 #include <macros.h>
 #include <asm_functions.h>
+#include <proc.h>
 
 
 void init_pic(void) {
@@ -61,4 +62,5 @@ void send_done_interrupt_slave(void) {
 
 void interrupt_timer(uint32_t* esp) {
     send_done_interrupt_master();
+    switch_context();
 }
