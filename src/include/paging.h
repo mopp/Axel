@@ -11,13 +11,12 @@
 
 
 
-#define KERNEL_PHYSICAL_BASE_ADDR 0x100000
-#define KERNEL_VIRTUAL_BASE_ADDR 0xC0000000
+#define KERNEL_PHYSICAL_BASE_ADDR   0x00100000
+#define KERNEL_VIRTUAL_BASE_ADDR    0xC0000000
 
 
 
-#ifndef _ASSEMBLY
-
+#if !defined(_ASSEMBLY_H_) && !defined(_LINKER_SCRIPT_)
 
 
 #include <stdint.h>
@@ -31,8 +30,7 @@
  *      page_table_entry -> page_table(page_table_entry[1024]) -> page_directory_entry -> page_directory_table(page_directory_entry[1024])
  *      one page_table should have 1024 page.
  *      one page_directory_table should have 1024 page_table.
- *      the page_table size is 1024(PAGE_NUM) * 4KB(PAGE_SIZE) = 4MB
- *      extern Page_table_entry page_table[PAGE_TABLE_SIZE];
+ *      the page_table contains (1024(PAGE_NUM) * 4KB(PAGE_SIZE) = 4MB) area.
  */
 
 
@@ -100,41 +98,43 @@ typedef Page_directory_entry* Page_directory_table;
 
 
 enum Paging_constants {
-    FRAME_SIZE = 4096,
-    PAGE_SIZE = FRAME_SIZE,
-    PAGE_NUM = 1024,
-    PAGE_TABLE_ENTRY_NUM = 1024,
+    FRAME_SIZE               = 4096,
+    PAGE_SIZE                = FRAME_SIZE,
+    PAGE_NUM                 = 1024,
+    PAGE_TABLE_ENTRY_NUM     = 1024,
     PAGE_DIRECTORY_ENTRY_NUM = 1024,
-    PDE_PT_ADDR_SHIFT_NUM = 12,
-    PDE_IDX_SHIFT_NUM = 22,
-    PTE_IDX_SHIFT_NUM = 12,
+    PDE_PT_ADDR_SHIFT_NUM    = 12,
+    PDE_IDX_SHIFT_NUM        = 22,
+    PTE_IDX_SHIFT_NUM        = 12,
     PTE_FRAME_ADDR_SHIFT_NUM = 12,
-    ALL_PAGE_STRUCT_SIZE = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM * PAGE_DIRECTORY_ENTRY_NUM),
+    ALL_PAGE_STRUCT_SIZE     = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM * PAGE_DIRECTORY_ENTRY_NUM),
 
     /* PTE flags bit */
-    PTE_FLAG_PRESENT        = 0x001,
-    PTE_FLAG_RW             = 0x002,
-    PTE_FLAG_USER           = 0x004,
-    PTE_FLAG_WRITE_THROGH   = 0x008,
-    PTE_FLAG_CACHE_DISABLE  = 0x010,
-    PTE_FLAG_ACCESS         = 0x020,
-    PTE_FLAG_DIRTY          = 0x040,
-    PTE_FLAG_PAT            = 0x080,
-    PTE_FLAG_GLOBAL         = 0x100,
-    PTE_FLAGS_KERNEL    = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_GLOBAL,
-    PTE_FLAGS_AREA_MASK     = 0xFFFFF000,
+    PTE_FLAG_PRESENT         = 0x001,
+    PTE_FLAG_RW              = 0x002,
+    PTE_FLAG_USER            = 0x004,
+    PTE_FLAG_WRITE_THROGH    = 0x008,
+    PTE_FLAG_CACHE_DISABLE   = 0x010,
+    PTE_FLAG_ACCESS          = 0x020,
+    PTE_FLAG_DIRTY           = 0x040,
+    PTE_FLAG_PAT             = 0x080,
+    PTE_FLAG_GLOBAL          = 0x100,
+    PTE_FLAGS_KERNEL         = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_GLOBAL,
+    PTE_FLAGS_USER           = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_USER,
+    PTE_FLAGS_AREA_MASK      = 0xFFFFF000,
 
     /* PDE flags bit */
-    PDE_FLAG_PRESENT        = 0x001,
-    PDE_FLAG_RW             = 0x002,
-    PDE_FLAG_USER           = 0x004,
-    PDE_FLAG_WRITE_THROGH   = 0x008,
-    PDE_FLAG_CACHE_DISABLE  = 0x010,
-    PDE_FLAG_ACCESS         = 0x020,
-    PDE_FLAG_SIZE           = 0x080,
-    PDE_FLAG_GLOBAL         = 0x100,
-    PDE_FLAGS_KERNEL    = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_GLOBAL,
-    PDE_FLAGS_AREA_MASK     = 0xFFFFF000,
+    PDE_FLAG_PRESENT         = 0x001,
+    PDE_FLAG_RW              = 0x002,
+    PDE_FLAG_USER            = 0x004,
+    PDE_FLAG_WRITE_THROGH    = 0x008,
+    PDE_FLAG_CACHE_DISABLE   = 0x010,
+    PDE_FLAG_ACCESS          = 0x020,
+    PDE_FLAG_SIZE            = 0x080,
+    PDE_FLAG_GLOBAL          = 0x100,
+    PDE_FLAGS_KERNEL         = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_GLOBAL,
+    PDE_FLAGS_USER           = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_USER,
+    PDE_FLAGS_AREA_MASK      = 0xFFFFF000,
 };
 
 
@@ -205,7 +205,7 @@ extern void print_vmem(void);
 
 
 
-#endif /* _ASSEMBLY */
+#endif /* _ASSEMBLY_H_ */
 
 
 

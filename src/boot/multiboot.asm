@@ -10,7 +10,7 @@ bits 32
 
 
 ; for C Preprocessor.
-#define _ASSEMBLY
+#define _ASSEMBLY_H_
 #include <multiboot.h>
 #include <paging.h>
 

@@ -56,10 +56,11 @@ W_FLAGS 			:= -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -W
 # 	-nostdinc cause error(macro redifine)
 # debug option
 # 	--analyze -g
-CFLAGS				:= -mllvm --x86-asm-syntax=intel --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
-LDFLAGS				:= -L$(AXEL_LIB_PATH) -T $(KERNEL_LNK) -Map $(KERNEL_MAP) -nostdlib
+CFLAGS				:= --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
+LDFLAGS				:= -L$(AXEL_LIB_PATH) -Map $(KERNEL_MAP) -nostdlib
 LIBS				:= -lstruct
 export CC 			:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
+export PP 			:= $(CLANG) $(CPPFLAGS) -x c -E -P
 
 
 # 一般生成規則
@@ -67,7 +68,9 @@ export CC 			:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
 .c.o:
 	$(CC) -c $< -o $@
 .asm.o:
-	$(NASM) -l $*.lst -o $@ $<
+	$(eval TMP_FILE = $(shell mktemp))
+	$(PP) $< > $(TMP_FILE)
+	$(NASM) -l $*.lst -o $@ $(TMP_FILE)
 
 
 .PHONY: default
@@ -98,7 +101,9 @@ $(BOOT_OBJ) : $(MAKEFILE)
 
 
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(LINK_OBJS)
-	$(LD) $(LINK_OBJS) $(LDFLAGS) -static $(LIBS) -o $@
+	$(eval TMP_FILE = $(shell mktemp))
+	$(PP) $(KERNEL_LNK) > $(TMP_FILE)
+	$(LD) $(LINK_OBJS) $(LDFLAGS) -T $(TMP_FILE) -static $(LIBS) -o $@
 	$(OBJCOPY) --only-keep-debug $(AXEL_BIN) $(AXEL_SYM)
 	$(OBJCOPY) --strip-debug $(AXEL_BIN)
 

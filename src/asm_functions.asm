@@ -6,9 +6,10 @@
 ;---------------------------------------------------------------------
     bits 32
 
-    KERNEL_VIRTUAL_BASE_ADDR    equ 0xC0000000
-    KERNEL_CODE_SEGMENT         equ (1 * 8) ; 8 means the size of segment_descriptor.
-    KERNEL_DATA_SEGMENT         equ (2 * 8)
+; for C Preprocessor.
+#define _ASSEMBLY_H_
+#include <paging.h>
+#include <segment.h>
 
     global io_hlt, io_cli, io_sti
     global io_in8, io_in16, io_in32
@@ -93,9 +94,9 @@ load_gdtr:
     mov ax, [esp + 4]      ; limit
     mov [esp + 6], ax
     lgdt [esp + 6]
-    jmp KERNEL_CODE_SEGMENT:.chenge_segment_selector
-.chenge_segment_selector:
-    mov ax, KERNEL_DATA_SEGMENT
+    jmp KERNEL_CODE_SEGMENT_SELECTOR:.change_cs
+.change_cs:
+    mov ax, KERNEL_DATA_SEGMENT_SELECTOR
     mov es, ax
     mov ds, ax
     mov fs, ax
@@ -174,5 +175,3 @@ flush_tlb_all:
 asm_switch_context:
     cli
     mov eax, [esp + 4]
-
-; uintptr_t get_current_esp(void);

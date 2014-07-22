@@ -11,7 +11,7 @@
 
 #include <flag.h>
 
-#ifndef _ASSEMBLY
+#ifndef _ASSEMBLY_H_
 
 
 #include <stdint.h>
@@ -134,7 +134,7 @@ struct multiboot_mod_list {
 typedef struct multiboot_mod_list Multiboot_module;
 
 
-#endif /* _ASSEMBLY */
+#endif /* _ASSEMBLY_H_ */
 
 
 #ifdef TEXT_MODE

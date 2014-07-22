@@ -1,7 +1,9 @@
 OUTPUT_FORMAT(elf32-i386)
 
-LD_KERNEL_PHYSICAL_BASE_ADDR   = 0x00100000;   /* It is base address before paging enable. */
-LD_KERNEL_VIRTUAL_BASE_ADDR    = 0xC0000000;   /* It is base address after paging enable. */
+
+/* for C Preprocessor. */
+#define _LINKER_SCRIPT_
+#include<paging.h>
 
 
 SECTIONS {
@@ -15,7 +17,7 @@ SECTIONS {
      * Therefor, add kernel physical address + virtual address in this.
      * NOTE that this mapping is 4MB mapping. NOT 4KB.
      */
-    . = LD_KERNEL_PHYSICAL_BASE_ADDR + LD_KERNEL_VIRTUAL_BASE_ADDR;
+    . = KERNEL_PHYSICAL_BASE_ADDR + KERNEL_VIRTUAL_BASE_ADDR;
 
     LD_KERNEL_START = .;
 
@@ -26,24 +28,24 @@ SECTIONS {
      * Kernel load address is NOT equal virtual address.
      * So, We subtract virtual base address.
      */
-    .boot_kernel : AT(ADDR(.boot_kernel) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
+    .boot_kernel : AT(ADDR(.boot_kernel) - KERNEL_VIRTUAL_BASE_ADDR) {
         *(.multiboot_header)
         *(.boot_kernel)
     }
 
 
-    .text : AT(ADDR(.text) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
+    .text : AT(ADDR(.text) - KERNEL_VIRTUAL_BASE_ADDR) {
         *(.text*)
     }
 
 
-    .data : AT(ADDR(.data) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
+    .data : AT(ADDR(.data) - KERNEL_VIRTUAL_BASE_ADDR) {
         *(.data*)
         *(.rodata*)
     }
 
 
-    .bss : AT(ADDR(.bss) - LD_KERNEL_VIRTUAL_BASE_ADDR) {
+    .bss : AT(ADDR(.bss) - KERNEL_VIRTUAL_BASE_ADDR) {
         LD_KERNEL_BSS_START = .;
         *(.bss*)
         *(COMMON)

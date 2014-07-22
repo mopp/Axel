@@ -24,6 +24,7 @@
 #include <font.h>
 #include <window.h>
 #include <proc.h>
+#include <segment.h>
 
 
 /*
@@ -57,11 +58,6 @@ _Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descript
 
 
 enum GDT_constants {
-    KERNEL_CODE_SEGMENT_INDEX = 1,
-    KERNEL_DATA_SEGMENT_INDEX = 2,
-    USER_CODE_SEGMENT_INDEX   = 3,
-    USER_DATA_SEGMENT_INDEX   = 4,
-
     SEGMENT_NUM                = 4 + 1, /* There are "+1" to allocate null descriptor. */
     GDT_LIMIT                  = sizeof(Segment_descriptor) * SEGMENT_NUM,  /* Total Segment_descriptor occuping area size. */
     GDT_FLAG_TYPE_DATA_R       = 0x000000,  /* Read-Only */
