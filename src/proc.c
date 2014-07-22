@@ -79,6 +79,10 @@ void dummy(void) {
     return;
 }
 
+static volatile uint32_t* current_ip;
+static volatile uint32_t* current_sp;
+static volatile uint32_t* next_ip;
+static volatile uint32_t* next_sp;
 
 /* TODO: chenge page global directly */
 void switch_context(void) {
@@ -96,71 +100,90 @@ void switch_context(void) {
         next_p_idx = 0;
     }
 
-    /*
-     * EAX=c0000000 EBX=c0010003 ECX=00000000 EDX=c0531000
-     * ESI=00000000 EDI=00000000 EBP=c0109bbc ESP=c0109bb8
-     * EIP=c0100091 EFL=00000082
-     */
+    current_ip =&current_c->eip;
+    current_sp =&current_c->esp;
+    next_ip = &next_c->eip;
+    next_sp = &next_c->esp;
+
     __asm__ volatile (
-        "pushfl                             \n\t"   // store eflags
-        "pushl %%ebp                        \n\t"
-        "pushl %%eax                        \n\t"
-        "pushl %%ecx                        \n\t"
-        "pushl %%edx                        \n\t"
-        "pushl %%ebx                        \n\t"
+        // "pushfl                             \n\t"   // store eflags
+        // "pushl %%ebp                        \n\t"
+        // "pushl %%eax                        \n\t"
+        // "pushl %%ecx                        \n\t"
+        // "pushl %%edx                        \n\t"
+        // "pushl %%ebx                        \n\t"
 
-        "movl  $next_turn, %[current_ip]    \n\t"   // store ip
-        "movl  %%esp, %[current_sp]         \n\t"   // store sp
-        "movl  %[next_sp], %%esp            \n\t"   // restore sp
-        "pushl %[next_ip]                   \n\t"   // restore ip
-        "jmp dummy                          \n\t"   // change context
+        // "movl  $next_turn, %[current_ip]    \n\t"   // store ip
+        // "movl  %%esp, %[current_sp]         \n\t"   // store sp
+        // "movl  %[next_sp], %%esp            \n\t"   // restore sp
+        // "pushl %[next_ip]                   \n\t"   // restore ip
+        // "jmp dummy                          \n\t"   // change context
 
-        "next_turn:                         \n\t"
+        // "next_turn:                         \n\t"
 
-        "popl %%ebx                         \n\t"
-        "popl %%edx                         \n\t"
-        "popl %%ecx                         \n\t"
-        "popl %%eax                         \n\t"
-        "popl %%ebp                         \n\t"
-        "popfl                              \n\t"   // restore eflags
+        // "popl %%ebx                         \n\t"
+        // "popl %%edx                         \n\t"
+        // "popl %%ecx                         \n\t"
+        // "popl %%eax                         \n\t"
+        // "popl %%ebp                         \n\t"
+        // "popfl                              \n\t"   // restore eflags
 
-        :   [current_ip] "=m" (current_c->eip),
-            [current_sp] "=m" (current_c->esp)
-        :   [next_ip] "m" (next_c->eip),
-            [next_sp] "m" (next_c->esp)
+        // :   [current_ip] "=m" (current_c->eip),
+        //     [current_sp] "=m" (current_c->esp)
+        // :   [next_ip] "m" (next_c->eip),
+        //     [next_sp] "m" (next_c->esp)
+        // : "memory"
+
+        ".intel_syntax noprefix \n\t"
+        "pushfd                 \n\t"   // store eflags
+        "push ebp               \n\t"
+        "push eax               \n\t"
+        "push ecx               \n\t"
+        "push edx               \n\t"
+        "push ebx               \n\t"
+
+        "lea eax, next_turn     \n\t"   // store ip
+        "mov ebx, [current_ip]  \n\t"   // store ip
+        "mov [ebx], eax         \n\t"   // store ip
+
+        "mov ebx, [current_sp]  \n\t"   // store ip
+        "mov [ebx], esp         \n\t"   // store sp
+
+        "mov ebx, [next_sp]     \n\t"   // restore sp
+        "mov esp, [ebx]         \n\t"   // restore sp
+        "mov ebx, [next_ip]     \n\t"   // restore sp
+        "mov ebx, [ebx]         \n\t"   // restore sp
+        "push ebx               \n\t"   // restore ip
+
+        "jmp dummy              \n\t"   // change context
+
+        "next_turn:             \n\t"
+        "pop ebx                \n\t"
+        "pop edx                \n\t"
+        "pop ecx                \n\t"
+        "pop eax                \n\t"
+        "pop ebp                \n\t"
+        "popfd                  \n\t"   // restore eflags
+        :
+        :
         : "memory"
     );
-
-    /*
-     * EAX=00000001 EBX=00000000 ECX=c0532000 EDX=c0532000
-     * ESI=00000000 EDI=00000000 EBP=00000000 ESP=c010e7b0
-     * EIP=c0101608 EFL=00000002
-     */
-
-    /* *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 'S'; */
-    /* *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = (uint32_t)current_p; */
-    /* INF_LOOP(); */
 }
 
 
-#include <interrupt.h>
-void task_a() {
-    uint8_t* c = (uint8_t*)KERNEL_VIRTUAL_BASE_ADDR;
-    c[0] = 'T';
-    c[1] = 'a';
-    c[2] = 's';
-    c[3] = 'k';
-    c[4] = 'A';
-    c[5] = '!';
+void task_a(void) {
     while (1) {
+        *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 'A';
+        puts("Task A\n");
         io_hlt();
     }
 }
 
 
-void task_b() {
-    *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 'B';
+void task_b(void) {
     while (1) {
+        *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 'B';
+        puts("Task B\n");
         io_hlt();
     }
 }

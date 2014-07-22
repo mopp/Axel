@@ -56,7 +56,7 @@ W_FLAGS 			:= -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -W
 # 	-nostdinc cause error(macro redifine)
 # debug option
 # 	--analyze -g
-CFLAGS				:= --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
+CFLAGS				:= -mllvm --x86-asm-syntax=intel --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
 LDFLAGS				:= -L$(AXEL_LIB_PATH) -T $(KERNEL_LNK) -Map $(KERNEL_MAP) -nostdlib
 LIBS				:= -lstruct
 export CC 			:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
