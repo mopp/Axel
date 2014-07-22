@@ -10,6 +10,7 @@
 #define _KERNEL_H_
 
 
+
 #include <ps2.h>
 
 
@@ -29,6 +30,7 @@ typedef struct axel_struct Axel_struct;
 
 
 extern Axel_struct axel_s;
+
 
 
 #endif
