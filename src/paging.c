@@ -232,6 +232,11 @@ Page_directory_table make_user_pdt(void) {
 }
 
 
+Page_directory_table get_kernel_pdt(void) {
+    return kernel_pdt;
+}
+
+
 static List_node* list_get_new_page_node(void) {
     static size_t cnt = 0;         /* counter for nextfix */
     size_t const stored_cnt = cnt; /* It is used for detecting already checking all node. */

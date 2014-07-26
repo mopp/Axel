@@ -61,11 +61,9 @@ typedef struct process Process;
 
 
 
-static Process pa, pb, pk;
-static char const* name_a = "Process A";
-static char const* name_b = "Process B";
-static char const* name_k = "Process Kernel";
+static Process pa, pb, pk, pu;
 static Process** processes;
+static uint8_t process_num = 3;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx = 1;
 
@@ -92,10 +90,10 @@ void switch_context(void) {
 
     current_p_idx++;
     next_p_idx++;
-    if (3 <= current_p_idx) {
+    if (process_num <= current_p_idx) {
         current_p_idx = 0;
     }
-    if (3 <= next_p_idx) {
+    if (process_num <= next_p_idx) {
         next_p_idx = 0;
     }
 
@@ -189,40 +187,49 @@ _Noreturn void task_b(void) {
 }
 
 
+_Noreturn void task_user(void) {
+    while (1) {
+        /* *(uint32_t*)1 = 'U'; */
+        /* puts("Task User\n"); */
+    }
+}
+
+
 Axel_state_code init_process(void) {
     exec_switch = dummy;
 
     pk.context      = vmalloc(sizeof(Context));
-    memset(pk.context, 0, sizeof(Context));
+    pk.context->pdt = get_kernel_pdt();
     pk.pid          = 0;
-    pk.name         = name_k;
-    __asm__ volatile (
-            "movl %%esp, %[sp] \n\t"
-            : [sp] "=m" (pk.stack)
-            :
-            : "memory"
-            );
 
-    pa.context      = vmalloc(sizeof(Context));
-    memset(pa.context, 0, sizeof(Context));
-    pa.context->ip = (uint32_t)(uintptr_t)task_a;
     pa.pid          = 1;
-    pa.name         = name_a;
     pa.stack        = vmalloc(0x1000);
+    pa.context      = vmalloc(sizeof(Context));
+    pa.context->ip = (uint32_t)(uintptr_t)task_a;
     pa.context->sp = (uint32_t)(uintptr_t)pa.stack;
+    pa.context->pdt = get_kernel_pdt();
 
-    pb.context      = vmalloc(sizeof(Context));
-    memset(pb.context, 0, sizeof(Context));
-    pb.context->ip = (uint32_t)(uintptr_t)task_b;
     pb.pid          = 2;
-    pb.name         = name_b;
     pb.stack        = vmalloc(0x1000);
+    pb.context      = vmalloc(sizeof(Context));
+    pb.context->ip = (uint32_t)(uintptr_t)task_b;
     pb.context->sp = (uint32_t)(uintptr_t)pb.stack;
+    pb.context->pdt = get_kernel_pdt();
 
-    processes = vmalloc(sizeof(Process*) * 3);
+    pu.context      = vmalloc(sizeof(Context));
+    pu.context->ip = (uint32_t)(uintptr_t)task_user;
+    pu.context->sp = (uint32_t)(uintptr_t)pb.stack;
+    pu.context->pdt = make_user_pdt();
+    pu.pid          = 2;
+    pu.stack        = uvmalloc(0x1000, &pu.context->pdt);
+   /* 0:	f4                   	hlt     */
+   /* 1:	eb fd                	jmp    0 <usr> */
+
+    processes = vmalloc(sizeof(Process*) * process_num);
     processes[0] = &pk;
     processes[1] = &pa;
     processes[2] = &pb;
+    /* processes[3] = &pu; */
 
     return AXEL_SUCCESS;
 }

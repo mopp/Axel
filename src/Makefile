@@ -9,7 +9,7 @@
 export RM 		:= rm -rf
 export CLANG	:= clang
 export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
-export NASM 	:= nasm -f elf32
+export NASM 	:= nasm -g -f elf32
 export AR_R		:= ar r --target elf32-i386
 export OBJCOPY	:= objcopy
 export QEMU 	:= qemu-system-i386 -monitor stdio -vga std -m 128 -d int -d cpu -d cpu_reset

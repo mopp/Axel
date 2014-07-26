@@ -207,6 +207,7 @@ extern void vfree(void*);
 extern void uvfree(void*, Page_directory_table const* const);
 extern void print_vmem(void);
 extern Page_directory_table make_user_pdt(void);
+extern Page_directory_table get_kernel_pdt(void);
 
 
 

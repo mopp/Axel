@@ -233,10 +233,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
     }
 
-    Page_directory_table pdt = make_user_pdt();
-    char* str = uvmalloc(sizeof(char) * 100, &pdt);
-    printf("0x%zx\n", (uintptr_t)pdt);
-    printf("0x%zx\n", (uintptr_t)str);
+    /* Page_directory_table pdt = make_user_pdt(); */
+    /* char* str = uvmalloc(sizeof(char) * 100, &pdt); */
+    /* printf("0x%zx\n", (uintptr_t)pdt); */
+    /* printf("0x%zx\n", (uintptr_t)str); */
 
     /* print_vmem(); */
     /* print_pmem(); */
