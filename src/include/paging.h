@@ -50,8 +50,8 @@ struct page_table_entry {
             unsigned int dirty_flag : 1;                    /* Is page changed. */
             unsigned int page_attr_table_flag : 1;          /* For PAT feature. */
             unsigned int global_flag : 1;                   /* Is page global. */
-            unsigned int os_area : 3;                       /* This 3bit is ignored by CPU and OS can use this area. */
-            unsigned int frame_addr : 20;                   /* upper 20bit of physical address to assign to page entry. */
+            unsigned int os_area : 3;                       /* This 3 bit is ignored by CPU and OS can use this area. */
+            unsigned int frame_addr : 20;                   /* upper 20 bit of physical address to assign to page entry. */
         };
         uint32_t bit_expr; /* pde bit expression */
     };
@@ -81,7 +81,7 @@ struct page_directory_entry {
             unsigned int reserved : 1;
             unsigned int page_size_flag : 1;   /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
             unsigned int global_flag : 1;      /* Is page global. */
-            unsigned int os_area : 3;          /* This 3bit is ignored by CPU and OS can use this area. */
+            unsigned int os_area : 3;          /* This 3 bit is ignored by CPU and OS can use this area. */
             unsigned int page_table_addr : 20; /* physical address of page table that is included page directory entry. */
         };
         uint32_t bit_expr; /* pde bit expression */
@@ -107,7 +107,7 @@ enum Paging_constants {
     PDE_IDX_SHIFT_NUM        = 22,
     PTE_IDX_SHIFT_NUM        = 12,
     PTE_FRAME_ADDR_SHIFT_NUM = 12,
-    ALL_PAGE_STRUCT_SIZE     = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM * PAGE_DIRECTORY_ENTRY_NUM),
+    ALL_PAGE_STRUCT_SIZE     = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + (sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM) * PAGE_DIRECTORY_ENTRY_NUM),
 
     /* PTE flags bit */
     PTE_FLAG_PRESENT         = 0x001,
@@ -120,6 +120,7 @@ enum Paging_constants {
     PTE_FLAG_PAT             = 0x080,
     PTE_FLAG_GLOBAL          = 0x100,
     PTE_FLAGS_KERNEL         = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_GLOBAL,
+    PTE_FLAGS_KERNEL_DYNAMIC = PTE_FLAG_PRESENT | PTE_FLAG_RW,
     PTE_FLAGS_USER           = PTE_FLAG_PRESENT | PTE_FLAG_RW | PTE_FLAG_USER,
     PTE_FLAGS_AREA_MASK      = 0xFFFFF000,
 
@@ -133,6 +134,7 @@ enum Paging_constants {
     PDE_FLAG_SIZE            = 0x080,
     PDE_FLAG_GLOBAL          = 0x100,
     PDE_FLAGS_KERNEL         = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_GLOBAL,
+    PDE_FLAGS_KERNEL_DYNAMIC = PDE_FLAG_PRESENT | PDE_FLAG_RW,
     PDE_FLAGS_USER           = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_USER,
     PDE_FLAGS_AREA_MASK      = 0xFFFFF000,
 };
@@ -200,8 +202,11 @@ static inline size_t round_page_size(size_t size) {
 
 extern void init_paging(Paging_data const* const);
 extern void* vmalloc(size_t);
+extern void* uvmalloc(size_t, Page_directory_table const* const);
 extern void vfree(void*);
+extern void uvfree(void*, Page_directory_table const* const);
 extern void print_vmem(void);
+extern Page_directory_table make_user_pdt(void);
 
 
 

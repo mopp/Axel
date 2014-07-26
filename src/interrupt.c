@@ -60,7 +60,7 @@ void send_done_interrupt_slave(void) {
 }
 
 
-void interrupt_timer(uint32_t* esp) {
+void interrupt_timer(Interrupt_context* ic) {
     send_done_interrupt_master();
     switch_context();
 }

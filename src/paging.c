@@ -46,7 +46,7 @@ void init_paging(Paging_data const * const pd) {
     used_list_node = pd->used_p_info;
 
     /* calculate and set page table addr to page directory entry */
-    uintptr_t pt_base_addr = (vir_to_phys_addr((uintptr_t)kernel_pdt + (sizeof(Page_directory_entry) * (PAGE_DIRECTORY_ENTRY_NUM)))) >> PDE_PT_ADDR_SHIFT_NUM;
+    uintptr_t pt_base_addr = (vir_to_phys_addr((uintptr_t)kernel_pdt + (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM))) >> PDE_PT_ADDR_SHIFT_NUM;
     for (size_t i = 0; i < PAGE_DIRECTORY_ENTRY_NUM; i++) {
         kernel_pdt[i].page_table_addr = (pt_base_addr + i) & 0xFFFFF;
     }
@@ -105,7 +105,7 @@ static bool for_each_in_vmalloc(void* d) {
 }
 
 
-void* vmalloc(size_t size) {
+static inline void* vmalloc_generic(size_t size, bool is_kernel, Page_directory_table const * const pdt) {
     size = round_page_size(size);
 
     void* palloced = pmalloc(size);
@@ -113,9 +113,11 @@ void* vmalloc(size_t size) {
         return NULL;
     }
 
+    List* const list = (is_kernel == true) ? (&p_man->kernel_area_list) : (&p_man->user_area_list);
+
     /* search enough size node in kernel area. */
     for_each_in_vmalloc_size = size;
-    List_node* n = list_for_each(&p_man->kernel_area_list, for_each_in_vmalloc, false);
+    List_node* n = list_for_each(list, for_each_in_vmalloc, false);
     if (n == NULL) {
         pfree(palloced);
         return NULL;
@@ -127,21 +129,34 @@ void* vmalloc(size_t size) {
         pfree(palloced);
         return NULL;
     }
+
     /* allocate new area */
-    Page_info* pi = (Page_info*)n->data;
+    Page_info* pi     = (Page_info*)n->data;
     Page_info* new_pi = (Page_info*)new->data;
     new_pi->base_addr = pi->base_addr + size;
-    new_pi->size = pi->size - size;
-    new_pi->state = PAGE_INFO_STATE_FREE;
+    new_pi->size      = pi->size - size;
+    new_pi->state     = PAGE_INFO_STATE_FREE;
 
     pi->size = size;
     pi->state = PAGE_INFO_STATE_ALLOC;
 
-    list_insert_node_next(&p_man->kernel_area_list, n, new);
+    list_insert_node_next(list, n, new);
 
-    map_page_area(&kernel_pdt, PDE_FLAGS_KERNEL & ~PDE_FLAG_GLOBAL, PTE_FLAGS_KERNEL & ~PTE_FLAG_GLOBAL, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
+    /* page settings. */
+    uint32_t const pde_flags = (is_kernel == true) ? (PDE_FLAGS_KERNEL_DYNAMIC) : (PDE_FLAGS_USER);
+    uint32_t const pte_flags = (is_kernel == true) ? (PTE_FLAGS_KERNEL_DYNAMIC) : (PTE_FLAGS_USER);
+    map_page_area(pdt, pde_flags, pte_flags, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
 
     return (void*)pi->base_addr;
+}
+
+void* vmalloc(size_t size) {
+    return vmalloc_generic(size, true, &kernel_pdt);
+}
+
+
+void* uvmalloc(size_t size, Page_directory_table const * const pdt) {
+    return vmalloc_generic(size, false, pdt);
 }
 
 
@@ -152,20 +167,22 @@ static bool for_each_in_vfree(void* d) {
 }
 
 
-void vfree(void* addr) {
+static inline void vfree_generic(void* addr, bool is_kernel, Page_directory_table const * const pdt) {
     if (addr == NULL) {
         return;
     }
 
+    List* const list = (is_kernel == true) ? (&p_man->kernel_area_list) : (&p_man->user_area_list);
+
     for_each_in_vfree_base_addr = (uintptr_t)addr;
-    List_node* n = list_for_each(&p_man->kernel_area_list, for_each_in_vfree, false);
+    List_node* n = list_for_each(list, for_each_in_vfree, false);
     if (n == NULL) {
         return;
     }
     Page_info* n_pi = (Page_info*)n->data;
 
     /* fix page directory table infomation. */
-    unmap_page_area(&kernel_pdt, n_pi->base_addr, n_pi->base_addr + n_pi->size);
+    unmap_page_area(pdt, n_pi->base_addr, n_pi->base_addr + n_pi->size);
 
     List_node* const prev_node = n->prev;
     List_node* const next_node = n->next;
@@ -189,6 +206,29 @@ void vfree(void* addr) {
     } else {
         n_pi->state = PAGE_INFO_STATE_FREE;
     }
+}
+
+
+void vfree(void* addr) {
+    vfree_generic(addr, true, &kernel_pdt);
+}
+
+
+void uvfree(void* addr, Page_directory_table const * const pdt) {
+    vfree_generic(addr, false, pdt);
+}
+
+
+Page_directory_table make_user_pdt(void) {
+    Page_directory_table pdt = vmalloc(ALL_PAGE_STRUCT_SIZE);
+
+    uintptr_t pt_base_addr = (vir_to_phys_addr((uintptr_t)pdt + (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM))) >> PDE_PT_ADDR_SHIFT_NUM;
+    for (size_t i = 0; i < PAGE_DIRECTORY_ENTRY_NUM; i++) {
+        pdt[i].page_table_addr = (pt_base_addr + i) & 0xFFFFF;
+    }
+
+
+    return pdt;
 }
 
 
@@ -334,17 +374,17 @@ static inline void unmap_page_area(Page_directory_table const* const pdt, uintpt
 static bool p(void* d) {
     Page_info* p = (Page_info*)d;
     size_t mb = p->size / (1024 * 1024);
-    printf("Base:%zx, Size:%zu%s, State:%s\n", p->base_addr, (mb == 0 ? p->size / 1024 : mb), (mb == 0 ? "KB" : "MB"), (p->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
+    printf("Base:0x%zx, Size:%zu%s, State:%s\n", p->base_addr, (mb == 0 ? p->size / 1024 : mb), (mb == 0 ? "KB" : "MB"), (p->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
     return false;
 }
 
 
 void print_vmem(void) {
-    puts("\n");
+    puts("\nUser area\n");
     list_for_each(&p_man->user_area_list, p, false);
+    puts("Kernel area\n");
     list_for_each(&p_man->kernel_area_list, p, false);
 
-    puts("\n");
     size_t const size = 1024 * 1024;
     char* str = vmalloc(sizeof(char) * size);
     if (str == NULL) {

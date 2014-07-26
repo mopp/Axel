@@ -54,6 +54,31 @@ enum PIC_constants {
 };
 
 
+/*
+ * This is stack structure when happen interruption by CPU.
+ * Please see ./interrupt_asm.asm
+ */
+struct interrupt_context {
+    uint32_t edi;
+    uint32_t esi;
+    uint32_t ebp;
+    uint32_t esp;
+    uint32_t ebx;
+    uint32_t edx;
+    uint32_t ecx;
+    uint32_t eax;
+    uint16_t gs;
+    uint16_t fs;
+    uint16_t es;
+    uint16_t ds;
+    uint32_t error_code;
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+};
+typedef struct interrupt_context Interrupt_context;
+
+
 extern void init_pic(void);
 extern void enable_interrupt(uint16_t);
 extern void disable_interrupt(uint16_t);

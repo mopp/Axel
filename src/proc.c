@@ -42,8 +42,9 @@ typedef struct task_state_segment Task_state_segment;
 _Static_assert(sizeof(Task_state_segment) == 104, "Task_state_segment size is NOT 104 byte");
 
 struct context {
-    uint32_t sp; /* stack pointer. */
-    uint32_t ip; /* instruction pointer. */
+    uint32_t sp;              /* Stack pointer. */
+    uint32_t ip;              /* Instruction pointer. */
+    Page_directory_table pdt; /* memory space. */
 };
 typedef struct context Context;
 
@@ -172,20 +173,18 @@ void switch_context(void) {
 }
 
 
-void task_a(void) {
+_Noreturn void task_a(void) {
     while (1) {
         *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 'A';
-        puts("Task A\n");
-        io_hlt();
+        /* puts("Task A\n"); */
     }
 }
 
 
-void task_b(void) {
+_Noreturn void task_b(void) {
     while (1) {
         *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 'B';
-        puts("Task B\n");
-        io_hlt();
+        /* puts("Task B\n"); */
     }
 }
 

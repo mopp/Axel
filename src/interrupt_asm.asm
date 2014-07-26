@@ -5,18 +5,17 @@
 ;---------------------------------------------------------------------
     bits 32
 
+
 %macro push_all 0
         push ds
         push es
         push fs
         push gs
         pushad
-        pushfd
 %endmacro
 
 
 %macro pop_all 0
-        popfd
         popad
         pop gs
         pop fs
@@ -26,19 +25,35 @@
 
 
 ; macro to make interrupt_handler.
-%macro make_interrupt_handler 1
-    global asm_%1
-    extern %1
+%macro make_interrupt_handler 2
+    global asm_%2
+    extern %2
 
-asm_%1:
+asm_%2:
+    %if %1 == 0
+        ; interruption has no error_code.
+        ; So, push dummy code.
+        push 0
+    %endif
+
     push_all
 
     ; set stack pointer as function argument.
-    mov eax, esp
+    ; esp indicate top address of saved context.
+    push esp
 
-    call %1
+    call %2
+
+    add esp, 4
 
     pop_all
+
+    %if %1 == 0
+        ; protect eax value to pop dummy code.
+        push eax
+        pop eax
+        pop eax
+    %endif
 
     iretd
 %endmacro
@@ -47,8 +62,9 @@ asm_%1:
 section .text
 
 ; making interrupt handler.
-; first argument is handler function in C.
-make_interrupt_handler interrupt_keybord
-make_interrupt_handler interrupt_mouse
-make_interrupt_handler interrupt_timer
+; first argument is 0, if interrupt has NOT error code.
+; second argument is handler function in C.
+make_interrupt_handler 0, interrupt_keybord
+make_interrupt_handler 0, interrupt_mouse
+make_interrupt_handler 0, interrupt_timer
 
