@@ -303,6 +303,7 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
  * @param vaddr     virtual address.
  * @param paddr     physical address.
  */
+/* FIXME: add error handling */
 static inline void map_page(Page_directory_table const* const pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
     Page_directory_entry* const pde = get_pde(pdt, vaddr);
     pde->bit_expr = (PDE_FLAGS_AREA_MASK & pde->bit_expr) | pde_flags;
