@@ -222,8 +222,8 @@ Axel_state_code init_process(void) {
     pu.context->pdt = make_user_pdt();
     pu.pid          = 2;
     pu.stack        = uvmalloc(0x1000, &pu.context->pdt);
-   /* 0:	f4                   	hlt     */
-   /* 1:	eb fd                	jmp    0 <usr> */
+    /* 0:	f4                   	hlt     */
+    /* 1:	eb fd                	jmp    0 <usr> */
 
     processes = vmalloc(sizeof(Process*) * process_num);
     processes[0] = &pk;
