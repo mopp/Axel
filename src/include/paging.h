@@ -157,8 +157,9 @@ typedef struct page_info Page_info;
 
 
 struct page_manager {
-    Dlist kernel_area_list;
-    Dlist user_area_list;
+    Dlist list;
+    size_t alloc_request_size;
+    uintptr_t free_request_addr;
 };
 typedef struct page_manager Page_manager;
 

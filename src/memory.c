@@ -37,6 +37,8 @@ typedef struct memory_info Memory_info;
 /* structure for storing memory infomation. */
 struct memory_manager {
     Dlist list; /* this list store memory infomation using Memory_info structure. */
+    size_t alloc_request_size;
+    uintptr_t free_request_addr;
 };
 typedef struct memory_manager Memory_manager;
 
@@ -194,10 +196,9 @@ static inline void* smalloc_page_round(size_t size) {
 }
 
 
-static size_t for_each_in_malloc_size;
 static bool for_each_in_malloc(Dlist* l, void* d) {
     Memory_info const* const m = (Memory_info*)d;
-    return (m->state == MEM_INFO_STATE_FREE && for_each_in_malloc_size <= m->size) ? true : false;
+    return ((m->state == MEM_INFO_STATE_FREE) && (((Memory_manager const*)l)->alloc_request_size <= m->size)) ? true : false;
 }
 
 
@@ -207,10 +208,8 @@ static bool for_each_in_malloc(Dlist* l, void* d) {
  * @return pointer to allocated memory.
  */
 void* pmalloc(size_t size) {
-    /* size_t size = size_byte * 8; */
-
     /* search enough size node */
-    for_each_in_malloc_size = size;
+    mem_man->alloc_request_size = size;
     Dlist_node* n = dlist_for_each(&mem_man->list, for_each_in_malloc, false);
     if (n == NULL) {
         return NULL;
@@ -243,10 +242,9 @@ void* pmalloc_page_round(size_t size) {
 }
 
 
-static size_t for_each_in_free_base_addr;
 static bool for_each_in_free(Dlist* l, void* d) {
     Memory_info const* const m = (Memory_info*)d;
-    return (m->state == MEM_INFO_STATE_ALLOC && m->base_addr == for_each_in_free_base_addr) ? true : false;
+    return ((m->state == MEM_INFO_STATE_ALLOC) && (m->base_addr == ((Memory_manager const*)l)->free_request_addr)) ? true : false;
 }
 
 
@@ -255,7 +253,7 @@ void pfree(void* object) {
         return;
     }
 
-    for_each_in_free_base_addr = (uintptr_t)object;
+    mem_man->free_request_addr = (uintptr_t)object;
     Dlist_node* n = dlist_for_each(&mem_man->list, for_each_in_free, false);
     if (n == NULL) {
         return;

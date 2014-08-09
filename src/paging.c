@@ -64,44 +64,46 @@ void init_paging(Paging_data const * const pd) {
         p_list_nodes[i].data = &p_info[i];
     }
 
+    Dlist_node* n;
+    Page_info* pp;
+
     /* Set user space. */
-    dlist_init(&p_man->user_area_list, sizeof(Page_info), NULL);
-    Dlist_node* n = dlist_get_new_page_node();
-    Page_info* pp = (Page_info*)n->data;
-    pp->base_addr = 0x00000000;
-    pp->size = (size_t)get_kernel_vir_start_addr();
-    pp->state = PAGE_INFO_STATE_FREE;
-    dlist_insert_node_last(&p_man->user_area_list, n);
+    // dlist_init(&p_man->user_area_list, sizeof(Page_info), NULL);
+    // n = dlist_get_new_page_node();
+    // pp = (Page_info*)n->data;
+    // pp->base_addr = 0x00000000;
+    // pp->size = (size_t)get_kernel_vir_start_addr();
+    // pp->state = PAGE_INFO_STATE_FREE;
+    // dlist_insert_node_last(&p_man->user_area_list, n);
 
     /* Set kernel space. */
-    dlist_init(&p_man->kernel_area_list, sizeof(Page_info), NULL);
+    dlist_init(&p_man->list, sizeof(Page_info), NULL);
     n = dlist_get_new_page_node();
     pp = (Page_info*)n->data;
     pp->base_addr = get_kernel_vir_start_addr();
     pp->size = get_kernel_size();
     pp->state = PAGE_INFO_STATE_ALLOC;
-    dlist_insert_node_last(&p_man->kernel_area_list, n);
+    dlist_insert_node_last(&p_man->list, n);
 
     n = dlist_get_new_page_node();
     pp = (Page_info*)n->data;
     pp->base_addr = get_kernel_vir_start_addr() + get_kernel_size();
     pp->size = 0xfd000000 - pp->base_addr;
     pp->state = PAGE_INFO_STATE_FREE;
-    dlist_insert_node_last(&p_man->kernel_area_list, n);
+    dlist_insert_node_last(&p_man->list, n);
 
     n = dlist_get_new_page_node();
     pp = (Page_info*)n->data;
     pp->base_addr = 0xfd000000;
     pp->size = 0xFFFFFFFF - 0xfd000000;
     pp->state = PAGE_INFO_STATE_ALLOC;
-    dlist_insert_node_last(&p_man->kernel_area_list, n);
+    dlist_insert_node_last(&p_man->list, n);
 }
 
 
-static size_t for_each_in_vmalloc_size;
 static bool for_each_in_vmalloc(Dlist* l, void* d) {
     Page_info const* const p = (Page_info*)d;
-    return (p->state == PAGE_INFO_STATE_FREE && for_each_in_vmalloc_size <= p->size) ? true : false;
+    return ((p->state == PAGE_INFO_STATE_FREE) && (((Page_manager const *)l)->alloc_request_size <= p->size)) ? true : false;
 }
 
 
@@ -113,10 +115,11 @@ static inline void* vmalloc_generic(size_t size, bool is_kernel, Page_directory_
         return NULL;
     }
 
-    Dlist* const list = (is_kernel == true) ? (&p_man->kernel_area_list) : (&p_man->user_area_list);
+    /* FIXME: */
+    Dlist* const list = (is_kernel == true) ? (&p_man->list) : (NULL);
 
     /* search enough size node in kernel area. */
-    for_each_in_vmalloc_size = size;
+    p_man->alloc_request_size = size;
     Dlist_node* n = dlist_for_each(list, for_each_in_vmalloc, false);
     if (n == NULL) {
         pfree(palloced);
@@ -160,10 +163,9 @@ void* uvmalloc(size_t size, Page_directory_table const * const pdt) {
 }
 
 
-static size_t for_each_in_vfree_base_addr;
 static bool for_each_in_vfree(Dlist* l, void* d) {
     Page_info const* const p = (Page_info*)d;
-    return (p->state == PAGE_INFO_STATE_ALLOC && p->base_addr == for_each_in_vfree_base_addr) ? true : false;
+    return ((p->state == PAGE_INFO_STATE_ALLOC) && (p->base_addr == ((Page_manager const *)l)->free_request_addr)) ? true : false;
 }
 
 
@@ -172,9 +174,10 @@ static inline void vfree_generic(void* addr, bool is_kernel, Page_directory_tabl
         return;
     }
 
-    Dlist* const list = (is_kernel == true) ? (&p_man->kernel_area_list) : (&p_man->user_area_list);
+    /* FIXME: */
+    Dlist* const list = (is_kernel == true) ? (&p_man->list) : (&p_man->list);
 
-    for_each_in_vfree_base_addr = (uintptr_t)addr;
+    p_man->free_request_addr = (uintptr_t)addr;
     Dlist_node* n = dlist_for_each(list, for_each_in_vfree, false);
     if (n == NULL) {
         return;
@@ -256,7 +259,7 @@ static Dlist_node* dlist_get_new_page_node(void) {
 
 
 static void remove_page_list_node(Dlist_node* target) {
-    dlist_remove_node(&p_man->kernel_area_list, target);
+    dlist_remove_node(&p_man->list, target);
 
     /* instead of free(). */
     used_list_node[((uintptr_t)target - (uintptr_t)p_list_nodes) / sizeof(Dlist_node)] = false;
@@ -386,10 +389,10 @@ static bool p(Dlist* l, void* d) {
 
 
 void print_vmem(void) {
-    puts("\nUser area\n");
-    dlist_for_each(&p_man->user_area_list, p, false);
+    /* puts("\nUser area\n"); */
+    /* dlist_for_each(&p_man->user_area_list, p, false); */
     puts("Kernel area\n");
-    dlist_for_each(&p_man->kernel_area_list, p, false);
+    dlist_for_each(&p_man->list, p, false);
 
     size_t const size = 1024 * 1024;
     char* str = vmalloc(sizeof(char) * size);
