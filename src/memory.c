@@ -14,7 +14,7 @@
 #include <paging.h>
 #include <asm_functions.h>
 #include <string.h>
-#include <list.h>
+#include <dlist.h>
 
 
 enum memory_manager_constants {
@@ -36,7 +36,7 @@ typedef struct memory_info Memory_info;
 
 /* structure for storing memory infomation. */
 struct memory_manager {
-    List list; /* this list store memory infomation using Memory_info structure. */
+    Dlist list; /* this list store memory infomation using Memory_info structure. */
 };
 typedef struct memory_manager Memory_manager;
 
@@ -57,13 +57,13 @@ static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 
 /* These pointer variables is dynamically allocated at kernel tail. */
 static Memory_manager* mem_man;
-static List_node* mem_list_nodes;
+static Dlist_node* mem_list_nodes;
 static Memory_info* mem_info;
 static bool* used_list_node;
 
 static void fix_address(Multiboot_info* const);
-static List_node* list_get_new_memory_node(void);
-static void remove_memory_list_node(List_node*);
+static Dlist_node* list_get_new_memory_node(void);
+static void remove_memory_list_node(Dlist_node*);
 static void* smalloc(size_t);
 static void* smalloc_page_round(size_t);
 
@@ -84,21 +84,21 @@ void init_memory(Multiboot_info* const mb_info) {
     Paging_data pd = {
         .pdt          = smalloc_page_round(ALL_PAGE_STRUCT_SIZE),
         .p_man        = (Page_manager*)smalloc(sizeof(Page_manager)),
-        .p_list_nodes = (List_node*)smalloc(sizeof(List_node) * PAGE_INFO_NODE_NUM),
+        .p_list_nodes = (Dlist_node*)smalloc(sizeof(Dlist_node) * PAGE_INFO_NODE_NUM),
         .p_info       = (Page_info*)smalloc(sizeof(Page_info) * PAGE_INFO_NODE_NUM),
         .used_p_info  = (bool*)smalloc(sizeof(bool) * PAGE_INFO_NODE_NUM),
     };
 
     /* initialize dynamic allocated variables. */
     mem_man = smalloc(sizeof(Memory_manager));
-    list_init(&mem_man->list, sizeof(Memory_info), NULL);
+    dlist_init(&mem_man->list, sizeof(Memory_info), NULL);
 
     mem_info = smalloc(sizeof(Memory_info) * MAX_MEM_NODE_NUM);
 
     used_list_node = smalloc(sizeof(bool) * MAX_MEM_NODE_NUM);
 
     /* set memory_info area into list node. */
-    mem_list_nodes = smalloc(sizeof(List_node) * MAX_MEM_NODE_NUM);
+    mem_list_nodes = smalloc(sizeof(Dlist_node) * MAX_MEM_NODE_NUM);
     for (size_t i = 0; i < MAX_MEM_NODE_NUM; ++i) {
         mem_list_nodes[i].data = &mem_info[i];
     }
@@ -118,12 +118,12 @@ void init_memory(Multiboot_info* const mb_info) {
      *      Or it might assume that you mean 32M of total usable RAM, going from 0 to 32M + 384K -1.
      *      So don't be surprised if you see a "detected memory size" that does not exactly match your expectations.
      */
-    List_node* kernel_n = list_get_new_memory_node();
+    Dlist_node* kernel_n = list_get_new_memory_node();
     Memory_info* kernel_mi = (Memory_info*)kernel_n->data;
     kernel_mi->base_addr = get_kernel_phys_start_addr();
     kernel_mi->size = get_kernel_phys_end_addr();
     kernel_mi->state = MEM_INFO_STATE_ALLOC;
-    list_insert_node_last(&mem_man->list, kernel_n);
+    dlist_insert_node_last(&mem_man->list, kernel_n);
     uintptr_t kernel_node_end_addr = kernel_mi->base_addr + kernel_mi->size;
 
     /* set memory infomation from Multiboot_memory_map. */
@@ -135,7 +135,7 @@ void init_memory(Multiboot_info* const mb_info) {
         if ((i->addr + i->len) < kernel_node_end_addr) {
             continue;
         }
-        List_node* n = list_get_new_memory_node();
+        Dlist_node* n = list_get_new_memory_node();
 
         /* set memory_info */
         Memory_info* mi = (Memory_info*)n->data;
@@ -150,7 +150,7 @@ void init_memory(Multiboot_info* const mb_info) {
         mi->state = (i->type == MULTIBOOT_MEMORY_AVAILABLE) ? MEM_INFO_STATE_FREE : MEM_INFO_STATE_ALLOC;
 
         /* append to list. */
-        list_insert_node_last(&mem_man->list, n);
+        dlist_insert_node_last(&mem_man->list, n);
     }
 
     /*
@@ -195,7 +195,7 @@ static inline void* smalloc_page_round(size_t size) {
 
 
 static size_t for_each_in_malloc_size;
-static bool for_each_in_malloc(void* d) {
+static bool for_each_in_malloc(Dlist* l, void* d) {
     Memory_info const* const m = (Memory_info*)d;
     return (m->state == MEM_INFO_STATE_FREE && for_each_in_malloc_size <= m->size) ? true : false;
 }
@@ -211,13 +211,13 @@ void* pmalloc(size_t size) {
 
     /* search enough size node */
     for_each_in_malloc_size = size;
-    List_node* n = list_for_each(&mem_man->list, for_each_in_malloc, false);
+    Dlist_node* n = dlist_for_each(&mem_man->list, for_each_in_malloc, false);
     if (n == NULL) {
         return NULL;
     }
 
     /* get new node */
-    List_node* new = list_get_new_memory_node();
+    Dlist_node* new = list_get_new_memory_node();
     if (new == NULL) {
         return NULL;
     }
@@ -232,7 +232,7 @@ void* pmalloc(size_t size) {
     mi->size = size;
     mi->state = MEM_INFO_STATE_ALLOC;
 
-    list_insert_node_next(&mem_man->list, n, new);
+    dlist_insert_node_next(&mem_man->list, n, new);
 
     return (void*)mi->base_addr;
 }
@@ -244,7 +244,7 @@ void* pmalloc_page_round(size_t size) {
 
 
 static size_t for_each_in_free_base_addr;
-static bool for_each_in_free(void* d) {
+static bool for_each_in_free(Dlist* l, void* d) {
     Memory_info const* const m = (Memory_info*)d;
     return (m->state == MEM_INFO_STATE_ALLOC && m->base_addr == for_each_in_free_base_addr) ? true : false;
 }
@@ -256,14 +256,14 @@ void pfree(void* object) {
     }
 
     for_each_in_free_base_addr = (uintptr_t)object;
-    List_node* n = list_for_each(&mem_man->list, for_each_in_free, false);
+    Dlist_node* n = dlist_for_each(&mem_man->list, for_each_in_free, false);
     if (n == NULL) {
         return;
     }
     Memory_info* n_mi = (Memory_info*)n->data;
 
-    List_node* const prev_node = n->prev;
-    List_node* const next_node = n->next;
+    Dlist_node* const prev_node = n->prev;
+    Dlist_node* const next_node = n->next;
     Memory_info* const prev_mi = (Memory_info*)prev_node->data;
     Memory_info* const next_mi = (Memory_info*)next_node->data;
 
@@ -338,7 +338,7 @@ static inline void fix_address(Multiboot_info* const mb_info) {
  * @param pointer to List_node.
  * @return new pointer to List_node.
  */
-static List_node* list_get_new_memory_node(void) {
+static Dlist_node* list_get_new_memory_node(void) {
     static size_t cnt = 0;         /* counter for nextfix */
     size_t const stored_cnt = cnt; /* It is used for detecting already checking all node. */
 
@@ -364,16 +364,16 @@ static List_node* list_get_new_memory_node(void) {
  * @param  m
  * @return
  */
-static void remove_memory_list_node(List_node* target) {
-    list_remove_node(&mem_man->list, target);
+static void remove_memory_list_node(Dlist_node* target) {
+    dlist_remove_node(&mem_man->list, target);
 
     /* instead of free(). */
-    used_list_node[((uintptr_t)target - (uintptr_t)mem_list_nodes) / sizeof(List_node)] = false;
+    used_list_node[((uintptr_t)target - (uintptr_t)mem_list_nodes) / sizeof(Dlist_node)] = false;
 }
 
 
 #include <stdio.h>
-static bool p(void* d) {
+static bool p(Dlist* l, void* d) {
     Memory_info* m = (Memory_info*)d;
     printf("Base:%zx, Size:%zuKB, State:%s\n", m->base_addr, m->size / 1024, (m->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
     return false;
@@ -382,5 +382,5 @@ static bool p(void* d) {
 
 void print_pmem(void) {
     puts("\n");
-    list_for_each(&mem_man->list, p, false);
+    dlist_for_each(&mem_man->list, p, false);
 }

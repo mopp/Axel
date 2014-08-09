@@ -10,20 +10,19 @@
 #include <window.h>
 #include <paging.h>
 #include <graphic.h>
-#include <atype.h>
 #include <state_code.h>
 #include <string.h>
 #include <font.h>
 
 
 struct window_manager {
-    List win_list;
+    Dlist win_list;
     Point2d display_size;  /* This storing display size. */
     struct {
         Point2d begin, end;
     } check_area;          /* This is checking area in update_win_for_each. */
     RGB8* display_buffer;  /* For double buffering. */
-    List_node* mouse_node; /* This is always top on other windows. */
+    Dlist_node* mouse_node; /* This is always top on other windows. */
 };
 typedef struct window_manager Window_manager;
 
@@ -31,7 +30,7 @@ typedef struct window_manager Window_manager;
 static Window_manager* win_man; /* Window manager. */
 
 static void calibrate(Point2d* const p);
-static void win_node_free(void*);
+static void win_node_free(Dlist*, void*);
 static void update_window_buffer(void);
 static void update_window_vram(void);
 static void flush_area(Point2d const* const, Point2d const* const);
@@ -54,7 +53,7 @@ Axel_state_code init_window(void) {
     }
     memset(win_man->display_buffer, 0, size);
 
-    list_init(&win_man->win_list, sizeof(Window), win_node_free);
+    dlist_init(&win_man->win_list, sizeof(Window), win_node_free);
 
     /* alloc mouse */
     Window mouse_win = {
@@ -68,11 +67,11 @@ Axel_state_code init_window(void) {
         .reserved = 0,
     };
     if (mouse_win.buf == NULL) {
-        return AXEL_MEMORY_ALLOC_ERROR; 
+        return AXEL_MEMORY_ALLOC_ERROR;
     }
     window_draw_bitmap(&mouse_win, mouse_cursor, 2);
 
-    list_insert_data_last(&win_man->win_list, &mouse_win);
+    dlist_insert_data_last(&win_man->win_list, &mouse_win);
     win_man->mouse_node = win_man->win_list.node;
 
     return AXEL_SUCCESS;
@@ -106,7 +105,7 @@ Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
     }
 
     /* all window is leaved behind mouse. */
-    List_node* n = list_insert_data_prev(&win_man->win_list, win_man->mouse_node, &w);
+    Dlist_node* n = dlist_insert_data_prev(&win_man->win_list, win_man->mouse_node, &w);
 
     return (n == NULL) ? (NULL) : ((Window*)n->data);
 }
@@ -118,7 +117,7 @@ Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t
         return NULL;
     }
 
-    window_draw_bitmap(w, dw, len);
+    window_draw_bitmap(w, dw, 100);
 
     return w;
 }
@@ -149,12 +148,12 @@ void free_window(Window* w) {
         return;
     }
 
-    List_node* n = list_search_node(&win_man->win_list, w);
+    Dlist_node* n = dlist_search_node(&win_man->win_list, w);
     if (n == NULL) {
         return;
     }
 
-    list_delete_node(&win_man->win_list, n);
+    dlist_delete_node(&win_man->win_list, n);
 }
 
 
@@ -260,7 +259,7 @@ Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d cons
 
 void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) {
     if (w == NULL || dw == NULL || len == 0) {
-       return; 
+       return;
     }
 
     for (int k = 0; k < len; k++) {
@@ -294,7 +293,7 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
 
     if ((dx == 0 && dy == 0) || bold == 0) {
         /* This case is NOT a line. */
-        return; 
+        return;
     }
 
     int32_t size_x = w->size.x;
@@ -367,7 +366,7 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
 }
 
 
-static void win_node_free(void* d) {
+static void win_node_free(Dlist* l, void* d) {
     if (d == NULL) {
         return;
     }
@@ -385,7 +384,7 @@ static inline void calibrate(Point2d* const p) {
 }
 
 
-static bool update_win_for_each(void* d) {
+static bool update_win_for_each(Dlist* l, void* d) {
     Window* const w = d;
 
     /* NOTE: These point is NOT points of buffer and these is display points. */
@@ -491,7 +490,7 @@ static bool update_win_for_each(void* d) {
 
 
 static inline void update_window_buffer(void) {
-    list_node_for_each(&win_man->win_list, win_man->mouse_node->next, update_win_for_each, false);
+    dlist_node_for_each(&win_man->win_list, win_man->mouse_node->next, update_win_for_each, false);
 }
 
 

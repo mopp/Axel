@@ -1,12 +1,10 @@
 MAKEFILE 	:= Makefile
-OBJS		:= list.o queue.o stack.o aqueue.o
+OBJS		:= dlist.o aqueue.o
 TARGET 		:= libstruct.a
 
 .SUFFIXES: .c .o
 .c.o:
 	$(CC) -c $< -o $@
-	# $(OBJCOPY) --only-keep-debug $@ $(basename $(@)).sym
-	# $(OBJCOPY) --strip-debug $@
 
 
 .PHONY: default
@@ -18,9 +16,7 @@ $(TARGET): $(OBJS)
 	$(AR_R) $(TARGET) $(OBJS)
 	cp $(TARGET) $(AXEL_LIB_PATH)
 
-list.o		: list.c  	$(MAKEFILE) $(AXEL_INCLUDE_PATH)list.h
-queue.o		: queue.c 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)queue.h list.c $(AXEL_INCLUDE_PATH)list.h
-stack.o		: stack.c 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)stack.h
+list.o		: dlist.c  	$(MAKEFILE) $(AXEL_INCLUDE_PATH)dlist.h
 aqueue.o	: aqueue.c 	$(MAKEFILE) $(AXEL_INCLUDE_PATH)aqueue.h
 
 

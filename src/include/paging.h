@@ -1,5 +1,5 @@
 /**
- * @file paging.c
+ * @file include/paging.h
  * @brief paging header.
  *      NOTE that "frame" is also physical page or page frame.
  * @author mopp
@@ -21,7 +21,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <list.h>
+#include <dlist.h>
 
 
 /*
@@ -157,8 +157,8 @@ typedef struct page_info Page_info;
 
 
 struct page_manager {
-    List kernel_area_list;
-    List user_area_list;
+    Dlist kernel_area_list;
+    Dlist user_area_list;
 };
 typedef struct page_manager Page_manager;
 
@@ -166,7 +166,7 @@ typedef struct page_manager Page_manager;
 struct paging_data {
     Page_directory_table pdt;
     Page_manager* p_man;
-    List_node* p_list_nodes;
+    Dlist_node* p_list_nodes;
     Page_info* p_info;
     bool* used_p_info;
 };

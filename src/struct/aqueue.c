@@ -1,17 +1,21 @@
 /**
- * @file array_queue.c
- * @brief queue by array.
+ * @file struct/aqueue.c
+ * @brief Queue implemented by array.
  * @author mopp
  * @version 0.1
  * @date 2014-04-27
  */
 
-#include <string.h>
-#include <aqueue.h>
+#include <assert.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <aqueue.h>
 
 
 Aqueue* aqueue_init(Aqueue* q, size_t type_size, size_t capacity, release_func f) {
+    assert(q != NULL);
+
     q->data = (void**)malloc(sizeof(void*) * capacity);
 
     /* allocate all element area. */
@@ -33,21 +37,33 @@ Aqueue* aqueue_init(Aqueue* q, size_t type_size, size_t capacity, release_func f
 
 
 bool aqueue_is_empty(Aqueue const* q) {
+    assert(q != NULL);
+
     return (aqueue_get_size(q) == 0) ? true : false;
 }
 
 
 bool aqueue_is_full(Aqueue const* q) {
+    assert(q != NULL);
+
     return (aqueue_get_size(q) == q->capacity) ? true : false;
 }
 
 
 void* aqueue_get_first(Aqueue* q) {
-    return (aqueue_is_empty(q) == true) ? NULL : q->data[q->first];
+    assert(q != NULL);
+
+    if (true == aqueue_is_empty(q)) {
+        return NULL;
+    }
+
+    return q->data[q->first];
 }
 
 
 void aqueue_delete_first(Aqueue* q) {
+    assert(q != NULL);
+
     if (aqueue_is_empty(q) == true || q->data[q->first] == NULL) {
         return;
     }
@@ -74,6 +90,8 @@ void* aqueue_insert(Aqueue* q, void* data) {
 
 
 void aqueue_destruct(Aqueue* q) {
+    assert(q != NULL);
+
     size_t const size = aqueue_get_size(q);
     for (int i = 0; i < size; i++) {
         ((q->free != NULL) ? q->free : free)(q->data[i]);
@@ -81,14 +99,21 @@ void aqueue_destruct(Aqueue* q) {
 
     free(q->data[0]); /* In aqueue_init, malloced addr is set at index 0 of array. */
     free(q->data);
+
+    q->capacity = 0;
+    q->free = 0;
 }
 
 
 size_t aqueue_get_size(Aqueue const* q) {
+    assert(q != NULL);
+
     return q->size;
 }
 
 
 size_t aqueue_get_capacity(Aqueue const* q) {
+    assert(q != NULL);
+
     return q->capacity;
 }

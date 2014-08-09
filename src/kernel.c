@@ -11,13 +11,11 @@
 #include <graphic.h>
 #include <interrupt.h>
 #include <kernel.h>
-#include <list.h>
 #include <macros.h>
 #include <memory.h>
 #include <multiboot.h>
 #include <paging.h>
 #include <point.h>
-#include <queue.h>
 #include <stdio.h>
 #include <string.h>
 #include <vbe.h>

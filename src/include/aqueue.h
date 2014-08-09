@@ -1,6 +1,6 @@
 /**
- * @file array_queue.h
- * @brief queue by array header.
+ * @file include/aqueue.h
+ * @brief Array queue header.
  * @author mopp
  * @version 0.1
  * @date 2014-04-27
@@ -12,7 +12,10 @@
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <atype.h>
+
+
+typedef void (*release_func)(void*);
+
 
 struct aqueue {
     void** data; /* pointer to any data(void*) array. */
@@ -34,6 +37,9 @@ extern void* aqueue_insert(Aqueue*, void*);
 extern void aqueue_destruct(Aqueue*);
 extern size_t aqueue_get_size(Aqueue const*);
 extern size_t aqueue_get_capacity(Aqueue const*);
+
+
+#define aqueue_get(type, q) (*(type*)aqueue_get_first(q))
 
 
 #endif
