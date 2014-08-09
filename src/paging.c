@@ -39,10 +39,10 @@ static void remove_page_list_node(Dlist_node*);
 
 
 void init_paging(Paging_data const * const pd) {
-    kernel_pdt = pd->pdt;
-    p_man = pd->p_man;
-    p_info = pd->p_info;
-    p_list_nodes = pd->p_list_nodes;
+    kernel_pdt     = pd->pdt;
+    p_man          = pd->p_man;
+    p_info         = pd->p_info;
+    p_list_nodes   = pd->p_list_nodes;
     used_list_node = pd->used_p_info;
 
     /* calculate and set page table addr to page directory entry */
@@ -56,8 +56,10 @@ void init_paging(Paging_data const * const pd) {
     map_page_same_area(&kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, 0xfd000000, 0xfd000000 + (600 * 800 * 4));
 
     /* Switch paging directory table. */
+    turn_off_pge();
     set_cpu_pdt((uintptr_t)kernel_pdt);
     turn_off_4MB_paging();
+    turn_on_pge();
 
     /* Inirialize page manager. */
     for (size_t i = 0; i < PAGE_INFO_NODE_NUM; ++i) {
@@ -156,6 +158,7 @@ static inline void* vmalloc_generic(size_t size, bool is_kernel, Page_directory_
 void* vmalloc(size_t size) {
     return vmalloc_generic(size, true, &kernel_pdt);
 }
+void* umalloc()
 
 
 void* uvmalloc(size_t size, Page_directory_table const * const pdt) {

@@ -143,7 +143,6 @@ set_cpu_pdt:
     mov ebx, [esp + 4]
     sub ebx, KERNEL_VIRTUAL_BASE_ADDR;
     mov cr3, ebx
-    call turn_on_pge
     ret
 
 
@@ -164,10 +163,8 @@ flush_tlb:
 
 ; void flush_tlb_all(void)
 flush_tlb_all:
-    call turn_off_pge
     mov eax, cr3
     mov cr3, ebx
-    call turn_on_pge
     ret
 
 
