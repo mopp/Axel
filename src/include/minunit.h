@@ -4,30 +4,49 @@
  *  from http://www.jera.com/techinfo/jtns/jtn002.html
  ************************************************************/
 
-#ifndef _MINUNIT_H_
-#define _MINUNIT_H_
+#ifndef _MIN_UNIT_H_
+#define _MIN_UNIT_H_
 
 
+
+#include <stdio.h>
 #include <macros.h>
 
-static uint32_t mu_all_tests_num;
 
-#define MU_ASSERT(err_msg, exp)             \
-    do {                                    \
-        if (0 == (exp)) {                   \
-            return HERE_STRING " " err_msg; \
-        }                                   \
+static int minunit_test_counter;
+
+
+#define MIN_UNIT_ASSERT(msg, expr)                 \
+    do {                                           \
+        if ((expr) == 0) {                         \
+            return "*ABORT* " HERE_STRING " " msg; \
+        }                                          \
     } while (0)
 
-
-#define MU_RUN_TEST(func_name)               \
-    do {                                     \
-        char const *const msg = func_name(); \
-        ++mu_all_tests_num;                  \
-        if (msg != 0) {                      \
-            return msg;                      \
-        }                                    \
+#define MIN_UNIT_RUN(func_name)          \
+    do {                                 \
+        char const *msg = (func_name)(); \
+        minunit_test_counter++;          \
+        if (msg != NULL) {               \
+            return msg;                  \
+        }                                \
     } while (0)
+
+#define MIN_UNIT_RUN_ALL(func_name)                               \
+    do {                                                          \
+        char const *result = (func_name)();                       \
+                                                                  \
+        if (result != NULL) {                                     \
+            printf("%s\n", result);                               \
+        } else {                                                  \
+            printf("==ALL TESTS PASSED==\n");                     \
+        }                                                         \
+                                                                  \
+        printf("The number of test: %d\n", minunit_test_counter); \
+                                                                  \
+        return result != NULL;                                    \
+    } while (0)
+
 
 
 #endif
