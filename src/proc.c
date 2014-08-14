@@ -75,6 +75,10 @@ static volatile uint32_t* next_sp;
 static void (*exec_switch)(void);
 
 
+/* TODO: */
+Process* get_current_process(void) {
+    return NULL;
+}
 
 static void dummy(void) {
     return;
@@ -199,7 +203,7 @@ Axel_state_code init_process(void) {
     exec_switch = dummy;
 
     pk.context      = vmalloc(sizeof(Context));
-    pk.context->pdt = get_kernel_pdt();
+    /* pk.context->pdt = get_kernel_pdt(); */
     pk.pid          = 0;
 
     pa.pid          = 1;
@@ -207,14 +211,14 @@ Axel_state_code init_process(void) {
     pa.context      = vmalloc(sizeof(Context));
     pa.context->ip = (uint32_t)(uintptr_t)task_a;
     pa.context->sp = (uint32_t)(uintptr_t)pa.stack;
-    pa.context->pdt = get_kernel_pdt();
+    /* pa.context->pdt = get_kernel_pdt(); */
 
     pb.pid          = 2;
     pb.stack        = vmalloc(0x1000);
     pb.context      = vmalloc(sizeof(Context));
     pb.context->ip = (uint32_t)(uintptr_t)task_b;
     pb.context->sp = (uint32_t)(uintptr_t)pb.stack;
-    pb.context->pdt = get_kernel_pdt();
+    /* pb.context->pdt = get_kernel_pdt(); */
 
     pu.context      = vmalloc(sizeof(Context));
     pu.context->ip = (uint32_t)(uintptr_t)task_user;

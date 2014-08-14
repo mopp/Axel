@@ -15,6 +15,6 @@
 
 Axel_state_code init_process(void);
 void switch_context(void);
-
+/* Process* get_current_process(); */
 
 #endif

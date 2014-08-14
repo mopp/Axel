@@ -28,16 +28,21 @@ static Page_directory_entry* get_pde(Page_directory_table const* const, uintptr_
 static Page_table get_pt(Page_directory_entry const* const);
 static Page_table_entry* get_pte(Page_table const, uintptr_t const);
 static Page_table_entry* set_frame_addr(Page_table_entry* const, uintptr_t const);
-static void map_page(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
-static void map_page_area(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
-static void map_page_same_area(Page_directory_table const* const, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
-static void unmap_page(Page_directory_table const* const, uintptr_t);
-static void unmap_page_area(Page_directory_table const* const, uintptr_t const, uintptr_t const);
+static void map_page(uint32_t const, uint32_t const, uintptr_t, uintptr_t);
+static void map_page_area(uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
+static void map_page_same_area(uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
+static void unmap_page(uintptr_t);
+static void unmap_page_area(uintptr_t const, uintptr_t const);
 static Dlist_node* dlist_get_new_page_node(void);
 static void remove_page_list_node(Dlist_node*);
 
 
 
+/**
+ * @brief Initialize paging.
+ *          This is called in physical memory initialization.
+ * @param pd allocated memory by physical memory.
+ */
 void init_paging(Paging_data const * const pd) {
     kernel_pdt     = pd->pdt;
     p_man          = pd->p_man;
@@ -45,15 +50,17 @@ void init_paging(Paging_data const * const pd) {
     p_list_nodes   = pd->p_list_nodes;
     used_list_node = pd->used_p_info;
 
-    /* calculate and set page table addr to page directory entry */
+    /* Calculate and set page table addr to page directory entry */
+    /* XXX: alignment sensitivity */
     uintptr_t pt_base_addr = (vir_to_phys_addr((uintptr_t)kernel_pdt + (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM))) >> PDE_PT_ADDR_SHIFT_NUM;
     for (size_t i = 0; i < PAGE_DIRECTORY_ENTRY_NUM; i++) {
         kernel_pdt[i].page_table_addr = (pt_base_addr + i) & 0xFFFFF;
     }
 
     /* Set kernel area paging and video area paging. */
-    map_page_area(&kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, get_kernel_vir_start_addr(), get_kernel_vir_end_addr(), get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    map_page_same_area(&kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, 0xfd000000, 0xfd000000 + (600 * 800 * 4));
+    map_page_area(PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, get_kernel_vir_start_addr(), get_kernel_vir_end_addr(), get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    /* FIXME: */
+    map_page_same_area(PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, 0xfd000000, 0xfd000000 + (600 * 800 * 4));
 
     /* Switch paging directory table. */
     turn_off_pge();
@@ -109,7 +116,14 @@ static bool for_each_in_vmalloc(Dlist* l, void* d) {
 }
 
 
-static inline void* vmalloc_generic(size_t size, bool is_kernel, Page_directory_table const * const pdt) {
+/**
+ * @brief Virtual memory allocation.
+ *        This uses only kernel space.
+ * @param size requested allocation size.
+ * @return If allocation success, pointer to allocated area.
+ *         Otherwise, this returns NULL.
+ */
+void* vmalloc(size_t size) {
     size = round_page_size(size);
 
     void* palloced = pmalloc(size);
@@ -117,10 +131,9 @@ static inline void* vmalloc_generic(size_t size, bool is_kernel, Page_directory_
         return NULL;
     }
 
-    /* FIXME: */
-    Dlist* const list = (is_kernel == true) ? (&p_man->list) : (NULL);
+    Dlist* const list = &p_man->list;
 
-    /* search enough size node in kernel area. */
+    /* Search enough size node in kernel area. */
     p_man->alloc_request_size = size;
     Dlist_node* n = dlist_for_each(list, for_each_in_vmalloc, false);
     if (n == NULL) {
@@ -128,14 +141,15 @@ static inline void* vmalloc_generic(size_t size, bool is_kernel, Page_directory_
         return NULL;
     }
 
-    /* get new node */
-    Dlist_node* new = dlist_get_new_page_node();
+    /* Get new node */
+    Dlist_node* const new = dlist_get_new_page_node();
     if (new == NULL) {
         pfree(palloced);
         return NULL;
     }
 
-    /* allocate new area */
+    /* Allocate new area */
+    /* FIXME: considering other case */
     Page_info* pi     = (Page_info*)n->data;
     Page_info* new_pi = (Page_info*)new->data;
     new_pi->base_addr = pi->base_addr + size;
@@ -147,22 +161,10 @@ static inline void* vmalloc_generic(size_t size, bool is_kernel, Page_directory_
 
     dlist_insert_node_next(list, n, new);
 
-    /* page settings. */
-    uint32_t const pde_flags = (is_kernel == true) ? (PDE_FLAGS_KERNEL_DYNAMIC) : (PDE_FLAGS_USER);
-    uint32_t const pte_flags = (is_kernel == true) ? (PTE_FLAGS_KERNEL_DYNAMIC) : (PTE_FLAGS_USER);
-    map_page_area(pdt, pde_flags, pte_flags, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
+    /* Page settings. */
+    map_page_area(PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
 
     return (void*)pi->base_addr;
-}
-
-void* vmalloc(size_t size) {
-    return vmalloc_generic(size, true, &kernel_pdt);
-}
-void* umalloc()
-
-
-void* uvmalloc(size_t size, Page_directory_table const * const pdt) {
-    return vmalloc_generic(size, false, pdt);
 }
 
 
@@ -172,13 +174,12 @@ static bool for_each_in_vfree(Dlist* l, void* d) {
 }
 
 
-static inline void vfree_generic(void* addr, bool is_kernel, Page_directory_table const * const pdt) {
+void vfree(void* addr) {
     if (addr == NULL) {
         return;
     }
 
-    /* FIXME: */
-    Dlist* const list = (is_kernel == true) ? (&p_man->list) : (&p_man->list);
+    Dlist* const list = &p_man->list;
 
     p_man->free_request_addr = (uintptr_t)addr;
     Dlist_node* n = dlist_for_each(list, for_each_in_vfree, false);
@@ -187,13 +188,13 @@ static inline void vfree_generic(void* addr, bool is_kernel, Page_directory_tabl
     }
     Page_info* n_pi = (Page_info*)n->data;
 
-    /* fix page directory table infomation. */
-    unmap_page_area(pdt, n_pi->base_addr, n_pi->base_addr + n_pi->size);
+    /* Fix page directory table infomation. */
+    unmap_page_area(n_pi->base_addr, n_pi->base_addr + n_pi->size);
 
     Dlist_node* const prev_node = n->prev;
     Dlist_node* const next_node = n->next;
-    Page_info* const prev_pi = (Page_info*)prev_node->data;
-    Page_info* const next_pi = (Page_info*)next_node->data;
+    Page_info* const prev_pi    = (Page_info*)prev_node->data;
+    Page_info* const next_pi    = (Page_info*)next_node->data;
 
     if (prev_pi->state == PAGE_INFO_STATE_FREE && prev_pi->state == PAGE_INFO_STATE_FREE) {
         /* merge next and previous. */
@@ -215,42 +216,19 @@ static inline void vfree_generic(void* addr, bool is_kernel, Page_directory_tabl
 }
 
 
-void vfree(void* addr) {
-    vfree_generic(addr, true, &kernel_pdt);
-}
-
-
-void uvfree(void* addr, Page_directory_table const * const pdt) {
-    vfree_generic(addr, false, pdt);
-}
-
-
 Page_directory_table make_user_pdt(void) {
-    Page_directory_table pdt = vmalloc(ALL_PAGE_STRUCT_SIZE);
-
-    uintptr_t pt_base_addr = (vir_to_phys_addr((uintptr_t)pdt + (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM))) >> PDE_PT_ADDR_SHIFT_NUM;
-    for (size_t i = 0; i < PAGE_DIRECTORY_ENTRY_NUM; i++) {
-        pdt[i].page_table_addr = (pt_base_addr + i) & 0xFFFFF;
-    }
-
-
-    return pdt;
-}
-
-
-Page_directory_table get_kernel_pdt(void) {
-    return kernel_pdt;
+    return vmalloc(ALL_PAGE_STRUCT_SIZE);
 }
 
 
 static Dlist_node* dlist_get_new_page_node(void) {
-    static size_t cnt = 0;         /* counter for nextfix */
+    static size_t cnt = 0;         /* Counter for nextfix */
     size_t const stored_cnt = cnt; /* It is used for detecting already checking all node. */
 
     do {
         cnt = MOD_MAX_PAGE_INFO_NODE_NUM(cnt + 1);
         if (stored_cnt == cnt) {
-            /* all node is already used :( */
+            /* All node is already used :( */
             return NULL;
         }
     } while (used_list_node[cnt] == true);
@@ -264,7 +242,7 @@ static Dlist_node* dlist_get_new_page_node(void) {
 static void remove_page_list_node(Dlist_node* target) {
     dlist_remove_node(&p_man->list, target);
 
-    /* instead of free(). */
+    /* Instead of free(). */
     used_list_node[((uintptr_t)target - (uintptr_t)p_list_nodes) / sizeof(Dlist_node)] = false;
 }
 
@@ -303,28 +281,44 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
 /**
  * @brief Mapping page at virtual addr to physical addr.
  *          And overwrite pde and pte flags.
- * @param pdt       pointer to Page_directory_table.
  * @param pde_flags flags for Page_directory_entry.
  * @param pte_flags flags for Page_table_entry.
  * @param vaddr     virtual address.
  * @param paddr     physical address.
  */
 /* FIXME: add error handling */
-static inline void map_page(Page_directory_table const* const pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
-    Page_directory_entry* const pde = get_pde(pdt, vaddr);
-    pde->bit_expr = (PDE_FLAGS_AREA_MASK & pde->bit_expr) | pde_flags;
+static inline void map_page(uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
+    if (KERNEL_VIRTUAL_BASE_ADDR <= vaddr) {
+        /* Kernel area mapping. */
+        Page_directory_entry* const pde = get_pde(&kernel_pdt, vaddr);
+        pde->bit_expr = (PDE_FLAGS_AREA_MASK & pde->bit_expr) | pde_flags;
 
-    Page_table_entry* const pte = get_pte(get_pt(pde), vaddr);
-    pte->bit_expr = (PTE_FLAGS_AREA_MASK & pte->bit_expr) | pte_flags;
+        Page_table_entry* const pte = get_pte(get_pt(pde), vaddr);
+        pte->bit_expr = (PTE_FLAGS_AREA_MASK & pte->bit_expr) | pte_flags;
 
-    set_frame_addr(pte, paddr);
+        set_frame_addr(pte, paddr);
+    } else {
+        /* User area mapping. */
+        /* FIXME: */
+        Page_directory_entry* const pde = get_pde(NULL, vaddr);
+
+        if (pde->present_flag == 0) {
+            Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM);
+            pde->page_table_addr = (((uintptr_t)pt & 0xFFFFF000) >> PDE_PT_ADDR_SHIFT_NUM);
+        }
+        pde->bit_expr = (PDE_FLAGS_AREA_MASK & pde->bit_expr) | pde_flags;
+
+        Page_table_entry* const pte = get_pte(get_pt(pde), vaddr);
+        pte->bit_expr = (PTE_FLAGS_AREA_MASK & pte->bit_expr) | pte_flags;
+
+        set_frame_addr(pte, paddr);
+    }
 }
 
 
 /**
  * @brief Mapping page area from begin_vaddr ~ end_vaddr to begin_paddr ~ end_paddr.
  *          And overwrite pde and pte flags.
- * @param pdt           Pointer to Page_directory_table.
  * @param pde_flags     Flags for Page_directory_entry.
  * @param pte_flags     Flags for Page_table_entry.
  * @param begin_vaddr   Begin virtual address of mapping area.
@@ -332,10 +326,10 @@ static inline void map_page(Page_directory_table const* const pdt, uint32_t cons
  * @param begin_paddr   Begin physical address of mapping area.
  * @param end_paddr     End physical address of mapping area.
  */
-static inline void map_page_area(Page_directory_table const* const pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_vaddr, uintptr_t const end_vaddr, uintptr_t const begin_paddr, uintptr_t const end_paddr) {
+static inline void map_page_area(uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_vaddr, uintptr_t const end_vaddr, uintptr_t const begin_paddr, uintptr_t const end_paddr) {
     /* Generally speaking, PAGE_SIZE equals FRAME_SIZE. */
     for (uintptr_t vaddr = begin_vaddr, paddr = begin_paddr; (vaddr < end_vaddr) && (paddr < end_paddr); vaddr += PAGE_SIZE, paddr += FRAME_SIZE) {
-        map_page(pdt, pde_flags, pte_flags, vaddr, paddr);
+        map_page(pde_flags, pte_flags, vaddr, paddr);
     }
 }
 
@@ -343,28 +337,41 @@ static inline void map_page_area(Page_directory_table const* const pdt, uint32_t
 /**
  * @brief Mapping page area same physical address to virtual address.
  *          And overwrite pde and pte flags.
- * @param pdt           Pointer to Page_directory_table.
  * @param pde_flags     Flags for Page_directory_entry.
  * @param pte_flags     Flags for Page_table_entry.
  * @param begin_addr    Begin address of mapping area.
  * @param end_addr      End address of mapping area.
  */
-static inline void map_page_same_area(Page_directory_table const* const pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_addr, uintptr_t const end_addr) {
-    map_page_area(pdt, pde_flags, pte_flags, begin_addr, end_addr, begin_addr, end_addr);
+static inline void map_page_same_area( uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_addr, uintptr_t const end_addr) {
+    map_page_area( pde_flags, pte_flags, begin_addr, end_addr, begin_addr, end_addr);
 }
 
 
-static inline void unmap_page(Page_directory_table const* const pdt, uintptr_t vaddr) {
-    Page_table_entry* const pte = get_pte(get_pt(get_pde(pdt, vaddr)), vaddr);
-    pte->bit_expr &= PTE_FLAGS_AREA_MASK;
+static inline void unmap_page(uintptr_t vaddr) {
+    if (KERNEL_VIRTUAL_BASE_ADDR <= vaddr) {
+        /* Kernel area unmapping. */
+        Page_directory_entry* const pde = get_pde(&kernel_pdt, vaddr);
+        if (pde->present_flag == 0) {
+            return;
+        }
 
-    flush_tlb(vaddr);
+        Page_table_entry* const pte = get_pte(get_pt(pde), vaddr);
+        if (pte->present_flag == 0) {
+            return;
+        }
+
+        pte->bit_expr &= PTE_FLAGS_AREA_MASK;
+        flush_tlb(vaddr);
+    } else {
+        /* User area unmapping. */
+        /* TODO */
+    }
 }
 
 
-static inline void unmap_page_area(Page_directory_table const* const pdt, uintptr_t const begin_vaddr, uintptr_t const end_vaddr) {
+static inline void unmap_page_area(uintptr_t const begin_vaddr, uintptr_t const end_vaddr) {
     for (uintptr_t vaddr = begin_vaddr; vaddr < end_vaddr; vaddr += PAGE_SIZE) {
-        unmap_page(pdt, vaddr);
+        unmap_page(vaddr);
     }
 }
 

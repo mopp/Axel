@@ -79,8 +79,8 @@ struct page_directory_entry {
             unsigned int page_level_cache_disable_flag : 1;
             unsigned int access_flag : 1;
             unsigned int reserved : 1;
-            unsigned int page_size_flag : 1;   /* このPDE内のページのサイズを指定する 4KB(0) or 4MB(1)*/
-            unsigned int global_flag : 1;      /* Is page global. */
+            unsigned int page_size_flag : 1;   /* indicating page size(4KB(0) or 4MB(1)) in pde. */
+            unsigned int global_flag : 1;      /* Is this page global. */
             unsigned int os_area : 3;          /* This 3 bit is ignored by CPU and OS can use this area. */
             unsigned int page_table_addr : 20; /* physical address of page table that is included page directory entry. */
         };
@@ -131,7 +131,7 @@ enum Paging_constants {
     PDE_FLAG_WRITE_THROGH    = 0x008,
     PDE_FLAG_CACHE_DISABLE   = 0x010,
     PDE_FLAG_ACCESS          = 0x020,
-    PDE_FLAG_SIZE            = 0x080,
+    PDE_FLAG_SIZE_4MB        = 0x080,
     PDE_FLAG_GLOBAL          = 0x100,
     PDE_FLAGS_KERNEL         = PDE_FLAG_PRESENT | PDE_FLAG_RW | PDE_FLAG_GLOBAL,
     PDE_FLAGS_KERNEL_DYNAMIC = PDE_FLAG_PRESENT | PDE_FLAG_RW,
@@ -208,7 +208,6 @@ extern void vfree(void*);
 extern void uvfree(void*, Page_directory_table const* const);
 extern void print_vmem(void);
 extern Page_directory_table make_user_pdt(void);
-extern Page_directory_table get_kernel_pdt(void);
 
 
 

@@ -40,8 +40,12 @@ end; echo "$((a/1024))kb"
     kmalloc - kernel memory allocation
         すでにマッピングされ有効な、カーネル権限の仮想メモリ
 
-    umalloc -> vmalloc + pfmap(user) -> pmalloc
-    kmalloc -> vmalloc + pfmap(kernel) -> pmalloc
+    kmalloc -> vmalloc + map_page(kernel) -> pmalloc
+    umalloc -> vmalloc + map_page(user)   -> pmalloc
+        umallocはユーザ空間におけるmallocに相当するのでOSの実装には不要では
+        なので、テキストセグメントとデータセグメントの操作、スワッピングなどがいい感じにできればよいはず
+    vmalloc + map_page(kernel) -> pmalloc
+    これだけでいいかな
 
     ユーザ空間の初期化
         一時的に初期化したいユーザ空間と同じフレームをカーネル空間にマップする
