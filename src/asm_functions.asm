@@ -16,6 +16,7 @@
     global io_out8, io_out16, io_out32
     global load_gdtr, load_idtr
     global turn_off_4MB_paging, set_cpu_pdt, get_cpu_pdt, flush_tlb, flush_tlb_all, turn_on_pge, turn_off_pge
+    global set_task_register, get_task_register
 
 
 section .text
@@ -168,7 +169,14 @@ flush_tlb_all:
     ret
 
 
-; void asm_switch_context(uint32_t esp);
-asm_switch_context:
-    cli
-    mov eax, [esp + 4]
+; void set_task_register(uint16_t seg_selector);
+set_task_register;
+    mov ax, [esp + 4]
+    ltr ax
+    ret
+
+; uint16_t get_task_register(void);
+get_task_register;
+    or  eax, 0
+    str ax
+    ret

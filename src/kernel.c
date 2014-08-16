@@ -25,70 +25,6 @@
 #include <segment.h>
 
 
-/*
- * Global Segment Descriptor
- * Segment limit high + low is 20 bit.
- * Segment base address low + mid + high is 32 bit.
- */
-union segment_descriptor {
-    struct {
-        uint16_t limit_low;               /* segment limit low. */
-        uint16_t base_addr_low;           /* segment address low. */
-        uint8_t base_addr_mid;            /* segment address mid. */
-        unsigned int type : 4;            /* this shows segment main configuration. */
-        unsigned int segment_type : 1;    /* If 0, segment is system segment, if 1, segment is code or data segment. */
-        unsigned int plivilege_level : 2; /* This controles accesse level. */
-        unsigned int present : 1;         /* Is it exist on memory */
-        unsigned int limit_hi : 4;        /* segment limit high. */
-        unsigned int available : 1;       /* OS can use this.  */
-        unsigned int zero_reserved : 1;   /* this keeps 0. */
-        unsigned int op_size : 1;         /* If 0, 16bit segment, If 1 32 bit segment. */
-        unsigned int granularity : 1;     /* If 0 unit is 1Byte, If 1 unit is 4KB */
-        uint8_t base_addr_hi;             /* segment address high. */
-    };
-    struct {
-        uint32_t bit_expr_low;
-        uint32_t bit_expr_high;
-    };
-};
-typedef union segment_descriptor Segment_descriptor;
-_Static_assert(sizeof(Segment_descriptor) == 8, "Static ERROR : Segment_descriptor size is NOT 8 byte(64 bit).");
-
-
-enum GDT_constants {
-    GDT_LIMIT                  = sizeof(Segment_descriptor) * SEGMENT_NUM,  /* Total Segment_descriptor occuping area size. */
-    GDT_FLAG_TYPE_DATA_R       = 0x000000,  /* Read-Only */
-    GDT_FLAG_TYPE_DATA_RA      = 0x000100,  /* Read-Only, accessed */
-    GDT_FLAG_TYPE_DATA_RW      = 0x000200,  /* Read/Write */
-    GDT_FLAG_TYPE_DATA_RWA     = 0x000300,  /* Read/Write, accessed */
-    GDT_FLAG_TYPE_DATA_REP     = 0x000400,  /* Read-Only, expand-down */
-    GDT_FLAG_TYPE_DATA_REPA    = 0x000500,  /* Read-Only, expand-down, accessed */
-    GDT_FLAG_TYPE_DATA_RWEP    = 0x000600,  /* Read/Write, expand-down */
-    GDT_FLAG_TYPE_DATA_RWEPA   = 0x000700,  /* Read/Write, expand-down, accessed */
-    GDT_FLAG_TYPE_CODE_EX      = 0x000800,  /* Execute-Only */
-    GDT_FLAG_TYPE_CODE_EXA     = 0x000900,  /* Execute-Only, accessed */
-    GDT_FLAG_TYPE_CODE_EXR     = 0x000A00,  /* Execute/Read */
-    GDT_FLAG_TYPE_CODE_EXRA    = 0x000B00,  /* Execute/Read, accessed */
-    GDT_FLAG_TYPE_CODE_EXC     = 0x000C00,  /* Execute-Only, conforming */
-    GDT_FLAG_TYPE_CODE_EXCA    = 0x000D00,  /* Execute-Only, conforming, accessed */
-    GDT_FLAG_TYPE_CODE_EXRC    = 0x000E00,  /* Execute/Read, conforming */
-    GDT_FLAG_TYPE_CODE_EXRCA   = 0x000F00,  /* Execute/Read, conforming, accessed */
-    GDT_FLAG_CODE_DATA_SEGMENT = 0x001000,
-    GDT_FLAG_RING0             = 0x000000,
-    GDT_FLAG_RING1             = 0x002000,
-    GDT_FLAG_RING2             = 0x004000,
-    GDT_FLAG_RING3             = 0x006000,
-    GDT_FLAG_PRESENT           = 0x008000,
-    GDT_FLAG_AVAILABLE         = 0x100000,
-    GDT_FLAG_OP_SIZE           = 0x400000,
-    GDT_FLAG_GRANULARIT        = 0x800000,
-    GDT_FLAGS_KERNEL_CODE      = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
-    GDT_FLAGS_KERNEL_DATA      = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING0 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
-    GDT_FLAGS_USER_CODE        = GDT_FLAG_TYPE_CODE_EXR | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING3 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
-    GDT_FLAGS_USER_DATA        = GDT_FLAG_TYPE_DATA_RWA | GDT_FLAG_CODE_DATA_SEGMENT | GDT_FLAG_RING3 | GDT_FLAG_PRESENT | GDT_FLAG_OP_SIZE | GDT_FLAG_GRANULARIT,
-};
-
-
 /* Interrupt Gate Descriptor Table */
 union gate_descriptor {
     struct {
@@ -356,17 +292,25 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
 
 static inline void init_gdt(void) {
     axel_s.gdt = (Segment_descriptor*)vmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
+    axel_s.tss = (Task_state_segment*)vmalloc(sizeof(Task_state_segment));
 
-    /* zero clear Segment_descriptor. */
     memset(axel_s.gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
+    memset(axel_s.tss, 0, sizeof(Task_state_segment));
+
+    axel_s.tss->ss0 = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->esp0 = (uint32_t)kernel_init_stack_top;
+    /* axel_s.tss->cs = USER_DATA_SEGMENT_SELECTOR; */
+    /* axel_s.tss->ss = USER_DATA_SEGMENT_SELECTOR; */
 
     /* Setup flat address model. */
     set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
     set_segment_descriptor(axel_s.gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
-    set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX,   0x00000000, 0xffffffff, GDT_FLAGS_USER_CODE);
-    set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX,   0x00000000, 0xffffffff, GDT_FLAGS_USER_DATA);
+    set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_CODE);
+    set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_DATA);
+    set_segment_descriptor(axel_s.gdt + KERNEL_TSS_SEGMENT_INDEX, (uint32_t)&axel_s.tss, (uint32_t)&axel_s.tss + sizeof(Task_state_segment), GDT_FLAGS_TSS);
 
-    load_gdtr(GDT_LIMIT, (uint32_t)(uintptr_t)axel_s.gdt);
+    load_gdtr(GDT_LIMIT, (uint32_t)axel_s.gdt);
+    set_task_register(KERNEL_TSS_SEGMENT_SELECTOR);
 }
 
 

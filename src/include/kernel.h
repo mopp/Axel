@@ -12,10 +12,8 @@
 
 
 #include <ps2.h>
+#include <segment.h>
 
-
-union segment_descriptor;
-typedef union segment_descriptor Segment_descriptor;
 
 /*
  * Axel operating system information structure.
@@ -23,6 +21,7 @@ typedef union segment_descriptor Segment_descriptor;
  */
 struct axel_struct {
     Segment_descriptor* gdt;
+    Task_state_segment* tss;
     Keyboard* keyboard;
     Mouse* mouse;
 };
@@ -30,6 +29,7 @@ typedef struct axel_struct Axel_struct;
 
 
 extern Axel_struct axel_s;
+extern uintptr_t kernel_init_stack_top;
 
 
 

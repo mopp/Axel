@@ -13,34 +13,8 @@
 #include <paging.h>
 #include <memory.h>
 #include <asm_functions.h>
+#include <segment.h>
 
-
-struct task_state_segment {
-    uint16_t back_link;
-    uint16_t reserved0;
-    uint32_t esp0; /* stack segment and stack pointer register value of privileged level 0 */
-    uint16_t ss0, reserved1;
-    uint32_t esp1; /* stack segment and stack pointer register value of privileged level 1 */
-    uint16_t ss1, reserved2;
-    uint32_t esp2; /* stack segment and stack pointer register value of privileged level 2 */
-    uint16_t ss2, reserved3;
-    uint32_t cr3;    /* page directly base register value. */
-    uint32_t eip;    /* eip register value before task switching. */
-    uint32_t eflags; /* eflags register value before task switching. */
-    uint32_t eax, ecx, edx, ebx, esp, ebp, esi, edi;
-    uint16_t es, reserved4;
-    uint16_t cs, reserved5;
-    uint16_t ss, reserved6;
-    uint16_t ds, reserved7;
-    uint16_t fs, reserved8;
-    uint16_t gs, reserved9;
-    uint16_t ldtr, reserved10;
-    uint16_t debug_trap_flag : 1;
-    uint16_t reserved11 : 15;
-    uint16_t iomap_base_addr;
-};
-typedef struct task_state_segment Task_state_segment;
-_Static_assert(sizeof(Task_state_segment) == 104, "Task_state_segment size is NOT 104 byte");
 
 
 struct thread {
@@ -122,6 +96,14 @@ void switch_context(void) {
         next_p_idx = 0;
     }
 
+    if (current_p->pdt != next_p->pdt) {
+        /*
+         * Memory space is NOT same.
+         * So, switching pdt.
+         */
+        set_cpu_pdt(next_p->pdt);
+    }
+
     __asm__ volatile(
         "pushfl                             \n\t"   // store eflags
         "pushl %%ebp                        \n\t"
@@ -182,7 +164,6 @@ Process* make_user_process(void) {
     Process* p = vmalloc(sizeof(Process));
     Program_segments* ps = vmalloc(sizeof(Program_segments));
 
-
     p->cpu_time    = 0;
     p->segments    = ps;
     ps->text_addr  = 0;
@@ -215,6 +196,8 @@ Process* make_user_process(void) {
 
 
 Axel_state_code init_process(void) {
+    /* Init tss */
+
     pk.pid = 0;
     pk.pdt = NULL;
     pk.thread = vmalloc(sizeof(Thread));
