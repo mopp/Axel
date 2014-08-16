@@ -208,6 +208,11 @@ extern void vfree(void*);
 extern void uvfree(void*, Page_directory_table const* const);
 extern void print_vmem(void);
 extern Page_directory_table make_user_pdt(void);
+extern void map_page(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
+extern void map_page_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
+extern void map_page_same_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
+extern void unmap_page(Page_directory_table pdt, uintptr_t);
+extern void unmap_page_area(Page_directory_table pdt, uintptr_t const, uintptr_t const);
 
 
 static inline uintptr_t vmalloc_addr(size_t size) {

@@ -11,6 +11,7 @@
 #include <string.h>
 #include <macros.h>
 #include <paging.h>
+#include <memory.h>
 #include <asm_functions.h>
 
 
@@ -49,12 +50,28 @@ struct thread {
 typedef struct thread Thread;
 
 
-struct program_sections {
+/* Each size is rounded by page size. */
+struct program_segments {
     uintptr_t text_addr;
     uintptr_t data_addr;
     uintptr_t heap_addr;
+    uintptr_t stack_addr;
+    size_t text_size;
+    size_t data_size;
+    size_t heap_size;
+    size_t stack_size;
 };
-typedef struct program_sections Program_sections;
+typedef struct program_segments Program_segments;
+
+
+enum process_constants {
+    PSTATE_RUN,
+    PSTATE_SLEEP,
+    PSTATE_WAIT,
+    PSTATE_ZOMBI,
+
+    INIT_USER_STACK_SIZE = 1024,
+};
 
 
 struct process {
@@ -62,9 +79,9 @@ struct process {
     uint8_t state;
     uint16_t pid;
     uint32_t cpu_time;
-    Program_sections* p_sections;
+    Program_segments* segments;
     Thread* thread;
-    Page_directory_table pdt; /* memory space. */
+    Page_directory_table pdt; /* Own memory space. */
 };
 typedef struct process Process;
 
@@ -161,26 +178,60 @@ _Noreturn void task_user(void) {
 }
 
 
+Process* make_user_process(void) {
+    Process* p = vmalloc(sizeof(Process));
+    Program_segments* ps = vmalloc(sizeof(Program_segments));
+
+
+    p->cpu_time    = 0;
+    p->segments    = ps;
+    ps->text_addr  = 0;
+    ps->text_size  = 0x1000;
+    ps->data_addr  = 0;
+    ps->data_size  = 0;
+    ps->heap_addr  = 0;
+    ps->heap_size  = 0;
+    ps->stack_addr = 0;
+    ps->stack_size = INIT_USER_STACK_SIZE;
+    p->pdt         = make_user_pdt();
+    p->pid         = 100;
+    p->thread      = vmalloc(sizeof(Thread));
+    p->thread->ip  = 0x0; /* XXX: start virtual address 0x0; */
+    p->thread->sp  = ps->stack_addr;
+
+    /* Init user space. */
+    if (0 != ps->text_size) {
+        void* t       = pmalloc(ps->text_size);
+        uintptr_t p_s = (uintptr_t)t;
+        uintptr_t p_e = p_s + ps->text_size;
+        uintptr_t v_s = ps->text_addr;
+        uintptr_t v_e = v_s + ps->text_size;
+
+        map_page_area(p->pdt, PDE_FLAG_USER, PTE_FLAG_USER, v_s, v_e, p_s, p_e);
+    }
+
+    return p;
+}
+
+
 Axel_state_code init_process(void) {
     pk.pid = 0;
+    pk.pdt = NULL;
     pk.thread = vmalloc(sizeof(Thread));
 
     pa.pid = 1;
+    pa.pdt = NULL;
     pa.thread = vmalloc(sizeof(Thread));
     pa.thread->sp = vmalloc_addr(0x1000);
     pa.thread->ip = (uintptr_t) task_a;
 
     pb.pid = 2;
+    pb.pdt = NULL;
     pb.thread = vmalloc(sizeof(Thread));
     pb.thread->sp = vmalloc_addr(0x1000);
     pb.thread->ip = (uintptr_t) task_b;
 
-    // pu.context = vmalloc(sizeof(Context));
-    // pu.context->ip = (uint32_t)(uintptr_t) task_user;
-    // pu.context->sp = (uint32_t)(uintptr_t) pb.stack;
-    // pu.context->pdt = make_user_pdt();
-    // pu.pid = 2;
-    /* pu.stack        = uvmalloc(0x1000, &pu.context->pdt); */
+    pu = *(make_user_process());
     /* 0:	f4                   	hlt     */
     /* 1:	eb fd                	jmp    0 <usr> */
 

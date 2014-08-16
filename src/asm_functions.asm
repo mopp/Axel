@@ -137,7 +137,7 @@ turn_on_pge:
     ret
 
 
-; void set_cpu_pdt(uintptr_t addr)
+; void set_cpu_pdt(Page_directory_table pdt)
 ; address that is set into cr3 should be physical address.
 set_cpu_pdt:
     mov ebx, [esp + 4]
@@ -146,7 +146,7 @@ set_cpu_pdt:
     ret
 
 
-; uintptr_t get_cpu_pdt(void)
+; Page_directory_table get_cpu_pdt(void)
 get_cpu_pdt:
     mov eax, cr3
     add eax, KERNEL_VIRTUAL_BASE_ADDR
