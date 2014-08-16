@@ -28,8 +28,8 @@ enum memory_manager_constants {
 /* memory infomation structure to managed. */
 struct memory_info {
     uintptr_t base_addr; /* base address */
-    uint8_t state;       /* managed area state */
     size_t size;         /* allocated size */
+    uint8_t state;       /* managed area state */
 };
 typedef struct memory_info Memory_info;
 

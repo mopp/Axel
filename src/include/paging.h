@@ -210,6 +210,11 @@ extern void print_vmem(void);
 extern Page_directory_table make_user_pdt(void);
 
 
+static inline uintptr_t vmalloc_addr(size_t size) {
+    return (uintptr_t)(void*)vmalloc(size);
+}
+
+
 
 #endif /* _ASSEMBLY_H_ */
 

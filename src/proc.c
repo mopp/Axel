@@ -41,21 +41,30 @@ struct task_state_segment {
 typedef struct task_state_segment Task_state_segment;
 _Static_assert(sizeof(Task_state_segment) == 104, "Task_state_segment size is NOT 104 byte");
 
-struct context {
-    uint32_t sp;              /* Stack pointer. */
-    uint32_t ip;              /* Instruction pointer. */
-    Page_directory_table pdt; /* memory space. */
+
+struct thread {
+    uintptr_t sp; /* Stack pointer. */
+    uintptr_t ip; /* Instruction pointer. */
 };
-typedef struct context Context;
+typedef struct thread Thread;
+
+
+struct program_sections {
+    uintptr_t text_addr;
+    uintptr_t data_addr;
+    uintptr_t heap_addr;
+};
+typedef struct program_sections Program_sections;
 
 
 struct process {
     uint8_t priority;
+    uint8_t state;
     uint16_t pid;
-    uint32_t live_time;
-    Context* context;
-    char const * name;
-    void* stack;
+    uint32_t cpu_time;
+    Program_sections* p_sections;
+    Thread* thread;
+    Page_directory_table pdt; /* memory space. */
 };
 typedef struct process Process;
 
@@ -67,20 +76,14 @@ static uint8_t process_num = 3;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx = 1;
 
-/* these variables are used in intel syntax inline assembly. */
-static volatile uint32_t* current_ip;
-static volatile uint32_t* current_sp;
-static volatile uint32_t* next_ip;
-static volatile uint32_t* next_sp;
-static void (*exec_switch)(void);
-
 
 /* TODO: */
 Process* get_current_process(void) {
     return NULL;
 }
 
-static void dummy(void) {
+
+void dummy(void) {
     return;
 }
 
@@ -88,88 +91,47 @@ static void dummy(void) {
 /* TODO: chenge page global directly */
 void switch_context(void) {
     Process* current_p = processes[current_p_idx];
-    Context* current_c = current_p->context;
+    Thread* current_t  = current_p->thread;
     Process* next_p    = processes[next_p_idx];
-    Context* next_c    = next_p->context;
+    Thread* next_t     = next_p->thread;
 
     current_p_idx++;
-    next_p_idx++;
     if (process_num <= current_p_idx) {
         current_p_idx = 0;
     }
+
+    next_p_idx++;
     if (process_num <= next_p_idx) {
         next_p_idx = 0;
     }
 
-    current_ip = &current_c->ip;
-    current_sp = &current_c->sp;
-    next_ip    = &next_c->ip;
-    next_sp    = &next_c->sp;
+    __asm__ volatile(
+        "pushfl                             \n\t"   // store eflags
+        "pushl %%ebp                        \n\t"
+        "pushl %%eax                        \n\t"
+        "pushl %%ecx                        \n\t"
+        "pushl %%edx                        \n\t"
+        "pushl %%ebx                        \n\t"
 
-    __asm__ volatile (
-        // "pushfl                             \n\t"   // store eflags
-        // "pushl %%ebp                        \n\t"
-        // "pushl %%eax                        \n\t"
-        // "pushl %%ecx                        \n\t"
-        // "pushl %%edx                        \n\t"
-        // "pushl %%ebx                        \n\t"
+        "movl  $next_turn, %[current_ip]    \n\t"   // store ip
+        "movl  %%esp, %[current_sp]         \n\t"   // store sp
+        "movl  %[next_sp], %%esp            \n\t"   // restore sp
+        "pushl %[next_ip]                   \n\t"   // restore ip
+        "jmp   dummy                        \n\t"   // change context
 
-        // "movl  $next_turn, %[current_ip]    \n\t"   // store ip
-        // "movl  %%esp, %[current_sp]         \n\t"   // store sp
-        // "movl  %[next_sp], %%esp            \n\t"   // restore sp
-        // "pushl %[next_ip]                   \n\t"   // restore ip
-        // "jmp [exec_switch]                          \n\t"   // change context
+        "next_turn:                         \n\t"
 
-        // "next_turn:                         \n\t"
+        "popl %%ebx                         \n\t"
+        "popl %%edx                         \n\t"
+        "popl %%ecx                         \n\t"
+        "popl %%eax                         \n\t"
+        "popl %%ebp                         \n\t"
+        "popfl                              \n\t"   // restore eflags
 
-        // "popl %%ebx                         \n\t"
-        // "popl %%edx                         \n\t"
-        // "popl %%ecx                         \n\t"
-        // "popl %%eax                         \n\t"
-        // "popl %%ebp                         \n\t"
-        // "popfl                              \n\t"   // restore eflags
-
-        // :   [current_ip] "=m" (current_c->ip),
-        //     [current_sp] "=m" (current_c->sp)
-        // :   [next_ip] "m" (next_c->ip),
-        //     [next_sp] "m" (next_c->sp)
-        // : "memory"
-
-        ".intel_syntax noprefix \n\t"
-        "cli                    \n\t"
-        "pushfd                 \n\t"   // store eflags
-        "push ebp               \n\t"   // store registers
-        "push eax               \n\t"
-        "push ecx               \n\t"
-        "push edx               \n\t"
-        "push ebx               \n\t"
-
-        "lea eax, next_turn     \n\t"   // store ip for next turn.
-        "mov ebx, [current_ip]  \n\t"
-        "mov [ebx], eax         \n\t"
-
-        "mov ebx, [current_sp]  \n\t"   // store sp
-        "mov [ebx], esp         \n\t"
-
-        "mov ebx, [next_sp]     \n\t"   // restore sp
-        "mov esp, [ebx]         \n\t"
-
-        "mov ebx, [next_ip]     \n\t"   // restore ip
-        "mov ebx, [ebx]         \n\t"
-        "push ebx               \n\t"
-
-        "sti                    \n\t"
-        "jmp dummy              \n\t"
-
-        "next_turn:             \n\t"
-        "pop ebx                \n\t"   // restore registers
-        "pop edx                \n\t"
-        "pop ecx                \n\t"
-        "pop eax                \n\t"
-        "pop ebp                \n\t"
-        "popfd                  \n\t"   // restore eflags
-        :
-        :
+        :   [current_ip] "=m" (current_t->ip),
+            [current_sp] "=m" (current_t->sp)
+        :   [next_ip] "m" (next_t->ip),
+            [next_sp] "m" (next_t->sp)
         : "memory"
     );
 }
@@ -200,31 +162,24 @@ _Noreturn void task_user(void) {
 
 
 Axel_state_code init_process(void) {
-    exec_switch = dummy;
+    pk.pid = 0;
+    pk.thread = vmalloc(sizeof(Thread));
 
-    pk.context      = vmalloc(sizeof(Context));
-    /* pk.context->pdt = get_kernel_pdt(); */
-    pk.pid          = 0;
+    pa.pid = 1;
+    pa.thread = vmalloc(sizeof(Thread));
+    pa.thread->sp = vmalloc_addr(0x1000);
+    pa.thread->ip = (uintptr_t) task_a;
 
-    pa.pid          = 1;
-    pa.stack        = vmalloc(0x1000);
-    pa.context      = vmalloc(sizeof(Context));
-    pa.context->ip = (uint32_t)(uintptr_t)task_a;
-    pa.context->sp = (uint32_t)(uintptr_t)pa.stack;
-    /* pa.context->pdt = get_kernel_pdt(); */
+    pb.pid = 2;
+    pb.thread = vmalloc(sizeof(Thread));
+    pb.thread->sp = vmalloc_addr(0x1000);
+    pb.thread->ip = (uintptr_t) task_b;
 
-    pb.pid          = 2;
-    pb.stack        = vmalloc(0x1000);
-    pb.context      = vmalloc(sizeof(Context));
-    pb.context->ip = (uint32_t)(uintptr_t)task_b;
-    pb.context->sp = (uint32_t)(uintptr_t)pb.stack;
-    /* pb.context->pdt = get_kernel_pdt(); */
-
-    pu.context      = vmalloc(sizeof(Context));
-    pu.context->ip = (uint32_t)(uintptr_t)task_user;
-    pu.context->sp = (uint32_t)(uintptr_t)pb.stack;
-    pu.context->pdt = make_user_pdt();
-    pu.pid          = 2;
+    // pu.context = vmalloc(sizeof(Context));
+    // pu.context->ip = (uint32_t)(uintptr_t) task_user;
+    // pu.context->sp = (uint32_t)(uintptr_t) pb.stack;
+    // pu.context->pdt = make_user_pdt();
+    // pu.pid = 2;
     /* pu.stack        = uvmalloc(0x1000, &pu.context->pdt); */
     /* 0:	f4                   	hlt     */
     /* 1:	eb fd                	jmp    0 <usr> */
