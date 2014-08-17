@@ -278,7 +278,7 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
  * @param paddr     physical address.
  */
 inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
-    Page_directory_entry* const pde = get_pde(kernel_pdt, vaddr);
+    Page_directory_entry* const pde = get_pde(pdt, vaddr);
 
     if (pdt != kernel_pdt && pde->present_flag == 0) {
         /* Allocate page for user pdt */

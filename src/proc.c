@@ -63,7 +63,7 @@ typedef struct process Process;
 
 static Process pa, pb, pk, pu;
 static Process** processes;
-static uint8_t process_num = 3;
+static uint8_t process_num = 4;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx = 1;
 
@@ -75,6 +75,12 @@ Process* get_current_process(void) {
 
 
 void dummy(void) {
+    __asm__ volatile(
+        "jmp 0x1000  \n\t"
+        :
+        :
+        :
+    );
     return;
 }
 
@@ -102,6 +108,13 @@ void switch_context(void) {
          * So, switching pdt.
          */
         set_cpu_pdt(next_p->pdt);
+
+        /* dirty initialize. */
+        static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff };
+        for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
+            *((uint8_t*)next_t->ip + i)     = inst[i];
+        }
+        INF_LOOP();
     }
 
     __asm__ volatile(
@@ -116,7 +129,7 @@ void switch_context(void) {
         "movl  %%esp, %[current_sp]         \n\t"   // store sp
         "movl  %[next_sp], %%esp            \n\t"   // restore sp
         "pushl %[next_ip]                   \n\t"   // restore ip
-        "jmp   dummy                        \n\t"   // change context
+        "ret \n\t"   // change context
 
         "next_turn:                         \n\t"
 
@@ -166,29 +179,37 @@ Process* make_user_process(void) {
 
     p->cpu_time    = 0;
     p->segments    = ps;
-    ps->text_addr  = 0;
+    ps->text_addr  = 0x1000;
     ps->text_size  = 0x1000;
     ps->data_addr  = 0;
     ps->data_size  = 0;
     ps->heap_addr  = 0;
     ps->heap_size  = 0;
-    ps->stack_addr = 0;
+    ps->stack_addr = 0x2000;
     ps->stack_size = INIT_USER_STACK_SIZE;
     p->pdt         = make_user_pdt();
     p->pid         = 100;
     p->thread      = vmalloc(sizeof(Thread));
-    p->thread->ip  = 0x0; /* XXX: start virtual address 0x0; */
+    p->thread->ip  = 0x1000; /* XXX: start virtual address 0x0; */
     p->thread->sp  = ps->stack_addr;
 
     /* Init user space. */
     if (0 != ps->text_size) {
-        void* t       = pmalloc(ps->text_size);
-        uintptr_t p_s = (uintptr_t)t;
+        /* Text segment */
+        uintptr_t t   = vir_to_phys_addr(vmalloc_addr(ps->text_size));
+        uintptr_t p_s = t;
         uintptr_t p_e = p_s + ps->text_size;
         uintptr_t v_s = ps->text_addr;
         uintptr_t v_e = v_s + ps->text_size;
+        map_page_area(p->pdt, PDE_FLAGS_USER, PTE_FLAGS_USER, v_s, v_e, p_s, p_e);
 
-        map_page_area(p->pdt, PDE_FLAG_USER, PTE_FLAG_USER, v_s, v_e, p_s, p_e);
+        /* Stack segment */
+        t   = vir_to_phys_addr(vmalloc_addr(ps->stack_size));
+        p_s = t;
+        p_e = p_s + ps->text_size;
+        v_s = ps->text_addr;
+        v_e = v_s + ps->text_size;
+        map_page_area(p->pdt, PDE_FLAGS_USER, PTE_FLAGS_USER, v_s, v_e, p_s, p_e);
     }
 
     return p;
@@ -222,7 +243,7 @@ Axel_state_code init_process(void) {
     processes[0] = &pk;
     processes[1] = &pa;
     processes[2] = &pb;
-    /* processes[3] = &pu; */
+    processes[3] = &pu;
 
     return AXEL_SUCCESS;
 }
