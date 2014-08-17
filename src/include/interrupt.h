@@ -8,6 +8,8 @@
 
 
 
+#include <stdint.h>
+
 /* Programmable Interrupt Controller */
 enum PIC_constants {
     PIC0_CMD_STATE_PORT  = 0x20,

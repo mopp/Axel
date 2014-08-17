@@ -15,7 +15,7 @@
     global io_in8, io_in16, io_in32
     global io_out8, io_out16, io_out32
     global load_gdtr, load_idtr
-    global turn_off_4MB_paging, set_cpu_pdt, get_cpu_pdt, flush_tlb, flush_tlb_all, turn_on_pge, turn_off_pge
+    global turn_off_4MB_paging, set_cpu_pdt, get_cpu_pdt, flush_tlb, flush_tlb_all, turn_on_pge, turn_off_pge, load_cr2
     global set_task_register, get_task_register
 
 
@@ -138,7 +138,7 @@ turn_on_pge:
     ret
 
 
-; void set_cpu_pdt(Page_directory_table pdt)
+; void set_cpu_pdt(Page_directory_table pdt);
 ; address that is set into cr3 should be physical address.
 set_cpu_pdt:
     mov ebx, [esp + 4]
@@ -147,14 +147,14 @@ set_cpu_pdt:
     ret
 
 
-; Page_directory_table get_cpu_pdt(void)
+; Page_directory_table get_cpu_pdt(void);
 get_cpu_pdt:
     mov eax, cr3
     add eax, KERNEL_VIRTUAL_BASE_ADDR
     ret
 
 
-; void flush_tlb(uintptr_t addr)
+; void flush_tlb(uintptr_t addr);
 flush_tlb:
     cli
     invlpg [esp + 4]
@@ -162,10 +162,16 @@ flush_tlb:
     ret
 
 
-; void flush_tlb_all(void)
+; void flush_tlb_all(void);
 flush_tlb_all:
     mov eax, cr3
     mov cr3, ebx
+    ret
+
+
+; uintptr_t load_cr2(void);
+load_cr2:
+    mov eax, cr2
     ret
 
 

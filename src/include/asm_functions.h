@@ -34,6 +34,7 @@ extern void set_cpu_pdt(Page_directory_table);
 extern void flush_tlb_all(void);
 extern void turn_on_pge(void);
 extern void turn_off_pge(void);
+extern uintptr_t load_cr2(void);
 
 extern uint16_t get_task_register(void);
 extern void set_task_register(uint16_t);

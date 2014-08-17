@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <dlist.h>
+#include <state_code.h>
 
 
 /*
@@ -213,6 +214,8 @@ extern void map_page_area(Page_directory_table pdt, uint32_t const, uint32_t con
 extern void map_page_same_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
 extern void unmap_page(Page_directory_table pdt, uintptr_t);
 extern void unmap_page_area(Page_directory_table pdt, uintptr_t const, uintptr_t const);
+extern bool is_kernel_pdt(Page_directory_table const);
+extern Axel_state_code synchronize_pdt(Page_directory_table, uintptr_t);
 
 
 static inline uintptr_t vmalloc_addr(size_t size) {

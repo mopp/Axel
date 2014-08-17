@@ -63,7 +63,7 @@ typedef struct process Process;
 
 static Process pa, pb, pk, pu;
 static Process** processes;
-static uint8_t process_num = 4;
+static uint8_t process_num = 3;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx = 1;
 
@@ -114,7 +114,6 @@ void switch_context(void) {
         for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
             *((uint8_t*)next_t->ip + i)     = inst[i];
         }
-        INF_LOOP();
     }
 
     __asm__ volatile(
@@ -243,7 +242,7 @@ Axel_state_code init_process(void) {
     processes[0] = &pk;
     processes[1] = &pa;
     processes[2] = &pb;
-    processes[3] = &pu;
+    /* processes[3] = &pu; */
 
     return AXEL_SUCCESS;
 }

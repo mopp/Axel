@@ -73,5 +73,8 @@
     default                 : "unknown type")
 
 
+#define DIRECTLY_WRITE(type, addr, val) (*((type *)(addr)) = (type)(val))
+
+
 
 #endif

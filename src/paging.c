@@ -9,6 +9,7 @@
 #include <string.h>
 #include <memory.h>
 #include <asm_functions.h>
+#include <macros.h>
 
 
 
@@ -373,6 +374,8 @@ inline void unmap_page_area(Page_directory_table pdt, uintptr_t const begin_vadd
 
 Page_directory_table make_user_pdt(void) {
     Page_directory_table pdt = vmalloc(sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
+    /* DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, pdt); */
+    /* INF_LOOP(); */
 
     /* Copy kernel area. */
     size_t s = get_pde_index(get_kernel_vir_start_addr());
@@ -382,6 +385,42 @@ Page_directory_table make_user_pdt(void) {
     } while (s++ <= e);
 
     return pdt;
+}
+
+
+bool is_kernel_pdt(Page_directory_table const pdt) {
+    return (kernel_pdt == pdt) ? true : false;
+}
+
+
+/* synchronize user and kernel pdt */
+Axel_state_code synchronize_pdt(Page_directory_table pdt, uintptr_t vaddr) {
+    Page_directory_entry* u_pde = get_pde(pdt, vaddr);
+    Page_directory_entry* k_pde = get_pde(kernel_pdt, vaddr);
+
+    if (k_pde->present_flag == 0) {
+        /*
+         * Kernel space has not entry.
+         * But, cause page fault in user space.
+         * This is strange.
+         */
+        return AXEL_PAGE_SYNC_ERROR;
+    }
+
+    if (u_pde->present_flag == 0) {
+        *u_pde = *k_pde;
+    }
+
+    Page_table_entry* u_pte = get_pte(get_pt(u_pde), vaddr);
+    Page_table_entry* k_pte = get_pte(get_pt(k_pde), vaddr);
+    if (k_pte->present_flag == 0) {
+        /* This case is same things above */
+        return AXEL_PAGE_SYNC_ERROR;
+    }
+
+    *u_pte = *k_pte;
+
+    return AXEL_SUCCESS;
 }
 
 

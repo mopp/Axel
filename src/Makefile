@@ -12,7 +12,7 @@ export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
 export NASM 	:= nasm -g -f elf32
 export AR_R		:= ar r --target elf32-i386
 export OBJCOPY	:= objcopy
-export QEMU 	:= qemu-system-i386 -monitor stdio -vga std -m 32 -d int -d cpu -d cpu_reset
+export QEMU 	:= qemu-system-i386 -monitor stdio -vga std -m 32 -d int -d cpu_reset
 export QEMU_D 	:= qemu-system-i386 -vga std -m 32
 export BOCHS	:= bochs
 export GDB	 	:= gdb
@@ -38,7 +38,7 @@ KERNEL_MAP			:= kernel.map
 
 STRUCT_DIR			:= $(AXEL_ROOT_DIR)struct/
 SUB_DIRS 			:= $(BOOT_DIR) $(STRUCT_DIR)
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o string.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o ps2.o window.o stdio.o memory.o paging.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o string.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o stdio.o memory.o paging.o kernel.o
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -93,6 +93,7 @@ font.o			: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)dra
 ps2.o			: $(MAKEFILE) ps2.c $(AXEL_INCLUDE_PATH)ps2.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
 window.o		: $(MAKEFILE) window.c $(AXEL_INCLUDE_PATH)window.h graphic.o
 proc.o			: $(MAKEFILE) proc.c $(AXEL_INCLUDE_PATH)proc.h
+exception.o		: $(MAKEFILE) exception.c $(AXEL_INCLUDE_PATH)exception.h
 kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt.o interrupt_asm.o memory.o paging.o string.o stdio.o font.o ps2.o window.o proc.o
 
 
@@ -135,7 +136,7 @@ clean:
 
 .PHONY: lib
 lib: $(STRUCT_DIR)
-	make -C $(STRUCT_DIR)
+	$(MAKE) -C $(STRUCT_DIR)
 
 
 .PHONY: run_qemu_cdrom

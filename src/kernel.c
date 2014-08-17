@@ -8,6 +8,8 @@
 
 
 #include <asm_functions.h>
+#include <exception.h>
+#include <font.h>
 #include <graphic.h>
 #include <interrupt.h>
 #include <kernel.h>
@@ -16,13 +18,12 @@
 #include <multiboot.h>
 #include <paging.h>
 #include <point.h>
+#include <proc.h>
+#include <segment.h>
 #include <stdio.h>
 #include <string.h>
 #include <vbe.h>
-#include <font.h>
 #include <window.h>
-#include <proc.h>
-#include <segment.h>
 
 
 /* Interrupt Gate Descriptor Table */
@@ -340,11 +341,11 @@ static inline void init_idt(void) {
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
-    set_gate_descriptor(idt + 13,   hlt,                   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x0E, hlt,                   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT_TRAP);
+    set_gate_descriptor(idt + 0x0D, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x0E, asm_exception_page_fault, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x20, asm_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT_TRAP);
     set_gate_descriptor(idt + 0x21, asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse,   KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
 
     load_idtr(IDT_LIMIT, (uint32_t)idt);
 }

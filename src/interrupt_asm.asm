@@ -67,4 +67,4 @@ section .text
 make_interrupt_handler 0, interrupt_keybord
 make_interrupt_handler 0, interrupt_mouse
 make_interrupt_handler 0, interrupt_timer
-
+make_interrupt_handler 0, exception_page_fault
