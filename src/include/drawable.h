@@ -7,6 +7,9 @@
 #define _DRAWABLE_H_
 
 
+
+#include <rgb8.h>
+
 enum Drawable_constants {
     MAX_HEIGHT_SIZE = 16,
     MAX_WIDTH_SIZE = 16,
@@ -30,6 +33,7 @@ struct Drawable_multi_bitmap {
     int32_t const* data[];
 };
 typedef struct Drawable_multi_bitmap Drawable_multi_bitmap;
+
 
 
 #endif
