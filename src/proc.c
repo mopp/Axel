@@ -63,7 +63,7 @@ typedef struct process Process;
 
 static Process pa, pb, pk, pu;
 static Process** processes;
-static uint8_t process_num = 3;
+static uint8_t process_num = 4;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx = 1;
 
@@ -107,7 +107,28 @@ void switch_context(void) {
          * Memory space is NOT same.
          * So, switching pdt.
          */
+        /*
+         * user pdt   = 0xc0534000
+         * kernel pdt = 0xc010f000
+         * idt[1]     = 0xc052c040
+         *  pde index = 0x301
+         * pde offset = hex((0xc052c040 >> 22) * 4) = 0xc04
+         * user pde addr   = 0xc0534000 + 0xc04 = 0xc0534c04
+         * user pde val    = 0x00411023
+         * kernel pde addr = 0xc010f000 + 0xc04 = 0xc010fc04
+         * kernel pde val  = 0x00411023
+         *
+         * pt addr         = 0xC0411000
+         * pte offset      = hex((0xc052c040 >> 12 & 0x3ff) * 4) = 0x4b0
+         * pte addr        = 0xC0411000 + 0x4b0 = 0xC04114b0
+         * pte val         = 0x0052c063
+         * frame addr      = 0x0052c000
+         * pdt の物理アドレスを検証すべきかな
+         */
+
         set_cpu_pdt(next_p->pdt);
+        DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, next_p->pdt);
+        INF_LOOP();
 
         /* dirty initialize. */
         static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff };
@@ -242,7 +263,7 @@ Axel_state_code init_process(void) {
     processes[0] = &pk;
     processes[1] = &pa;
     processes[2] = &pb;
-    /* processes[3] = &pu; */
+    processes[3] = &pu;
 
     return AXEL_SUCCESS;
 }

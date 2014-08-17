@@ -374,15 +374,13 @@ inline void unmap_page_area(Page_directory_table pdt, uintptr_t const begin_vadd
 
 Page_directory_table make_user_pdt(void) {
     Page_directory_table pdt = vmalloc(sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
-    /* DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, pdt); */
-    /* INF_LOOP(); */
 
     /* Copy kernel area. */
     size_t s = get_pde_index(get_kernel_vir_start_addr());
     size_t e = get_pde_index(get_kernel_vir_end_addr());
     do {
-        pdt[s] = kernel_pdt[s];
-    } while (s++ <= e);
+        pdt[s].bit_expr = kernel_pdt[s].bit_expr;
+    } while (++s <= e);
 
     return pdt;
 }

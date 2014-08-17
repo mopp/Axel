@@ -341,6 +341,7 @@ static inline void init_idt(void) {
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
+    set_gate_descriptor(idt + 0x08, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x0D, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x0E, asm_exception_page_fault, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x20, asm_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT_TRAP);
