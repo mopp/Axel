@@ -56,7 +56,9 @@ void init_paging(Paging_data const * const pd) {
     /* Set kernel area paging and video area paging. */
     map_page_area(kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, get_kernel_vir_start_addr(), get_kernel_vir_end_addr(), get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
     /* FIXME: make fixed map. */
-    map_page_same_area(kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, 0xfd000000, 0xfd000000 + (600 * 800 * 4));
+    uintptr_t vram_addr = 0xe0000000;
+    /* uintptr_t vram_addr = 0xfd000000; */
+    map_page_same_area(kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, vram_addr, vram_addr + (600 * 800 * 4));
 
     /* Switch paging directory table. */
     turn_off_pge();
@@ -93,14 +95,14 @@ void init_paging(Paging_data const * const pd) {
     n = dlist_get_new_page_node();
     pp = (Page_info*)n->data;
     pp->base_addr = get_kernel_vir_start_addr() + get_kernel_size();
-    pp->size = 0xfd000000 - pp->base_addr;
+    pp->size = vram_addr - pp->base_addr;
     pp->state = PAGE_INFO_STATE_FREE;
     dlist_insert_node_last(&p_man->list, n);
 
     n = dlist_get_new_page_node();
     pp = (Page_info*)n->data;
-    pp->base_addr = 0xfd000000;
-    pp->size = 0xFFFFFFFF - 0xfd000000;
+    pp->base_addr = 0xe0000000;
+    pp->size = 0xFFFFFFFF - vram_addr;
     pp->state = PAGE_INFO_STATE_ALLOC;
     dlist_insert_node_last(&p_man->list, n);
 }
@@ -373,7 +375,8 @@ inline void unmap_page_area(Page_directory_table pdt, uintptr_t const begin_vadd
 
 
 Page_directory_table make_user_pdt(void) {
-    Page_directory_table pdt = vmalloc(sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
+    Page_directory_table pdt = vmalloc(ALL_PAGE_STRUCT_SIZE);
+    /* Page_table pt = (Page_table)pdt + PAGE_DIRECTORY_ENTRY_NUM; */
 
     /* Copy kernel area. */
     size_t s = get_pde_index(get_kernel_vir_start_addr());
@@ -386,37 +389,45 @@ Page_directory_table make_user_pdt(void) {
 }
 
 
-bool is_kernel_pdt(Page_directory_table const pdt) {
+inline bool is_kernel_pdt(Page_directory_table const pdt) {
     return (kernel_pdt == pdt) ? true : false;
 }
 
 
 /* synchronize user and kernel pdt */
-Axel_state_code synchronize_pdt(Page_directory_table pdt, uintptr_t vaddr) {
-    Page_directory_entry* u_pde = get_pde(pdt, vaddr);
+Axel_state_code synchronize_pdt(Page_directory_table user_pdt, uintptr_t vaddr) {
+    if (is_kernel_pdt(user_pdt) == true) {
+        /* argument pdt is only user pdt. */
+        return AXEL_FAILED;
+    }
+
+    Page_directory_entry* u_pde = get_pde(user_pdt, vaddr);
     Page_directory_entry* k_pde = get_pde(kernel_pdt, vaddr);
 
     if (k_pde->present_flag == 0) {
         /*
          * Kernel space has not entry.
-         * But, cause page fault in user space.
+         * But, cause page fault in user pdt.
          * This is strange.
          */
         return AXEL_PAGE_SYNC_ERROR;
     }
 
+    /* *u_pde = 0x00000000 */
+    /* *k_pde = 0x00412023 */
     if (u_pde->present_flag == 0) {
         *u_pde = *k_pde;
     }
 
-    Page_table_entry* u_pte = get_pte(get_pt(u_pde), vaddr);
-    Page_table_entry* k_pte = get_pte(get_pt(k_pde), vaddr);
-    if (k_pte->present_flag == 0) {
-        /* This case is same things above */
-        return AXEL_PAGE_SYNC_ERROR;
-    }
+    // Page_table_entry* u_pte = get_pte(get_pt(u_pde), vaddr);
+    // Page_table_entry* k_pte = get_pte(get_pt(k_pde), vaddr);
+    // DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, k_pte);
+    // if (k_pte->present_flag == 0) {
+    //     /* This case is same things above */
+    //     return AXEL_PAGE_SYNC_ERROR;
+    // }
 
-    *u_pte = *k_pte;
+    // *u_pte = *k_pte;
 
     return AXEL_SUCCESS;
 }

@@ -326,9 +326,9 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* off
 }
 
 
-static void hlt(void) {
+static void hlt(Interrupt_context* ic) {
     io_cli();
-    *(uint32_t*)(KERNEL_VIRTUAL_BASE_ADDR) = 0xf5f5f5f5;
+    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, ic);
     while (1) {
         io_hlt();
     }
