@@ -17,10 +17,8 @@
 void exception_page_fault(Interrupt_context* ic) {
     uintptr_t fault_addr = load_cr2();
 
-    INF_LOOP();
-
     if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
-        /* User space fault */
+        /* TODO: User space fault */
     }
 
     /* Kernel space fault */
