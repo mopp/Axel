@@ -74,6 +74,10 @@
 
 
 #define DIRECTLY_WRITE(type, addr, val) (*((type *)(addr)) = (type)(val))
+#define DIRECTLY_WRITE_STOP(type, addr, val) \
+    do {                                     \
+        (*((type *)(addr)) = (type)(val));   \
+    } while (1)
 
 
 
