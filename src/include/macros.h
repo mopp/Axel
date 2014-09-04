@@ -80,5 +80,8 @@
     } while (1)
 
 
+#define BOCHS_MAGIC_BREAK() __asm__ volatile( "xchgw %%bx, %%bx" : :  : );
+
+
 
 #endif
