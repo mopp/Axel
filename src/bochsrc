@@ -30,7 +30,7 @@ clock:                sync=realtime, time0=local, rtc_sync=0
 # no loader
 log:                  bochs.log
 logprefix:            %t%e%d
-debug:                action=ignore, pci=report
+debug:                action=report
 info:                 action=report
 error:                action=report
 panic:                action=ask

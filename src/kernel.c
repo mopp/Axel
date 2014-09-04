@@ -316,10 +316,10 @@ static inline void init_gdt(void) {
 
 
 static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* offset, uint16_t selector_index, uint32_t flags) {
-    g->bit_expr_high = flags;
 
-    g->offset_low = ECAST_UINT16((uintptr_t)offset);
-    g->offset_high = ECAST_UINT16((uintptr_t)offset >> 16);
+    g->bit_expr_high    = flags;
+    g->offset_low       = ECAST_UINT16((uintptr_t)offset);
+    g->offset_high      = ECAST_UINT16((uintptr_t)offset >> 16);
     g->segment_selector = ECAST_UINT16(selector_index * sizeof(Gate_descriptor));
 
     return g;
@@ -327,11 +327,10 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* off
 
 
 static void hlt(Interrupt_context* ic) {
+    /* BOCHS_MAGIC_BREAK(); */
     io_cli();
     DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, ic);
-    while (1) {
-        io_hlt();
-    }
+    INF_LOOP();
 }
 
 
@@ -341,12 +340,12 @@ static inline void init_idt(void) {
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
 
-    set_gate_descriptor(idt + 0x08, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x0D, hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x08, hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x0D, hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x0E, asm_exception_page_fault, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x20, asm_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT_TRAP);
-    set_gate_descriptor(idt + 0x21, asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT_TRAP);
+    set_gate_descriptor(idt + 0x21, asm_interrupt_keybord,    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
 
     load_idtr(IDT_LIMIT, (uint32_t)idt);
 }

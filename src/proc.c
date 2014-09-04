@@ -63,7 +63,7 @@ typedef struct process Process;
 
 static Process pa, pb, pk, pu;
 static Process** processes;
-static uint8_t process_num = 3;
+static uint8_t process_num = 4;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx = 1;
 
@@ -107,14 +107,7 @@ void switch_context(void) {
          * Memory space is NOT same.
          * So, switching pdt.
          */
-        DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0);
-        /*
-         * address of next_t = 0xc0935000
-         * next_t->ip = 0xc0935000 + 4 = 0xc0935004
-         */
         set_cpu_pdt(next_p->pdt);
-        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, next_t->ip);
-        INF_LOOP();
 
         /* dirty initialize. */
         static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff };
@@ -122,6 +115,7 @@ void switch_context(void) {
             *((uint8_t*)next_t->ip + i)     = inst[i];
         }
     }
+    BOCHS_MAGIC_BREAK();
 
     __asm__ volatile(
         "pushfl                             \n\t"   // store eflags
