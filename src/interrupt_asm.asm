@@ -31,27 +31,25 @@
 
 asm_%2:
     %if %1 == 0
-        ; interruption has no error_code.
-        ; So, push dummy code.
+        ; Interruption has no error_code.
+        ; So, push dummy error code.
         push 0
     %endif
 
     push_all
 
-    ; set stack pointer as function argument.
+    ; Set stack pointer as function argument.
     ; esp indicate top address of saved context.
     push esp
 
     call %2
 
-    ; add esp, 4
-    pop eax
+    add esp, 4
 
     pop_all
 
-    %if %1 == 0
-        add esp, 4
-    %endif
+    ; Remove error code from stack.
+    add esp, 4
 
     iretd
 %endmacro
