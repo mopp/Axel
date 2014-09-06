@@ -389,6 +389,11 @@ Page_directory_table make_user_pdt(void) {
 }
 
 
+Page_directory_table get_kernel_pdt(void) {
+    return kernel_pdt;
+}
+
+
 inline bool is_kernel_pdt(Page_directory_table const pdt) {
     return (kernel_pdt == pdt) ? true : false;
 }
