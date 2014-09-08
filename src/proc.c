@@ -63,9 +63,9 @@ typedef struct process Process;
 
 static Process pa, pb, pk, pu;
 static Process** processes;
-static uint8_t process_num = 4;
+static uint8_t process_num   = 3;
 static uint8_t current_p_idx = 0;
-static uint8_t next_p_idx = 1;
+static uint8_t next_p_idx    = 1;
 
 
 /* TODO: */
@@ -74,18 +74,32 @@ Process* get_current_process(void) {
 }
 
 
-void dummy(void) {
-    __asm__ volatile(
-        "jmp 0x1000  \n\t"
-        :
-        :
-        :
-    );
-    return;
+/**
+ * @brief This function is "jumpled"(NOT called) by switch_context.
+ *          And Stack(esp) is already chenged next stack.
+ * @param current pointer to current process.
+ * @param next pointer to next process.
+ */
+void __fastcall change_context(Process* current, Process* next) {
+    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, current->pid);
+
+    if (next->pdt != NULL) {
+        /*
+         * Next Memory space is user space.
+         * So, change pdt.
+         */
+        BOCHS_MAGIC_BREAK()
+        set_cpu_pdt(next->pdt);
+
+        /* dirty initialize. */
+        static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff};
+        for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
+            *((uint8_t*)next->thread->ip + i) = inst[i];
+        }
+    }
 }
 
 
-/* TODO: chenge page global directly */
 void switch_context(void) {
     Process* current_p = processes[current_p_idx];
     Thread* current_t  = current_p->thread;
@@ -102,49 +116,32 @@ void switch_context(void) {
         next_p_idx = 0;
     }
 
-    if (current_p->pdt != next_p->pdt) {
-        /*
-         * Memory space is NOT same.
-         * So, switching pdt.
-         */
-        set_cpu_pdt(next_p->pdt);
-
-        /* dirty initialize. */
-        static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff };
-        for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
-            *((uint8_t*)next_t->ip + i)     = inst[i];
-        }
-    }
-    BOCHS_MAGIC_BREAK();
-
     __asm__ volatile(
-        "pushfl                             \n\t"   // store eflags
         "pushl %%ebp                        \n\t"
-        "pushl %%eax                        \n\t"
-        "pushl %%ecx                        \n\t"
-        "pushl %%edx                        \n\t"
-        "pushl %%ebx                        \n\t"
+        "pushfl                             \n\t"   // Store eflags
 
-        "movl  $next_turn, %[current_ip]    \n\t"   // store ip
-        "movl  %%esp, %[current_sp]         \n\t"   // store sp
-        "movl  %[next_sp], %%esp            \n\t"   // restore sp
-        "pushl %[next_ip]                   \n\t"   // restore ip
-        "ret \n\t"   // change context
+        "movl  $next_turn, %[current_ip]    \n\t"   // Store ip
+        "movl  %%esp,      %[current_sp]    \n\t"   // Store sp
+        "movl  %[next_sp], %%esp            \n\t"   // Restore sp
 
+        "movl  %[current_proc], %%ecx       \n\t"   // Set second argument
+        "movl  %[next_proc],    %%edx       \n\t"   // Set first argument
+        "pushl %[next_ip]                   \n\t"   // Restore ip (set return address)
+        "jmp   change_context               \n\t"   // Change context
+
+        ".globl next_turn                   \n\t"
         "next_turn:                         \n\t"
 
-        "popl %%ebx                         \n\t"
-        "popl %%edx                         \n\t"
-        "popl %%ecx                         \n\t"
-        "popl %%eax                         \n\t"
-        "popl %%ebp                         \n\t"
-        "popfl                              \n\t"   // restore eflags
+        "popfl                              \n\t"   // Restore eflags
+        "popl  %%ebp                        \n\t"
 
-        :   [current_ip] "=m" (current_t->ip),
-            [current_sp] "=m" (current_t->sp)
-        :   [next_ip] "m" (next_t->ip),
-            [next_sp] "m" (next_t->sp)
-        : "memory"
+        :   [current_ip]  "=m" (current_t->ip),
+            [current_sp]  "=m" (current_t->sp)
+        :   [next_ip]      "m" (next_t->ip),
+            [next_sp]      "m" (next_t->sp),
+            [current_proc] "m" (current_p),
+            [next_proc]    "m" (next_p)
+        : "memory", "%ecx", "%edx"
     );
 }
 
@@ -190,8 +187,8 @@ Process* make_user_process(void) {
     p->pdt         = make_user_pdt();
     p->pid         = 100;
     p->thread      = vmalloc(sizeof(Thread));
-    p->thread->ip  = 0x1000; /* XXX: start virtual address 0x0; */
-    p->thread->sp  = ps->stack_addr;
+    p->thread->ip  = 0x1000; /* XXX: start virtual address 0x1000; */
+    p->thread->sp  = ps->stack_addr + ps->stack_size;
 
     /* Init user space. */
     if (0 != ps->text_size) {
@@ -206,9 +203,9 @@ Process* make_user_process(void) {
         /* Stack segment */
         t   = vir_to_phys_addr(vmalloc_addr(ps->stack_size));
         p_s = t;
-        p_e = p_s + ps->text_size;
-        v_s = ps->text_addr;
-        v_e = v_s + ps->text_size;
+        p_e = p_s + ps->stack_size;
+        v_s = ps->stack_addr;
+        v_e = v_s + ps->stack_size;
         map_page_area(p->pdt, PDE_FLAGS_USER, PTE_FLAGS_USER, v_s, v_e, p_s, p_e);
     }
 
@@ -217,8 +214,6 @@ Process* make_user_process(void) {
 
 
 Axel_state_code init_process(void) {
-    /* Init tss */
-
     pk.pid = 0;
     pk.pdt = NULL;
     pk.thread = vmalloc(sizeof(Thread));

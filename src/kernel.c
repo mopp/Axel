@@ -298,8 +298,11 @@ static inline void init_gdt(void) {
     memset(axel_s.gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
     memset(axel_s.tss, 0, sizeof(Task_state_segment));
 
-    axel_s.tss->ss0 = KERNEL_DATA_SEGMENT_SELECTOR;
-    axel_s.tss->esp0 = (uint32_t)kernel_init_stack_top;
+    Page_directory_table pdt = get_kernel_pdt();
+    axel_s.tss->ss0          = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->esp0         = (uint32_t)kernel_init_stack_top;
+    axel_s.tss->cr3          = (uint32_t)pdt;
+
     /* axel_s.tss->cs = USER_DATA_SEGMENT_SELECTOR; */
     /* axel_s.tss->ss = USER_DATA_SEGMENT_SELECTOR; */
 

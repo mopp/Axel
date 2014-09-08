@@ -19,6 +19,8 @@ void exception_page_fault(Interrupt_context* ic) {
 
     if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
         /* TODO: User space fault */
+        io_cli();
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x1);
     }
 
     /* Kernel space fault */
@@ -27,17 +29,13 @@ void exception_page_fault(Interrupt_context* ic) {
         /* Maybe kernel error */
         /* TODO: panic */
         io_cli();
-        while (1) {
-            io_hlt();
-        }
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x2);
     }
 
     Axel_state_code result = synchronize_pdt(pdt, fault_addr);
     if (result != AXEL_SUCCESS) {
         /* TODO: panic */
         io_cli();
-        while (1) {
-            io_hlt();
-        }
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x3);
     }
 }
