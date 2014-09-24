@@ -14,34 +14,8 @@
 #include <paging.h>
 #include <asm_functions.h>
 #include <string.h>
-#include <dlist.h>
-
-
-enum memory_manager_constants {
-    MAX_MEM_NODE_NUM = 2048, /* MAX_MEM_NODE_NUM(0x800) must be a power of 2 for below modulo. */
-    MEM_INFO_STATE_FREE = 0, /* this shows that we can use its memory. */
-    MEM_INFO_STATE_ALLOC,    /* this shows that we cannot use its memory. */
-};
-#define MOD_MAX_MEM_NODE_NUM(n) (n & 0x04ffu)
-
-
-/* memory infomation structure to managed. */
-struct memory_info {
-    uintptr_t base_addr; /* base address */
-    size_t size;         /* allocated size */
-    uint8_t state;       /* managed area state */
-};
-typedef struct memory_info Memory_info;
-
-
-/* structure for storing memory infomation. */
-struct memory_manager {
-    Dlist list; /* this list store memory infomation using Memory_info structure. */
-    size_t alloc_request_size;
-    uintptr_t free_request_addr;
-};
-typedef struct memory_manager Memory_manager;
-
+#include <buddy.h>
+#include <macros.h>
 
 
 /*
@@ -57,59 +31,27 @@ extern uintptr_t const LD_KERNEL_SIZE;
 static uintptr_t const kernel_start_addr = (uintptr_t)&LD_KERNEL_START - KERNEL_PHYSICAL_BASE_ADDR;
 static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 
-/* These pointer variables is dynamically allocated at kernel tail. */
-static Memory_manager* mem_man;
-static Dlist_node* mem_list_nodes;
-static Memory_info* mem_info;
-static bool* used_list_node;
+static size_t total_memory_size;
 
 static void fix_address(Multiboot_info* const);
-static Dlist_node* list_get_new_memory_node(void);
-static void remove_memory_list_node(Dlist_node*);
+static uintptr_t align_address(uintptr_t, size_t);
 static void* smalloc(size_t);
-static void* smalloc_page_round(size_t);
+/* static void* smalloc_align(size_t, size_t); */
 
 
-void init_memory(Multiboot_info* const mb_info) {
+Axel_state_code init_memory(Multiboot_info* const mb_info) {
     /*
      * pointer of Multiboot_info struct has physical address.
      * So, this function converts physical address to virtual address to avoid pagefault.
      */
     fix_address(mb_info);
 
-    /* allocation memory for paging feature */
-
-    /*
-     * Allocation Page_directory_table to avoid wast of memory in this.
-     * Bacause size is rounded.
-     */
-    Paging_data pd = {
-        .pdt          = smalloc_page_round(ALL_PAGE_STRUCT_SIZE),
-        .p_man        = (Page_manager*)smalloc(sizeof(Page_manager)),
-        .p_list_nodes = (Dlist_node*)smalloc(sizeof(Dlist_node) * PAGE_INFO_NODE_NUM),
-        .p_info       = (Page_info*)smalloc(sizeof(Page_info) * PAGE_INFO_NODE_NUM),
-        .used_p_info  = (bool*)smalloc(sizeof(bool) * PAGE_INFO_NODE_NUM),
-    };
-
-    /* initialize dynamic allocated variables. */
-    mem_man = smalloc(sizeof(Memory_manager));
-    dlist_init(&mem_man->list, sizeof(Memory_info), NULL);
-
-    mem_info = smalloc(sizeof(Memory_info) * MAX_MEM_NODE_NUM);
-
-    used_list_node = smalloc(sizeof(bool) * MAX_MEM_NODE_NUM);
-
-    /* set memory_info area into list node. */
-    mem_list_nodes = smalloc(sizeof(Dlist_node) * MAX_MEM_NODE_NUM);
-    for (size_t i = 0; i < MAX_MEM_NODE_NUM; ++i) {
-        mem_list_nodes[i].data = &mem_info[i];
+    if (mb_info->flags.is_mem_enable == 0) {
+        return AXEL_ERROR_INITIALIZE_MEMORY;
     }
 
-    /* FIXME: This is dirty things for vmalloc(). */
-    kernel_end_addr = round_page_size(kernel_end_addr);
-
     /*
-     * Set physical 0x000000 to physical kernel end address is allocated.
+     * Set physical 0x000000 to "physical kernel end address" is allocated.
      * But, there are continuous allocated areas in this area.
      * So, We alloc it to one node.
      * NOTE from http://wiki.osdev.org/Detecting_Memory_(x86)#Memory_Detection_in_Emulators
@@ -118,87 +60,86 @@ void init_memory(Multiboot_info* const mb_info) {
      *      If you tell an emulator to emulate 32M, does that mean your address space definitely goes from 0 to 32M -1, with missing bits? Not necessarily.
      *      The emulator might assume that you mean 32M of contiguous memory above 1M, so it might end at 33M -1.
      *      Or it might assume that you mean 32M of total usable RAM, going from 0 to 32M + 384K -1.
-     *      So don't be surprised if you see a "detected memory size" that does not exactly match your expectations.
+     *      So don't be surprised if you see a "detected memory size that does not exactly match your expectations".
+     * qemu
+     *       size addr begin        end                  size       type
+     * 0x00000014 0x00000000 0x0009fc00 0x0009fc00 (639   KB) 0x00000001
+     * 0x00000014 0x0009fc00 0x000a0000 0x00000400 (1     KB) 0x00000002
+     * 0x00000014 0x000f0000 0x00100000 0x00010000 (64    KB) 0x00000002
+     * 0x00000014 0x00100000 0x01fe0000 0x01ee0000 (31616 KB) 0x00000001
+     * 0x00000014 0x01fe0000 0x02000000 0x00020000 (128   KB) 0x00000002
+     * 0x00000014 0xfffc0000 0xffff0000 0x00040000 (256   KB) 0x00000002
+     * Total size: 0x01ff0000 = 32704 KB = 31 MB
+     * 0xfd000000 - vbe
      */
-    Dlist_node* kernel_n = list_get_new_memory_node();
-    Memory_info* kernel_mi = (Memory_info*)kernel_n->data;
-    kernel_mi->base_addr = get_kernel_phys_start_addr();
-    kernel_mi->size = get_kernel_phys_end_addr();
-    kernel_mi->state = MEM_INFO_STATE_ALLOC;
-    dlist_insert_node_last(&mem_man->list, kernel_n);
-    uintptr_t kernel_node_end_addr = kernel_mi->base_addr + kernel_mi->size;
+    Multiboot_memory_map const* mmap = (Multiboot_memory_map const*)((uintptr_t)mb_info->mmap_addr);
+    Multiboot_memory_map const* const limit = (Multiboot_memory_map const* const)((uintptr_t)mmap + mb_info->mmap_length);
+    Multiboot_memory_map free_area = {.len = 0};
+    total_memory_size = 0;
+    while (mmap < limit) {
+        total_memory_size += mmap->len;
 
-    /* set memory infomation from Multiboot_memory_map. */
-    Multiboot_memory_map const* mmap = (Multiboot_memory_map const*)(uintptr_t)mb_info->mmap_addr;
-    size_t const mmap_len = mb_info->mmap_length;
-    Multiboot_memory_map const* const limit = (Multiboot_memory_map const* const)((uintptr_t)mmap + mmap_len);
-    bool first_flag = true;
-    for (Multiboot_memory_map const* i = mmap; i < limit; i = (Multiboot_memory_map*)((uintptr_t)i + sizeof(i->size) + i->size)) {
-        if ((i->addr + i->len) < kernel_node_end_addr) {
-            continue;
+        if ((mmap->type == MULTIBOOT_MEMORY_AVAILABLE) && (get_kernel_phys_start_addr() < mmap->addr) && (free_area.len <= mmap->len)) {
+            /* select memory space for buddy. */
+            free_area = *mmap;
         }
-        Dlist_node* n = list_get_new_memory_node();
 
-        /* set memory_info */
-        Memory_info* mi = (Memory_info*)n->data;
-        if (first_flag == true && i->addr <= kernel_node_end_addr) {
-            mi->base_addr = kernel_node_end_addr;
-            mi->size = (size_t)((uintptr_t)i->len - (kernel_node_end_addr - (uintptr_t)i->addr));
-            first_flag = false;
-        } else {
-            mi->base_addr = (uintptr_t)i->addr;
-            mi->size = (size_t)i->len;
-        }
-        mi->state = (i->type == MULTIBOOT_MEMORY_AVAILABLE) ? MEM_INFO_STATE_FREE : MEM_INFO_STATE_ALLOC;
-
-        /* append to list. */
-        dlist_insert_node_last(&mem_man->list, n);
+        mmap = (Multiboot_memory_map*)((uintptr_t)mmap + sizeof(mmap->size) + mmap->size);
     }
+
+    if (free_area.len == 0) {
+        return AXEL_ERROR_INITIALIZE_MEMORY;
+    }
+
+    /*
+     * Allocation of kernel variables area.
+     * These variables must be necessarily.
+     * But it is too big to allocate in a compile time.
+     * 4150 KB.
+     */
+    kernel_end_addr = align_address(kernel_end_addr, 2);
+    Paging_data pd = {
+        .pdt          = smalloc(ALL_PAGE_STRUCT_SIZE),
+        .p_man        = smalloc(sizeof(Page_manager)),
+        .p_list_nodes = smalloc(sizeof(Dlist_node) * PAGE_INFO_NODE_NUM),
+        .p_info       = smalloc(sizeof(Page_info) * PAGE_INFO_NODE_NUM),
+        .used_p_info  = smalloc(sizeof(bool) * PAGE_INFO_NODE_NUM),
+    };
+    kernel_end_addr = align_address(kernel_end_addr, 2);
+
+    /*
+     * Calculate the number of frame for buddy system.
+     * And allocate those frames.
+     */
+    uintptr_t end_addr = free_area.addr + free_area.len;
+    uintptr_t addr_len = end_addr - get_kernel_phys_end_addr();
+    size_t frame_nr    = addr_len / FRAME_SIZE;
+    Frame* f           = smalloc(sizeof(Frame) * frame_nr);
+
+    /*
+     * Re calculate the number of frame.
+     * Because of avoiding buddy system error.
+     * In this, frame_nr is smaller than before.
+     */
+    addr_len = end_addr - get_kernel_phys_end_addr();
+    frame_nr = addr_len / FRAME_SIZE;
+
+    Buddy_manager bman;
+    bman.base_addr = get_kernel_phys_end_addr();
+    if (f == NULL || buddy_init(&bman, f, frame_nr) == NULL) {
+        return AXEL_ERROR_INITIALIZE_MEMORY;
+    }
+
+    BOCHS_MAGIC_BREAK();
+    DIRECTLY_WRITE_STOP(size_t, KERNEL_VIRTUAL_BASE_ADDR, buddy_get_free_memory_size(&bman));
 
     /*
      * Physical memory managing is just finished.
      * Next, let's set paging.
      */
     init_paging(&pd);
-}
 
-
-static inline void* smalloc_generic(size_t size, bool is_round_page_size) {
-    uintptr_t addr = get_kernel_vir_end_addr();
-
-    if (is_round_page_size == true) {
-        uintptr_t raddr = round_page_size(addr);
-        size += raddr - addr;
-        addr = raddr;
-    }
-
-    kernel_end_addr += size; /* size add to kernel_end_addr to allocate memory. */
-
-    memset((void*)addr, 0, size);
-
-    return (void*)addr;
-}
-
-
-/**
- * @brief Strangely memory allocation.
- *        This function allocate memory at kernel tail.
- * @param size allocated memory size.
- * @return pointer to allocated memory.
- */
-static inline void* smalloc(size_t size) {
-    return smalloc_generic(size, false);
-}
-
-
-static inline void* smalloc_page_round(size_t size) {
-    return smalloc_generic(size, true);
-}
-
-
-static bool for_each_in_malloc(Dlist* l, void* d) {
-    Memory_info const* const m = (Memory_info*)d;
-    return ((m->state == MEM_INFO_STATE_FREE) && (((Memory_manager const*)l)->alloc_request_size <= m->size)) ? true : false;
+    return AXEL_SUCCESS;
 }
 
 
@@ -208,80 +149,16 @@ static bool for_each_in_malloc(Dlist* l, void* d) {
  * @return pointer to allocated memory.
  */
 void* pmalloc(size_t size) {
-    /* search enough size node */
-    mem_man->alloc_request_size = size;
-    Dlist_node* n = dlist_for_each(&mem_man->list, for_each_in_malloc, false);
-    if (n == NULL) {
-        return NULL;
-    }
+    return NULL;
+}
 
-    /* get new node */
-    Dlist_node* new = list_get_new_memory_node();
-    if (new == NULL) {
-        return NULL;
-    }
 
-    /* allocate new area */
-    Memory_info* mi = (Memory_info*)n->data;
-    Memory_info* new_mi = (Memory_info*)new->data;
-    new_mi->base_addr = mi->base_addr + size;
-    new_mi->size = mi->size - size;
-    new_mi->state = MEM_INFO_STATE_FREE;
-
-    mi->size = size;
-    mi->state = MEM_INFO_STATE_ALLOC;
-
-    dlist_insert_node_next(&mem_man->list, n, new);
-
-    return (void*)mi->base_addr;
+void pfree(void* obj) {
 }
 
 
 void* pmalloc_page_round(size_t size) {
     return pmalloc(round_page_size(size));
-}
-
-
-static bool for_each_in_free(Dlist* l, void* d) {
-    Memory_info const* const m = (Memory_info*)d;
-    return ((m->state == MEM_INFO_STATE_ALLOC) && (m->base_addr == ((Memory_manager const*)l)->free_request_addr)) ? true : false;
-}
-
-
-void pfree(void* object) {
-    if (object == NULL) {
-        return;
-    }
-
-    mem_man->free_request_addr = (uintptr_t)object;
-    Dlist_node* n = dlist_for_each(&mem_man->list, for_each_in_free, false);
-    if (n == NULL) {
-        return;
-    }
-    Memory_info* n_mi = (Memory_info*)n->data;
-
-    Dlist_node* const prev_node = n->prev;
-    Dlist_node* const next_node = n->next;
-    Memory_info* const prev_mi = (Memory_info*)prev_node->data;
-    Memory_info* const next_mi = (Memory_info*)next_node->data;
-
-    if (prev_mi->state == MEM_INFO_STATE_FREE && prev_mi->state == MEM_INFO_STATE_FREE) {
-        /* merge next and previous. */
-        prev_mi->size += (n_mi->size + next_mi->size);
-        remove_memory_list_node(n);
-        remove_memory_list_node(next_node);
-    } else if (prev_mi->state == MEM_INFO_STATE_FREE) {
-        /* merge previous. */
-        prev_mi->size += n_mi->size;
-        remove_memory_list_node(n);
-    } else if (next_mi->state == MEM_INFO_STATE_FREE) {
-        /* merge next. */
-        n_mi->size += next_mi->size;
-        n_mi->state = MEM_INFO_STATE_FREE;
-        remove_memory_list_node(next_node);
-    } else {
-        n_mi->state = MEM_INFO_STATE_FREE;
-    }
 }
 
 
@@ -315,6 +192,51 @@ size_t get_kernel_static_size(void) {
 }
 
 
+size_t get_total_memory_size(void) {
+    return total_memory_size;
+}
+
+
+/**
+ * @brief Strangely memory allocation.
+ *        This function allocate contiguous memory at kernel tail.
+ * @param size allocated memory size.
+ * @return pointer to allocated memory.
+ */
+static inline void* smalloc(size_t size) {
+    uintptr_t addr = kernel_end_addr;
+
+    /* size add to kernel_end_addr to allocate memory. */
+    kernel_end_addr += size;
+
+    return (void*)addr;
+}
+
+
+static inline size_t complement_2(size_t x) {
+    return (~x + 1);
+}
+
+
+static inline uintptr_t align_address(uintptr_t addr, size_t align_size) {
+    return (((addr & (align_size - 1)) == 0)) ? (addr) : ((addr & complement_2(align_size)) + align_size);
+}
+
+
+// /**
+//  * @brief alignment smalloc.
+//  *        return address is alignment by "align_size"
+//  * @param size       allocated memory size.
+//  * @param align_size alignment size that is only power of 2.
+//  * @return pointer to allocated memory.
+//  */
+// static inline void* smalloc_align(size_t size, size_t align_size) {
+//     kernel_end_addr = align_address(kernel_end_addr, align_size);
+//
+//     return smalloc(size);
+// }
+
+
 static inline void fix_address(Multiboot_info* const mb_info) {
     set_phys_to_vir_addr(&mb_info->cmdline);
     set_phys_to_vir_addr(&mb_info->mods_addr);
@@ -327,58 +249,3 @@ static inline void fix_address(Multiboot_info* const mb_info) {
     set_phys_to_vir_addr(&mb_info->vbe_mode_info);
 }
 
-
-/**
- * @brief get new list node.
- *      You MUST use this function while managing memory.
- *      Because default get_new_list_node() uses malloc().
- *      And the number of node cannot exceed MAX_MEM_NODE_NUM.
- * @param pointer to List_node.
- * @return new pointer to List_node.
- */
-static Dlist_node* list_get_new_memory_node(void) {
-    static size_t cnt = 0;         /* counter for nextfix */
-    size_t const stored_cnt = cnt; /* It is used for detecting already checking all node. */
-
-    do {
-        cnt = MOD_MAX_MEM_NODE_NUM(cnt + 1);
-        if (stored_cnt == cnt) {
-            /* all node is already used :( */
-            return NULL;
-        }
-    } while (used_list_node[cnt] == true);
-
-    used_list_node[cnt] = true;
-
-    return &mem_list_nodes[cnt];
-}
-
-
-/**
- * @brief remove list node.
- *      You MUST use this function while managing memory.
- *      because default delete_list_node() uses free().
- * @param  target
- * @param  m
- * @return
- */
-static void remove_memory_list_node(Dlist_node* target) {
-    dlist_remove_node(&mem_man->list, target);
-
-    /* instead of free(). */
-    used_list_node[((uintptr_t)target - (uintptr_t)mem_list_nodes) / sizeof(Dlist_node)] = false;
-}
-
-
-#include <stdio.h>
-static bool p(Dlist* l, void* d) {
-    Memory_info* m = (Memory_info*)d;
-    printf("Base:%zx, Size:%zuKB, State:%s\n", m->base_addr, m->size / 1024, (m->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
-    return false;
-}
-
-
-void print_pmem(void) {
-    puts("\n");
-    dlist_for_each(&mem_man->list, p, false);
-}

@@ -3,7 +3,7 @@ OUTPUT_FORMAT(elf32-i386)
 
 /* for C Preprocessor. */
 #define _LINKER_SCRIPT_
-#include<paging.h>
+#include <paging.h>
 
 
 SECTIONS {
@@ -53,7 +53,7 @@ SECTIONS {
     }
 
 
+    LD_KERNEL_BSS_SIZE = LD_KERNEL_BSS_END - LD_KERNEL_BSS_START;
     LD_KERNEL_END = .;
     LD_KERNEL_SIZE = LD_KERNEL_END - LD_KERNEL_START;
-    LD_KERNEL_BSS_SIZE = LD_KERNEL_BSS_END - LD_KERNEL_BSS_START;
 }

@@ -14,9 +14,10 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <multiboot.h>
+#include <state_code.h>
 
 
-extern void init_memory(Multiboot_info* const);
+extern Axel_state_code init_memory(Multiboot_info* const);
 extern void* pmalloc(size_t);
 extern void* pmalloc_page_round(size_t);
 extern void pfree(void*);
@@ -26,7 +27,7 @@ extern uintptr_t get_kernel_phys_start_addr(void);
 extern uintptr_t get_kernel_phys_end_addr(void);
 extern size_t get_kernel_size(void);
 extern size_t get_kernel_static_size(void);
-extern void print_pmem(void);
+extern size_t get_total_memory_size(void);
 
 
 

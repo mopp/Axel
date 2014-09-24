@@ -12,6 +12,7 @@ enum axel_state_code {
     AXEL_SUCCESS = 0x01,
     AXEL_FAILED,
     AXEL_MEMORY_ALLOC_ERROR,
+    AXEL_ERROR_INITIALIZE_MEMORY,
     AXEL_PAGE_SYNC_ERROR,
 };
 typedef enum axel_state_code Axel_state_code;
