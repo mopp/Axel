@@ -10,11 +10,17 @@
 #define _PROC_H_
 
 
+
 #include <state_code.h>
+#include <stdbool.h>
 
 
 Axel_state_code init_process(void);
 void switch_context(void);
 /* Process* get_current_process(); */
+
+extern bool is_enable_process;
+
+
 
 #endif

@@ -67,6 +67,8 @@ static uint8_t process_num   = 3;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx    = 1;
 
+bool is_enable_process = false;
+
 
 /* TODO: */
 Process* get_current_process(void) {
@@ -214,6 +216,8 @@ Process* make_user_process(void) {
 
 
 Axel_state_code init_process(void) {
+    is_enable_process = true;
+
     pk.pid = 0;
     pk.pdt = NULL;
     pk.thread = vmalloc(sizeof(Thread));
@@ -238,7 +242,7 @@ Axel_state_code init_process(void) {
     processes[0] = &pk;
     processes[1] = &pa;
     processes[2] = &pb;
-    processes[3] = &pu;
+    /* processes[3] = &pu; */
 
     return AXEL_SUCCESS;
 }
