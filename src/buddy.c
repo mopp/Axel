@@ -66,7 +66,7 @@ static inline Frame* get_buddy_frame(Buddy_manager const* const bman, Frame cons
  * @param memory_size バディマネージャの管理するメモリーサイズ.
  * @return 初期化出来なかった場合NULL, それ以外は引数のマネージャが返る.
  */
-Buddy_manager* buddy_init(Buddy_manager* const bman, Frame* frames, size_t frame_nr) {
+Buddy_manager* buddy_init(Buddy_manager* const bman, uintptr_t base, Frame* frames, size_t frame_nr) {
     assert(bman != NULL);
     assert(memory_size != 0);
     assert(frame_nr != 0);
@@ -81,6 +81,7 @@ Buddy_manager* buddy_init(Buddy_manager* const bman, Frame* frames, size_t frame
     /* マネージャを初期化 */
     bman->frame_pool = frames;
     bman->total_frame_nr = frame_nr;
+    bman->base_addr = base;
     for (uint8_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; ++i) {
         bman->free_frame_nr[i] = 0;
         elist_init(bman->frames + i);
@@ -207,7 +208,7 @@ size_t buddy_get_alloc_memory_size(Buddy_manager const* const bman) {
 
 
 /**
- * @brief フレームのアドレスを求める..
+ * @brief フレームのアドレスを求める.
  * @param bman  フレームの属するマネージャ.
  * @param frame アドレスを求めるフレーム.
  * @return フレームのアドレス.
@@ -215,5 +216,10 @@ size_t buddy_get_alloc_memory_size(Buddy_manager const* const bman) {
 uintptr_t get_frame_addr(Buddy_manager const* const bman, Frame const* const frame) {
     assert(bman != NULL);
     assert(frame != NULL);
-    return get_frame_idx(bman, frame) * FRAME_SIZE;
+    return bman->base_addr + (get_frame_idx(bman, frame) * FRAME_SIZE);
+}
+
+
+Frame* get_frame_by_addr(Buddy_manager const * const bman, uintptr_t addr) {
+    return &bman->frame_pool[(addr - bman->base_addr) / FRAME_SIZE];
 }
