@@ -103,18 +103,20 @@ sleep:
 ; date section.
 ; This is Page Directory Table.
 ; And Page size is 4MB in this.
+; NOTE: "4KB" align is necessary.
 section .data
 align 0x1000
-KERNEL_PAGE_INDEX   equ KERNEL_VIRTUAL_BASE_ADDR >> 22  ; Page directory index of kernel.
+KERNEL_PDT_IDX equ (KERNEL_VIRTUAL_BASE_ADDR) >> 22 ; Page directory index of kernel.
+global kernel_init_page_directory_table
 kernel_init_page_directory_table:
     ; We must have some page which is mapped to physical address 0x100000.
     ; Because it(temporaly paging) is required for enable paging.
-    ; And This page is straight mapping virtual 0x00000000~4MB to phys 0x00000000~4MB and mapping virtual 0xC0000000~8MB to phys 0x00000000~8MB
-    dd 0x00000083
-    times (KERNEL_PAGE_INDEX - 1) dd 0                      ; Before kernel space.
-    dd 0x00000083                                           ; Virtual 0xC0000000 map to physical 0x000000
-    dd 0x00400083                                           ; Virtual 0xC0400000 map to physical 0x400000
-    ; Later area should NOT refered by CPU.
+    ; And This page is straight mapping virtual 0xC0000000~8MB to phys 0x00000000~8MB
+    dd 0x00000083                             ; boot_kernel area
+    times (KERNEL_PDT_IDX - 1) dd 0           ; Before kernel space.
+    dd 0x00000083                             ; Virtual 0xC0000000 map to physical 0x000000
+    dd 0x00400083                             ; Virtual 0xC0400000 map to physical 0x400000
+    times (0x3ff - (KERNEL_PDT_IDX - 2)) dd 0 ; Clear remain area.
 
 
 ; BSS(Block Started by Symbol) section
