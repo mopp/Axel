@@ -38,26 +38,22 @@ static void flush_area(Point2d const* const, Point2d const* const);
 
 
 Axel_state_code init_window(void) {
-    win_man = vmalloc(sizeof(Window_manager));
+    win_man = vmalloc_zeroed(sizeof(Window_manager));
     if (NULL == win_man) {
         return AXEL_MEMORY_ALLOC_ERROR;
     }
-    memset(win_man, 0, sizeof(Window_manager)); /* clear all member. */
     win_man->mouse_node = NULL;
     win_man->display_size = make_point2d(get_max_x_resolution(), get_max_y_resolution());
 
-    size_t const size = sizeof(RGB8) * (size_t)(win_man->display_size.x * win_man->display_size.y);
-    win_man->display_buffer = vmalloc(size);
+    win_man->display_buffer = vmalloc_zeroed(sizeof(RGB8) * (size_t)(win_man->display_size.x * win_man->display_size.y));
     if (win_man->display_buffer == NULL) {
+        vfree(win_man);
         return AXEL_MEMORY_ALLOC_ERROR;
     }
-    memset(win_man->display_buffer, 0, size);
 
-    dlist_init(&win_man->win_list, sizeof(Window), win_node_free);
-
-    /* alloc mouse */
+    /* alloc mouse window */
     Window mouse_win = {
-        .buf      = vmalloc(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->width)),
+        .buf      = vmalloc_zeroed(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->height)),
         .pos      = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2),
         .size     = make_point2d(mouse_cursor->width, mouse_cursor->height),
         .lock     = false,
@@ -67,11 +63,15 @@ Axel_state_code init_window(void) {
         .reserved = 0,
     };
     if (mouse_win.buf == NULL) {
+        vfree(win_man);
+        vfree(win_man->display_buffer);
         return AXEL_MEMORY_ALLOC_ERROR;
     }
     window_draw_bitmap(&mouse_win, mouse_cursor, 2);
 
+    dlist_init(&win_man->win_list, sizeof(Window), win_node_free);
     dlist_insert_data_last(&win_man->win_list, &mouse_win);
+
     win_man->mouse_node = win_man->win_list.node;
 
     return AXEL_SUCCESS;
@@ -98,8 +98,7 @@ Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
     calibrate(&w.size);
 
     size_t const ssize = sizeof(RGB8) * (size_t)(w.size.x * w.size.y);
-    w.buf = vmalloc(ssize);
-    memset(w.buf, 0, ssize);
+    w.buf = vmalloc_zeroed(ssize);
     if (w.buf == NULL) {
         return NULL;
     }
@@ -259,7 +258,7 @@ Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d cons
 
 void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) {
     if (w == NULL || dw == NULL || len == 0) {
-       return;
+        return;
     }
 
     for (int k = 0; k < len; k++) {

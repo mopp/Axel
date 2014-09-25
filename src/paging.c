@@ -56,8 +56,8 @@ void init_paging(Paging_data const * const pd) {
     /* Set kernel area paging and video area paging. */
     map_page_area(kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, get_kernel_vir_start_addr(), get_kernel_vir_end_addr(), get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
     /* FIXME: make fixed map. */
-    uintptr_t vram_addr = 0xe0000000;
-    /* uintptr_t vram_addr = 0xfd000000; */
+    /* uintptr_t vram_addr = 0xe0000000; */
+    uintptr_t vram_addr = 0xfd000000;
     map_page_same_area(kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, vram_addr, vram_addr + (600 * 800 * 4));
 
     /* Switch paging directory table. */
@@ -159,10 +159,15 @@ void* vmalloc(size_t size) {
 
     dlist_insert_node_next(list, n, new);
 
-    /* Page settings. */
     map_page_area(kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
 
     return (void*)pi->base_addr;
+}
+
+
+void* vmalloc_zeroed(size_t size) {
+    void* mem = vmalloc(size);
+    return (mem == NULL) ? (NULL) : memset(mem, 0, size);
 }
 
 
@@ -283,6 +288,7 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
 inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
     Page_directory_entry* const pde = get_pde(pdt, vaddr);
 
+    /* FIXME: pdeを取るのは4MBに一度でよい */
     if (pdt != kernel_pdt && pde->present_flag == 0) {
         /* Allocate page for user pdt */
         Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM);
