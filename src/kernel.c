@@ -111,15 +111,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     } else {
         /* TODO: panic */
     }
-    for (uint8_t* i = (uint8_t*)(0xC00A0000); i < (uint8_t*)(0xC00B0000); i++) {
-        *i = 0xAF;
-    }
-    INF_LOOP();
 
     init_graphic(boot_info);
     init_gdt();
     init_idt();
-    init_process();
+    /* init_process(); */
     init_pic();
     init_pit();
     io_sti();

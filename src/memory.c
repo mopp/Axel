@@ -16,6 +16,7 @@
 #include <string.h>
 #include <buddy.h>
 #include <macros.h>
+#include <kernel.h>
 
 
 /*
@@ -36,7 +37,7 @@ static size_t total_memory_size;
 static void fix_address(Multiboot_info* const);
 static uintptr_t align_address(uintptr_t, size_t);
 static void* smalloc(size_t);
-/* static void* smalloc_align(size_t, size_t); */
+static void* smalloc_align(size_t, size_t);
 
 
 Axel_state_code init_memory(Multiboot_info* const mb_info) {
@@ -80,7 +81,7 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
         total_memory_size += mmap->len;
 
         if ((mmap->type == MULTIBOOT_MEMORY_AVAILABLE) && (get_kernel_phys_start_addr() < mmap->addr) && (free_area.len <= mmap->len)) {
-            /* select memory space for buddy. */
+            /* Select memory space for buddy. */
             free_area = *mmap;
         }
 
@@ -97,24 +98,25 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
      * But it is too big to allocate in a compile time.
      * 4150 KB.
      */
-    kernel_end_addr = align_address(kernel_end_addr, 2);
+    axel_s.bman = smalloc(sizeof(Buddy_manager));
     Paging_data pd = {
-        .pdt          = smalloc(ALL_PAGE_STRUCT_SIZE),
         .p_man        = smalloc(sizeof(Page_manager)),
         .p_list_nodes = smalloc(sizeof(Dlist_node) * PAGE_INFO_NODE_NUM),
         .p_info       = smalloc(sizeof(Page_info) * PAGE_INFO_NODE_NUM),
         .used_p_info  = smalloc(sizeof(bool) * PAGE_INFO_NODE_NUM),
+        .pdt          = smalloc_align(ALL_PAGE_STRUCT_SIZE, 4096),
     };
-    kernel_end_addr = align_address(kernel_end_addr, 2);
 
     /*
      * Calculate the number of frame for buddy system.
      * And allocate those frames.
      */
-    uintptr_t end_addr = free_area.addr + free_area.len;
+    uintptr_t end_addr = (free_area.addr + free_area.len) & 0xffffffff;
     uintptr_t addr_len = end_addr - get_kernel_phys_end_addr();
     size_t frame_nr    = addr_len / FRAME_SIZE;
-    Frame* f           = smalloc(sizeof(Frame) * frame_nr);
+    Frame* frames      = smalloc(sizeof(Frame) * frame_nr);
+
+    kernel_end_addr = align_address(kernel_end_addr, 4096);
 
     /*
      * Re calculate the number of frame.
@@ -124,14 +126,20 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
     addr_len = end_addr - get_kernel_phys_end_addr();
     frame_nr = addr_len / FRAME_SIZE;
 
-    Buddy_manager bman;
-    bman.base_addr = get_kernel_phys_end_addr();
-    if (f == NULL || buddy_init(&bman, f, frame_nr) == NULL) {
+    axel_s.bman = buddy_init(axel_s.bman, get_kernel_phys_end_addr(), frames, frame_nr);
+    /* 0x005304e4 - 0x00100000 = 0x4304e4 = 4289 KB */
+
+    if (frames == NULL || axel_s.bman == NULL) {
         return AXEL_ERROR_INITIALIZE_MEMORY;
     }
 
-    BOCHS_MAGIC_BREAK();
-    DIRECTLY_WRITE_STOP(size_t, KERNEL_VIRTUAL_BASE_ADDR, buddy_get_free_memory_size(&bman));
+    /*
+     * for (int i = BUDDY_SYSTEM_MAX_ORDER - 1; 0 <= i; --i) {
+     *     while (buddy_alloc_frames(&bman, i & 0xff) != NULL);
+     * }
+     * assert(buddy_get_alloc_memory_size(&bman));
+     * assert(buddy_get_free_memory_size(&bman));
+     */
 
     /*
      * Physical memory managing is just finished.
@@ -149,11 +157,36 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
  * @return pointer to allocated memory.
  */
 void* pmalloc(size_t size) {
-    return NULL;
+    static size_t order_nr[] = {
+        FRAME_SIZE * 1,
+        FRAME_SIZE * 2,
+        FRAME_SIZE * 4,
+        FRAME_SIZE * 8,
+        FRAME_SIZE * 16,
+        FRAME_SIZE * 32,
+        FRAME_SIZE * 64,
+        FRAME_SIZE * 128,
+        FRAME_SIZE * 256,
+        FRAME_SIZE * 512,
+        FRAME_SIZE * 1024,
+    };
+
+    uint8_t order = 0;
+    for (uint8_t i = 0; i < 10; i++) {
+        if (size <= order_nr[i]) {
+            order = i;
+            break;
+        }
+    }
+
+    Frame* f = buddy_alloc_frames(axel_s.bman, order);
+
+    return (void*)(get_frame_addr(axel_s.bman, f));
 }
 
 
 void pfree(void* obj) {
+    buddy_free_frames(axel_s.bman, get_frame_by_addr(axel_s.bman, (uintptr_t)obj));
 }
 
 
@@ -223,18 +256,18 @@ static inline uintptr_t align_address(uintptr_t addr, size_t align_size) {
 }
 
 
-// /**
-//  * @brief alignment smalloc.
-//  *        return address is alignment by "align_size"
-//  * @param size       allocated memory size.
-//  * @param align_size alignment size that is only power of 2.
-//  * @return pointer to allocated memory.
-//  */
-// static inline void* smalloc_align(size_t size, size_t align_size) {
-//     kernel_end_addr = align_address(kernel_end_addr, align_size);
-//
-//     return smalloc(size);
-// }
+/**
+ * @brief alignment smalloc.
+ *        return address is alignment by "align_size"
+ * @param size       allocated memory size.
+ * @param align_size alignment size that is only power of 2.
+ * @return pointer to allocated memory.
+ */
+static inline void* smalloc_align(size_t size, size_t align_size) {
+    kernel_end_addr = align_address(kernel_end_addr, align_size);
+
+    return smalloc(size);
+}
 
 
 static inline void fix_address(Multiboot_info* const mb_info) {

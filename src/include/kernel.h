@@ -13,6 +13,7 @@
 
 #include <ps2.h>
 #include <segment.h>
+#include <buddy.h>
 
 
 /*
@@ -24,10 +25,12 @@ struct axel_struct {
     Task_state_segment* tss;
     Keyboard* keyboard;
     Mouse* mouse;
+    Buddy_manager* bman;
 };
 typedef struct axel_struct Axel_struct;
 
 
+/* FIXME */
 extern Axel_struct axel_s;
 extern uintptr_t kernel_init_stack_top;
 
