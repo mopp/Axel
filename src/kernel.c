@@ -162,6 +162,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("kernel physical addr : 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
     printf("Total memory         : %zuKB\n", get_total_memory_size() / 1024);
     printf("BuddySystem Total    : %zuKB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
+    printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {

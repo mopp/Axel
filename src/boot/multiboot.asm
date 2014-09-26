@@ -112,11 +112,14 @@ kernel_init_page_directory_table:
     ; We must have some page which is mapped to physical address 0x100000.
     ; Because it(temporaly paging) is required for enable paging.
     ; And This page is straight mapping virtual 0xC0000000~8MB to phys 0x00000000~8MB
-    dd 0x00000083                             ; boot_kernel area
-    times (KERNEL_PDT_IDX - 1) dd 0           ; Before kernel space.
-    dd 0x00000083                             ; Virtual 0xC0000000 map to physical 0x000000
-    dd 0x00400083                             ; Virtual 0xC0400000 map to physical 0x400000
-    times (0x3ff - (KERNEL_PDT_IDX - 2)) dd 0 ; Clear remain area.
+    dd 0x00000083                               ; boot_kernel area
+    times (KERNEL_PDT_IDX - 1) dd 0             ; Before kernel space.
+    dd 0x00000083                               ; Virtual 0x0C0000000 map to physical 0x00000000
+    dd 0x00400083                               ; Virtual 0x0C0400000 map to physical 0x00400000
+    dd 0x00800083                               ; Virtual 0x0C0800000 map to physical 0x00800000
+    dd 0x00C00083                               ; Virtual 0x0C0C00000 map to physical 0x00C00000
+                                                ;   -> 0x0C00000 - 0x0C1000000 (16MB) is available.
+    times (0x3ff - (KERNEL_PDT_IDX - 4)) dd 0   ; Clear remain area.
 
 
 ; BSS(Block Started by Symbol) section
