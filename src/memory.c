@@ -64,13 +64,15 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
      *      So don't be surprised if you see a "detected memory size that does not exactly match your expectations".
      * qemu
      *       size addr begin        end                  size       type
-     * 0x00000014 0x00000000 0x0009fc00 0x0009fc00 (639   KB) 0x00000001
+     * 0x00000014 0x00000000 0x0009fc00 0x0009fc00 (639   KB) 0x00000001 boot_info->mem_lower
      * 0x00000014 0x0009fc00 0x000a0000 0x00000400 (1     KB) 0x00000002
+     *            0x000a0000 0x000f0000 0x00050000 (320   KB) hole - BIOS and vram
      * 0x00000014 0x000f0000 0x00100000 0x00010000 (64    KB) 0x00000002
-     * 0x00000014 0x00100000 0x01fe0000 0x01ee0000 (31616 KB) 0x00000001
+     * 0x00000014 0x00100000 0x01fe0000 0x01ee0000 (31616 KB) 0x00000001 boot_info->mem_upper
      * 0x00000014 0x01fe0000 0x02000000 0x00020000 (128   KB) 0x00000002
      * 0x00000014 0xfffc0000 0xffff0000 0x00040000 (256   KB) 0x00000002
      * Total size: 0x01ff0000 = 32704 KB = 31 MB
+     * 32704 + 320 = 33024 KB
      * 0xfd000000 - vbe
      */
     Multiboot_memory_map const* mmap = (Multiboot_memory_map const*)((uintptr_t)mb_info->mmap_addr);
@@ -190,11 +192,6 @@ void pfree(void* obj) {
 }
 
 
-void* pmalloc_page_round(size_t size) {
-    return pmalloc(round_page_size(size));
-}
-
-
 uintptr_t get_kernel_vir_start_addr(void) {
     return kernel_start_addr;
 }
@@ -226,7 +223,11 @@ size_t get_kernel_static_size(void) {
 
 
 size_t get_total_memory_size(void) {
-    return total_memory_size;
+    /*
+     * smalloc expands kernel_end_addr to allocate early memory.
+     * And buddy system manages area after kernel_end_addr.
+     */
+    return get_kernel_phys_end_addr() + buddy_get_total_memory_size(axel_s.bman);
 }
 
 
