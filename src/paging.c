@@ -442,38 +442,3 @@ Axel_state_code synchronize_pdt(Page_directory_table user_pdt, uintptr_t vaddr) 
 
     return AXEL_SUCCESS;
 }
-
-
-
-#include <stdio.h>
-static bool p(Dlist* l, void* d) {
-    Page_info* p = (Page_info*)d;
-    size_t mb = p->size / (1024 * 1024);
-    printf("Base:0x%zx, Size:%zu%s, State:%s\n", p->base_addr, (mb == 0 ? p->size / 1024 : mb), (mb == 0 ? "KB" : "MB"), (p->state == PAGE_INFO_STATE_FREE ? "Free" : "Alloc"));
-    return false;
-}
-
-
-void print_vmem(void) {
-    /* puts("\nUser area\n"); */
-    /* dlist_for_each(&p_man->user_area_list, p, false); */
-    puts("Kernel area\n");
-    dlist_for_each(&p_man->list, p, false);
-
-    size_t const size = 1024 * 1024;
-    char* str = vmalloc(sizeof(char) * size);
-    if (str == NULL) {
-        puts("vmalloc is failed");
-    } else {
-        printf("addr: 0x%zx\n", (uintptr_t)str);
-        /* 0xc0626000 */
-        for (size_t i = 0; i < size; i++) {
-            str[i] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[i % 26];
-        }
-    }
-
-    vfree(str);
-
-    /* This code must invokes Pagefault. */
-    /* *str = '0'; */
-}

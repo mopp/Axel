@@ -160,21 +160,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("kernel static size   : %zuKB\n", get_kernel_static_size() / 1024);
     printf("kernel virtual  addr : 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
     printf("kernel physical addr : 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    printf("GDT addr             : 0x%zx\n", (size_t)axel_s.gdt);
-
-    if (flags.is_mem_enable) {
-        printf("mem_lower(low memory size): %dKB\n", boot_info->mem_lower);
-        printf("mem_upper(extends memory size): %dKB\n", boot_info->mem_upper);
-        printf("Total memory size: %dKB\n", boot_info->mem_upper + boot_info->mem_lower);
-    }
-
-    /* Page_directory_table pdt = make_user_pdt(); */
-    /* char* str = uvmalloc(sizeof(char) * 100, &pdt); */
-    /* printf("0x%zx\n", (uintptr_t)pdt); */
-    /* printf("0x%zx\n", (uintptr_t)str); */
-
-    /* print_vmem(); */
-    /* print_pmem(); */
+    printf("Total memory         : %zuKB\n", get_total_memory_size() / 1024);
+    printf("BuddySystem Total    : %zuKB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
