@@ -105,8 +105,20 @@ typedef struct {
 
 struct multiboot_mmap {
     uint32_t size;
-    uint64_t addr;
-    uint64_t len;
+    union {
+        uint64_t addr;
+        struct {
+            uint32_t addr_low;
+            uint32_t addr_hi;
+        };
+    };
+    union {
+        uint64_t len;
+        struct {
+            uint32_t len_low;
+            uint32_t len_hi;
+        };
+    };
     uint32_t type;
 };
 typedef struct multiboot_mmap Multiboot_memory_map;
