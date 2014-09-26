@@ -207,6 +207,11 @@ size_t buddy_get_alloc_memory_size(Buddy_manager const* const bman) {
 }
 
 
+size_t buddy_get_total_memory_size(Buddy_manager const* const bman) {
+    return bman->total_frame_nr * FRAME_SIZE;
+}
+
+
 /**
  * @brief フレームのアドレスを求める.
  * @param bman  フレームの属するマネージャ.

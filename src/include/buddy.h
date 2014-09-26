@@ -52,6 +52,7 @@ extern size_t buddy_get_free_memory_size(Buddy_manager const* const);
 extern size_t buddy_get_alloc_memory_size(Buddy_manager const* const);
 extern uintptr_t get_frame_addr(Buddy_manager const* const, Frame const* const);
 extern Frame* get_frame_by_addr(Buddy_manager const * const, uintptr_t);
+extern size_t buddy_get_total_memory_size(Buddy_manager const* const);
 
 
 
