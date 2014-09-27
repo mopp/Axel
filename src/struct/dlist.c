@@ -10,7 +10,7 @@
  */
 
 #include <assert.h>
-#include <string.h>
+#include <utils.h>
 #include <stdlib.h>
 #include <dlist.h>
 
