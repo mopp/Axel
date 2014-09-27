@@ -13,7 +13,7 @@
 #include <memory.h>
 #include <paging.h>
 #include <asm_functions.h>
-#include <string.h>
+#include <utils.h>
 #include <buddy.h>
 #include <macros.h>
 #include <kernel.h>

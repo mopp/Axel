@@ -45,7 +45,7 @@
     char *: "%s",                           \
     void *: "%p")
 
-#include <stdio.h>
+#include <utils.h>
 #define PRINT(x) printf(PRINTF_DEC_FORMAT(x), (x))
 #define PRINTNL(x) PRINT(x), putchar('\n')
 

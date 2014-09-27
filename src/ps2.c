@@ -10,7 +10,7 @@
 #include <asm_functions.h>
 #include <graphic.h>
 #include <interrupt.h>
-#include <string.h>
+#include <utils.h>
 #include <kernel.h>
 
 

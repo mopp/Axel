@@ -8,7 +8,7 @@
 
 #include <proc.h>
 #include <stdint.h>
-#include <string.h>
+#include <utils.h>
 #include <macros.h>
 #include <paging.h>
 #include <memory.h>

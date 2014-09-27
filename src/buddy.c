@@ -9,8 +9,8 @@
 #include <assert.h>
 #include <elist.h>
 #include <buddy.h>
-#include <string.h>
 #include <stdbool.h>
+#include <utils.h>
 
 
 /* FIXME: */

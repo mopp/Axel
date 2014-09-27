@@ -11,7 +11,7 @@
 #include <paging.h>
 #include <graphic.h>
 #include <state_code.h>
-#include <string.h>
+#include <utils.h>
 #include <font.h>
 
 

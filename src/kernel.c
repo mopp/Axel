@@ -20,8 +20,6 @@
 #include <point.h>
 #include <proc.h>
 #include <segment.h>
-#include <stdio.h>
-#include <string.h>
 #include <vbe.h>
 #include <window.h>
 

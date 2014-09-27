@@ -6,7 +6,7 @@
  * @date 2014-05-20
  */
 #include <paging.h>
-#include <string.h>
+#include <utils.h>
 #include <memory.h>
 #include <asm_functions.h>
 #include <macros.h>

@@ -38,7 +38,7 @@ KERNEL_MAP			:= kernel.map
 
 STRUCT_DIR			:= $(AXEL_ROOT_DIR)struct/
 SUB_DIRS 			:= $(BOOT_DIR) $(STRUCT_DIR)
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o string.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o stdio.o memory.o buddy.o paging.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o paging.o kernel.o
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -85,18 +85,16 @@ graphic_vbe.o	: $(MAKEFILE) graphic_vbe.c $(AXEL_INCLUDE_PATH)graphic_vbe.h $(AX
 graphic.o		: $(MAKEFILE) graphic.c $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h
 interrupt.o 	: $(MAKEFILE) interrupt.c $(AXEL_INCLUDE_PATH)interrupt.h $(AXEL_INCLUDE_PATH)asm_functions.h
 interrupt_asm.o : $(MAKEFILE) interrupt_asm.asm $(AXEL_INCLUDE_PATH)interrupt.h interrupt.o
-memory.o		: $(MAKEFILE) memory.c $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)dlist.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h $(AXEL_INCLUDE_PATH)paging.h
-paging.o		: $(MAKEFILE) paging.c $(AXEL_INCLUDE_PATH)paging.h $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h  $(AXEL_INCLUDE_PATH)string.h
-string.o		: $(MAKEFILE) string.c $(AXEL_INCLUDE_PATH)string.h
-stdio.o			: $(MAKEFILE) stdio.c $(AXEL_INCLUDE_PATH)stdio.h $(AXEL_INCLUDE_PATH)graphic.h
+memory.o		: $(MAKEFILE) memory.c $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)dlist.h $(AXEL_INCLUDE_PATH)asm_functions.h $(AXEL_INCLUDE_PATH)paging.h
+paging.o		: $(MAKEFILE) paging.c $(AXEL_INCLUDE_PATH)paging.h $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h
+utils.o			: $(MAKEFILE) utils.c $(AXEL_INCLUDE_PATH)utils.h $(AXEL_INCLUDE_PATH)graphic.h
 font.o			: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
 ps2.o			: $(MAKEFILE) ps2.c $(AXEL_INCLUDE_PATH)ps2.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
 window.o		: $(MAKEFILE) window.c $(AXEL_INCLUDE_PATH)window.h graphic.o
 proc.o			: $(MAKEFILE) proc.c $(AXEL_INCLUDE_PATH)proc.h
 buddy.o			: $(MAKEFILE) buddy.c $(AXEL_INCLUDE_PATH)buddy.h
 exception.o		: $(MAKEFILE) exception.c $(AXEL_INCLUDE_PATH)exception.h
-kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o  graphic_txt.o graphic_vbe.o graphic.o interrupt.o interrupt_asm.o memory.o paging.o string.o stdio.o font.o ps2.o window.o proc.o
-
+kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o paging.o kernel.o
 
 $(BOOT_OBJ) : $(MAKEFILE)
 	make -C $(BOOT_DIR)
