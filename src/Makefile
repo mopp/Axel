@@ -36,9 +36,8 @@ GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
 KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 
-STRUCT_DIR			:= $(AXEL_ROOT_DIR)struct/
-SUB_DIRS 			:= $(BOOT_DIR) $(STRUCT_DIR)
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o paging.o kernel.o
+SUB_DIRS 			:= $(BOOT_DIR)
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o dlist.o aqueue.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o paging.o kernel.o
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -58,7 +57,6 @@ W_FLAGS 			:= -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -W
 # 	--analyze -g
 CFLAGS				:= --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
 LDFLAGS				:= -L$(AXEL_LIB_PATH) -Map $(KERNEL_MAP) -nostdlib
-LIBS				:= -lstruct
 export CC 			:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
 export PP 			:= $(CLANG) $(CPPFLAGS) -x c -E -P
 
@@ -88,6 +86,8 @@ interrupt_asm.o : $(MAKEFILE) interrupt_asm.asm $(AXEL_INCLUDE_PATH)interrupt.h 
 memory.o		: $(MAKEFILE) memory.c $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)dlist.h $(AXEL_INCLUDE_PATH)asm_functions.h $(AXEL_INCLUDE_PATH)paging.h
 paging.o		: $(MAKEFILE) paging.c $(AXEL_INCLUDE_PATH)paging.h $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h
 utils.o			: $(MAKEFILE) utils.c $(AXEL_INCLUDE_PATH)utils.h $(AXEL_INCLUDE_PATH)graphic.h
+dlist.o			: $(MAKEFILE) dlist.c $(AXEL_INCLUDE_PATH)dlist.h
+aqueue.o		: $(MAKEFILE) aqueue.c $(AXEL_INCLUDE_PATH)aqueue.h
 font.o			: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
 ps2.o			: $(MAKEFILE) ps2.c $(AXEL_INCLUDE_PATH)ps2.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
 window.o		: $(MAKEFILE) window.c $(AXEL_INCLUDE_PATH)window.h graphic.o
@@ -103,7 +103,7 @@ $(BOOT_OBJ) : $(MAKEFILE)
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(LINK_OBJS)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $(KERNEL_LNK) > $(TMP_FILE)
-	$(LD) $(LINK_OBJS) $(LDFLAGS) -T $(TMP_FILE) -static $(LIBS) -o $@
+	$(LD) $(LINK_OBJS) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
 	$(OBJCOPY) --only-keep-debug $(AXEL_BIN) $(AXEL_SYM)
 	$(OBJCOPY) --strip-debug $(AXEL_BIN)
 
@@ -131,11 +131,6 @@ clean:
 		done
 	$(RM) *.o *.bin *.iso *.map *.lst *.log *.sym $(ISO_DIR) tags
 	ctags -R ./*
-
-
-.PHONY: lib
-lib: $(STRUCT_DIR)
-	$(MAKE) -C $(STRUCT_DIR)
 
 
 .PHONY: run_qemu_cdrom

@@ -1,5 +1,5 @@
 /**
- * @file struct/aqueue.c
+ * @file aqueue.c
  * @brief Queue implemented by array.
  * @author mopp
  * @version 0.1

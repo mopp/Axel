@@ -1,5 +1,5 @@
 /*
- * @file struct/dlist.c
+ * @file dlist.c
  * @brief This list is DoublyCircularlyLinkedList.
  *      node = X0, X1
  *      prev                                next
