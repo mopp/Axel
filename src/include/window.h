@@ -17,10 +17,12 @@
 #include <state_code.h>
 #include <drawable.h>
 #include <stddef.h>
+#include <elist.h>
 
 
+/* 800 * 600 * 4 Byte(sizeof(RGB8)) = 1875KB = 1.8MB*/
 struct window {
-    /* 800 * 600 * 4 Byte(sizeof(RGB8)) = 1875KB = 1.8MB*/
+    Elist list;
     RGB8* buf;
     Point2d pos;
     Point2d size;

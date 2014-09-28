@@ -16,13 +16,13 @@
 
 
 struct window_manager {
-    Dlist win_list;
-    Point2d display_size;  /* This storing display size. */
+    Elist windows;
+    Point2d display_size; /* This storing display size. */
     struct {
         Point2d begin, end;
-    } check_area;          /* This is checking area in update_win_for_each. */
-    RGB8* display_buffer;  /* For double buffering. */
-    Dlist_node* mouse_node; /* This is always top on other windows. */
+    } check_area;         /* This is checking area in update_win_for_each. */
+    RGB8* display_buffer; /* For double buffering. */
+    Window* mouse_win;    /* This is always top on other windows. */
 };
 typedef struct window_manager Window_manager;
 
@@ -30,7 +30,6 @@ typedef struct window_manager Window_manager;
 static Window_manager* win_man; /* Window manager. */
 
 static void calibrate(Point2d* const p);
-static void win_node_free(Dlist*, void*);
 static void update_window_buffer(void);
 static void update_window_vram(void);
 static void flush_area(Point2d const* const, Point2d const* const);
@@ -42,7 +41,6 @@ Axel_state_code init_window(void) {
     if (NULL == win_man) {
         return AXEL_MEMORY_ALLOC_ERROR;
     }
-    win_man->mouse_node = NULL;
     win_man->display_size = make_point2d(get_max_x_resolution(), get_max_y_resolution());
 
     win_man->display_buffer = vmalloc_zeroed(sizeof(RGB8) * (size_t)(win_man->display_size.x * win_man->display_size.y));
@@ -52,61 +50,70 @@ Axel_state_code init_window(void) {
     }
 
     /* alloc mouse window */
-    Window mouse_win = {
-        .buf      = vmalloc_zeroed(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->height)),
-        .pos      = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2),
-        .size     = make_point2d(mouse_cursor->width, mouse_cursor->height),
-        .lock     = false,
-        .dirty    = true,
-        .enable   = true,
-        .has_inv_color = true,
-        .reserved = 0,
-    };
-    if (mouse_win.buf == NULL) {
-        vfree(win_man);
+    Window* mouse_win = vmalloc_zeroed(sizeof(Window));
+    if (mouse_win == NULL) {
         vfree(win_man->display_buffer);
+        vfree(win_man);
         return AXEL_MEMORY_ALLOC_ERROR;
     }
-    window_draw_bitmap(&mouse_win, mouse_cursor, 2);
+    mouse_win->buf = vmalloc_zeroed(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->height));
+    mouse_win->pos = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2);
+    mouse_win->size = make_point2d(mouse_cursor->width, mouse_cursor->height);
+    mouse_win->lock = false;
+    mouse_win->dirty = true;
+    mouse_win->enable = true;
+    mouse_win->has_inv_color = true;
+    mouse_win->reserved = 0;
 
-    dlist_init(&win_man->win_list, sizeof(Window), win_node_free);
-    dlist_insert_data_last(&win_man->win_list, &mouse_win);
+    if (mouse_win->buf == NULL) {
+        vfree(win_man->display_buffer);
+        vfree(win_man);
+        vfree(mouse_win);
+        return AXEL_MEMORY_ALLOC_ERROR;
+    }
+    window_draw_bitmap(mouse_win, mouse_cursor, 2);
 
-    win_man->mouse_node = win_man->win_list.node;
+    elist_init(&win_man->windows);
+    elist_insert_next(&win_man->windows, &mouse_win->list);
+
+    win_man->mouse_win = (Window*)(win_man->windows.next);
 
     return AXEL_SUCCESS;
 }
 
 
 Window* get_mouse_window(void) {
-    return (Window*)win_man->mouse_node->data;
+    return (Window*)win_man->mouse_win;
 }
 
 
 Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
-    Window w = {.lock = false, .dirty = true, .enable = true, .has_inv_color = false, .reserved = 0};
+    Window* w = vmalloc_zeroed(sizeof(Window));
+    if (w == NULL) {
+        return NULL;
+    }
 
     if (size->x <= 0 || size->y <= 0) {
         /* invalid size. */
         return NULL;
     }
 
-    w.pos = *pos;
-    w.size = *size;
+    w->pos = *pos;
+    w->size = *size;
 
-    calibrate(&w.pos);
-    calibrate(&w.size);
+    calibrate(&w->pos);
+    calibrate(&w->size);
 
-    size_t const ssize = sizeof(RGB8) * (size_t)(w.size.x * w.size.y);
-    w.buf = vmalloc_zeroed(ssize);
-    if (w.buf == NULL) {
+    w->buf = vmalloc_zeroed(sizeof(RGB8) * (size_t)(w->size.x * w->size.y));
+    if (w->buf == NULL) {
+        vfree(w);
         return NULL;
     }
 
-    /* all window is leaved behind mouse. */
-    Dlist_node* n = dlist_insert_data_prev(&win_man->win_list, win_man->mouse_node, &w);
+    /* NOTE: all window is leaved behind mouse. */
+    elist_insert_prev(&win_man->mouse_win->list, &w->list);
 
-    return (n == NULL) ? (NULL) : ((Window*)n->data);
+    return w;
 }
 
 
@@ -139,20 +146,6 @@ Window* alloc_filled_window(Point2d const* pos, Point2d const* size, uint8_t lev
     }
 
     return w;
-}
-
-
-void free_window(Window* w) {
-    if (w == NULL) {
-        return;
-    }
-
-    Dlist_node* n = dlist_search_node(&win_man->win_list, w);
-    if (n == NULL) {
-        return;
-    }
-
-    dlist_delete_node(&win_man->win_list, n);
 }
 
 
@@ -230,10 +223,13 @@ void move_window(Window* const w, Point2d const* const p) {
 
 
 Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d const* const size, RGB8 const* const c) {
-    Point2d const p = *pos;
-    Point2d const s = *size;
-    Point2d const ws = w->size;
-    Point2d const end = {w->pos.x + w->size.x, w->pos.y + w->size.y};
+    Point2d const p   = *pos;
+    Point2d const s   = *size;
+    Point2d const ws  = w->size;
+    Point2d const end = {
+        w->pos.x + w->size.x,
+        w->pos.y + w->size.y
+    };
 
     if ((p.x < 0) || (p.y < 0) || (ws.x < p.x) || (ws.y < p.y) || (end.x < p.x + s.x) || (end.y < p.y + s.y)) {
         /* invalid arguments. */
@@ -256,7 +252,7 @@ Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d cons
 }
 
 
-void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) {
+void window_draw_bitmap(Window* const w, Drawable_bitmap const* dw, size_t len) {
     if (w == NULL || dw == NULL || len == 0) {
         return;
     }
@@ -277,14 +273,14 @@ void window_draw_bitmap(Window* const w, Drawable_bitmap const *dw, size_t len) 
 void window_draw_line(Window* const w, Point2d const* const begin, Point2d const* const end, RGB8 const* const c, int32_t bold) {
     /* adjusted begin and end. */
     Point2d abegin = make_point2d(((begin->x < 0) ? (0) : (begin->x)), ((begin->y < 0) ? (0) : (begin->y)));
-    Point2d aend = make_point2d(((w->size.x < end->x) ? (w->size.x) : (end->x)), ((w->size.y < end->y) ? (w->size.y) : (end->y)));
+    Point2d aend   = make_point2d(((w->size.x < end->x) ? (w->size.x) : (end->x)), ((w->size.y < end->y) ? (w->size.y) : (end->y)));
 
     /* making end points always right of begin. */
     if (aend.x < abegin.x) {
         /* swap */
         Point2d t = abegin;
-        abegin = aend;
-        aend = t;
+        abegin    = aend;
+        aend      = t;
     }
 
     int32_t dx = aend.x - abegin.x;
@@ -296,7 +292,7 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
     }
 
     int32_t size_x = w->size.x;
-    int32_t d = bold > 1;// (bold / 2)
+    int32_t d = bold > 1;  // (bold / 2)
     if (dx == 0) {
         /* vertical line. */
         abegin.x -= d;
@@ -365,140 +361,121 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
 }
 
 
-static void win_node_free(Dlist* l, void* d) {
-    if (d == NULL) {
-        return;
-    }
-
-    Window* w = (Window*)d;
-
-    vfree(w->buf);
-    vfree(w);
-}
-
-
 static inline void calibrate(Point2d* const p) {
     p->x = ((p->x < 0) ? (0) : ((win_man->display_size.x < p->x) ? (win_man->display_size.x) : (p->x)));
     p->y = ((p->y < 0) ? (0) : ((win_man->display_size.y < p->y) ? (win_man->display_size.y) : (p->y)));
 }
 
 
-static bool update_win_for_each(Dlist* l, void* d) {
-    Window* const w = d;
+static inline void update_window_buffer(void) {
+    elist_foreach(Window*, w, &win_man->windows) {
+        /* NOTE: These point is NOT points of buffer and these is display points. */
+        /* NOTE: This function supposes that "begin_p" and "end_p" is already calibrated to accelerate. */
 
-    /* NOTE: These point is NOT points of buffer and these is display points. */
-    /* NOTE: This function supposes that "begin_p" and "end_p" is already calibrated to accelerate. */
+        /* Check area points. */
+        int32_t const ca_bx = win_man->check_area.begin.x;
+        int32_t const ca_by = win_man->check_area.begin.y;
+        int32_t const ca_ex = win_man->check_area.end.x;
+        int32_t const ca_ey = win_man->check_area.end.y;
 
-    /* Check area points. */
-    int32_t const ca_bx = win_man->check_area.begin.x;
-    int32_t const ca_by = win_man->check_area.begin.y;
-    int32_t const ca_ex = win_man->check_area.end.x;
-    int32_t const ca_ey = win_man->check_area.end.y;
+        Point2d wbp = w->pos;
+        Point2d wep = {w->pos.x + w->size.x, w->pos.y + w->size.y};
+        calibrate(&wbp);
+        calibrate(&wep);
 
-    Point2d wbp = w->pos;
-    Point2d wep = {w->pos.x + w->size.x, w->pos.y + w->size.y};
-    calibrate(&wbp);
-    calibrate(&wep);
+        /* Window area points. */
+        int32_t wa_bx = wbp.x;
+        int32_t wa_by = wbp.y;
+        int32_t wa_ex = wep.x;
+        int32_t wa_ey = wep.y;
 
-    /* Window area points. */
-    int32_t wa_bx = wbp.x;
-    int32_t wa_by = wbp.y;
-    int32_t wa_ex = wep.x;
-    int32_t wa_ey = wep.y;
+        /* checking Is this window included ? */
+        if (ca_ex < wa_bx || ca_ey < wa_by || wa_ex < ca_bx || wa_ey < ca_by) {
+            continue;
+        }
 
-    /* checking Is this window included ? */
-    if (ca_ex < wa_bx || ca_ey < wa_by || wa_ex < ca_bx || wa_ey < ca_by) {
-        return false;
-    }
+        /* consider lapping between check area and this window area. */
+        int32_t da_bx;
+        int32_t da_by;
+        int32_t da_ex;
+        int32_t da_ey;
 
-    /* consider lapping between check area and this window area. */
-    int32_t da_bx;
-    int32_t da_by;
-    int32_t da_ex;
-    int32_t da_ey;
+        if ((ca_bx <= wa_bx) && (ca_by <= wa_by) && (wa_ex <= ca_ex) && (wa_ey <= ca_ey)) {
+            /* Check area contains this window area. */
+            da_bx = wa_bx;
+            da_by = wa_by;
+            da_ex = wa_ex;
+            da_ey = wa_ey;
+        } else if ((wa_bx <= ca_bx) && (wa_by <= ca_by) && (ca_ex <= wa_ex) && (ca_ey <= wa_ey)) {
+            /* This window area contains check area. */
+            da_bx = ca_bx;
+            da_by = ca_by;
+            da_ex = ca_ex;
+            da_ey = ca_ey;
+        } else {
+            /* Is window area on the right side or left side against check area ? */
+            da_bx = (ca_bx <= wa_bx) ? (wa_bx) : (ca_bx);
+            da_ex = (ca_ex <= wa_ex) ? (ca_ex) : (wa_ex);
 
-    if ((ca_bx <= wa_bx) && (ca_by <= wa_by) && (wa_ex <= ca_ex) && (wa_ey <= ca_ey)) {
-        /* Check area contains this window area. */
-        da_bx = wa_bx;
-        da_by = wa_by;
-        da_ex = wa_ex;
-        da_ey = wa_ey;
-    } else if ((wa_bx <= ca_bx) && (wa_by <= ca_by) && (ca_ex <= wa_ex) && (ca_ey <= wa_ey)) {
-        /* This window area contains check area. */
-        da_bx = ca_bx;
-        da_by = ca_by;
-        da_ex = ca_ex;
-        da_ey = ca_ey;
-    } else {
-        /* Is window area on the right side or left side against check area ? */
-        da_bx = (ca_bx <= wa_bx) ? (wa_bx) : (ca_bx);
-        da_ex = (ca_ex <= wa_ex) ? (ca_ex) : (wa_ex);
+            /* Is window area on the below or above against check area ? */
+            da_by = (ca_by <= wa_by) ? (wa_by) : (ca_by);
+            da_ey = (ca_ey <= wa_ey) ? (ca_ey) : (wa_ey);
+        }
 
-        /* Is window area on the below or above against check area ? */
-        da_by = (ca_by <= wa_by) ? (wa_by) : (ca_by);
-        da_ey = (ca_ey <= wa_ey) ? (ca_ey) : (wa_ey);
-    }
+        /* Begin and end position of display. */
+        int32_t const dbegin_x = da_bx;
+        int32_t const dbegin_y = da_by;
+        int32_t const dend_x = da_ex;
+        int32_t const dend_y = da_ey;
 
-    /* Begin and end position of display. */
-    int32_t const dbegin_x = da_bx;
-    int32_t const dbegin_y = da_by;
-    int32_t const dend_x   = da_ex;
-    int32_t const dend_y   = da_ey;
+        /*
+         * Begin and end position of buffer in this window.
+         * First, converting display coordinate to buffer coordinate.
+         * Then adding position difference to consider specifically case that there are window outside of display.
+         */
+        int32_t const diff_x   = (w->pos.x < 0) ? (-w->pos.x) : (0);
+        int32_t const diff_y   = (w->pos.y < 0) ? (-w->pos.y) : (0);
+        int32_t const bbegin_x = (da_bx - wa_bx) + diff_x;
+        int32_t const bbegin_y = (da_by - wa_by) + diff_y;
+        int32_t const bend_x   = (da_ex - wa_bx) + diff_x;
+        int32_t const bend_y   = (da_ey - wa_by) + diff_y;
 
-    /*
-     * Begin and end position of buffer in this window.
-     * First, converting display coordinate to buffer coordinate.
-     * Then adding position difference to consider specifically case that there are window outside of display.
-     */
-    int32_t const diff_x   = (w->pos.x < 0) ? (-w->pos.x) : (0);
-    int32_t const diff_y   = (w->pos.y < 0) ? (-w->pos.y) : (0);
-    int32_t const bbegin_x = (da_bx - wa_bx) + diff_x;
-    int32_t const bbegin_y = (da_by - wa_by) + diff_y;
-    int32_t const bend_x   = (da_ex - wa_bx) + diff_x;
-    int32_t const bend_y   = (da_ey - wa_by) + diff_y;
-
-    /*
-     * (bx, by) is points of buffer in window.
-     * (dx, dy) is points of display.
-     */
-    int32_t const win_size_x = w->size.x;
-    if (w->has_inv_color == true) {
-        for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
-            /* these variable is to accelerate calculation. */
-            RGB8* const db = &win_man->display_buffer[dy * win_man->display_size.x];
-            RGB8* const b = &w->buf[by * win_size_x];
-            for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
-                if (b[bx].bit_expr != inv_color.bit_expr) {
+        /*
+         * (bx, by) is points of buffer in window.
+         * (dx, dy) is points of display.
+         */
+        int32_t const win_size_x = w->size.x;
+        if (w->has_inv_color == true) {
+            for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
+                /* these variable is to accelerate calculation. */
+                RGB8* const db = &win_man->display_buffer[dy * win_man->display_size.x];
+                RGB8* const b = &w->buf[by * win_size_x];
+                for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
+                    if (b[bx].bit_expr != inv_color.bit_expr) {
+                        db[dx] = b[bx];
+                    }
+                }
+            }
+        } else {
+            for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
+                /* these variable is to accelerate calculation. */
+                RGB8* const db = &win_man->display_buffer[dy * win_man->display_size.x];
+                RGB8* const b = &w->buf[by * win_size_x];
+                for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
                     db[dx] = b[bx];
                 }
             }
         }
-    } else {
-        for (int32_t by = bbegin_y, dy = dbegin_y; (by < bend_y) && (dy < dend_y); by++, dy++) {
-            /* these variable is to accelerate calculation. */
-            RGB8* const db = &win_man->display_buffer[dy * win_man->display_size.x];
-            RGB8* const b = &w->buf[by * win_size_x];
-            for (int32_t bx = bbegin_x, dx = dbegin_x; (bx < bend_x) && (dx < dend_x); bx++, dx++) {
-                db[dx] = b[bx];
-            }
-        }
     }
-
-    return false;
-}
-
-
-static inline void update_window_buffer(void) {
-    dlist_node_for_each(&win_man->win_list, win_man->mouse_node->next, update_win_for_each, false);
 }
 
 
 static inline void update_window_vram(void) {
     Point2d const display_size = win_man->display_size;
-    int32_t const start_x = (win_man->check_area.begin.x < 0) ? (0) : (win_man->check_area.begin.x);
-    int32_t const start_y = (win_man->check_area.begin.y < 0) ? (0) : (win_man->check_area.begin.y);
-    int32_t const end_x = (display_size.x < win_man->check_area.end.x) ? (display_size.x) : (win_man->check_area.end.x);
-    int32_t const end_y = (display_size.y < win_man->check_area.end.y) ? (display_size.y) : (win_man->check_area.end.y);
+    int32_t const start_x      = (win_man->check_area.begin.x < 0) ? (0) : (win_man->check_area.begin.x);
+    int32_t const start_y      = (win_man->check_area.begin.y < 0) ? (0) : (win_man->check_area.begin.y);
+    int32_t const end_x        = (display_size.x < win_man->check_area.end.x) ? (display_size.x) : (win_man->check_area.end.x);
+    int32_t const end_y        = (display_size.y < win_man->check_area.end.y) ? (display_size.y) : (win_man->check_area.end.y);
 
     for (int32_t y = start_y; y < end_y; y++) {
         RGB8* const db = &win_man->display_buffer[y * display_size.x];
