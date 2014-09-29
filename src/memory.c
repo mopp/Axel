@@ -247,13 +247,9 @@ static inline void* smalloc(size_t size) {
 }
 
 
-static inline size_t complement_2(size_t x) {
-    return (~x + 1);
-}
-
-
 static inline uintptr_t align_address(uintptr_t addr, size_t align_size) {
-    return (((addr & (align_size - 1)) == 0)) ? (addr) : ((addr & complement_2(align_size)) + align_size);
+    size_t const a = align_size - 1;
+    return ((addr + a) & ~(a));
 }
 
 
