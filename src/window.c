@@ -368,7 +368,7 @@ static inline void calibrate(Point2d* const p) {
 
 
 static inline void update_window_buffer(void) {
-    elist_foreach(Window*, w, &win_man->windows) {
+    elist_foreach(w, &win_man->windows, Window, list) {
         /* NOTE: These point is NOT points of buffer and these is display points. */
         /* NOTE: This function supposes that "begin_p" and "end_p" is already calibrated to accelerate. */
 

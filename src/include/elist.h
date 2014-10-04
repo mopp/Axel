@@ -21,10 +21,11 @@ typedef struct elist {
 } Elist;
 
 
-#define elist_get_element(type, list) (type)(list)
+#define elist_derive(type, lv, ptr) \
+    (type*)((uintptr_t)(ptr)-offsetof(type, lv))
 
-#define elist_foreach(type, var, list) \
-    for (type var = elist_get_element(type, (list)->next); (uintptr_t)var != (uintptr_t)(list); var = elist_get_element(type, ((Elist*)var)->next))
+#define elist_foreach(i, l, type, lv) \
+    for (type* i = elist_derive(type, lv, (l)->next); (&i->lv != (l)); i = elist_derive(type, lv, i->lv.next))
 
 
 static inline Elist* elist_init(Elist* l) {
