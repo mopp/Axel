@@ -99,6 +99,7 @@ typedef Page_directory_entry* Page_directory_table;
 
 
 enum Paging_constants {
+    FRAME_SIZE_LOG2          = 12,
     FRAME_SIZE               = 4096,
     PAGE_SIZE                = FRAME_SIZE,
     PAGE_NUM                 = 1024,

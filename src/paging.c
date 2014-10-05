@@ -5,12 +5,16 @@
  * @version 0.1
  * @date 2014-05-20
  */
-#include <paging.h>
-#include <utils.h>
-#include <memory.h>
-#include <asm_functions.h>
-#include <macros.h>
 
+#include <asm_functions.h>
+#include <assert.h>
+#include <buddy.h>
+#include <kernel.h>
+#include <macros.h>
+#include <memory.h>
+#include <paging.h>
+#include <tlsf.h>
+#include <utils.h>
 
 
 /*
@@ -22,6 +26,7 @@ static Page_manager* p_man;
 static Dlist_node* p_list_nodes;
 static Page_info* p_info;
 static bool* used_list_node;
+static Tlsf_manager tman;
 
 static size_t get_pde_index(uintptr_t const);
 static size_t get_pte_index(uintptr_t const);
@@ -45,6 +50,7 @@ void init_paging(Paging_data const * const pd) {
     p_info         = pd->p_info;
     p_list_nodes   = pd->p_list_nodes;
     used_list_node = pd->used_p_info;
+    memset(kernel_pdt, 0, ALL_PAGE_STRUCT_SIZE);
 
     /* Calculate and set page table addr to page directory entry */
     /* XXX: alignment sensitivity */
@@ -288,7 +294,6 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
 inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
     Page_directory_entry* const pde = get_pde(pdt, vaddr);
 
-    /* FIXME: pdeを取るのは4MBに一度でよい */
     if (pdt != kernel_pdt && pde->present_flag == 0) {
         /* Allocate page for user pdt */
         Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM);
@@ -318,8 +323,31 @@ inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_
  */
 inline void map_page_area(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_vaddr, uintptr_t const end_vaddr, uintptr_t const begin_paddr, uintptr_t const end_paddr) {
     /* Generally speaking, PAGE_SIZE equals FRAME_SIZE. */
+    size_t cnt = 0;
+    Page_table pt;
     for (uintptr_t vaddr = begin_vaddr, paddr = begin_paddr; (vaddr < end_vaddr) && (paddr < end_paddr); vaddr += PAGE_SIZE, paddr += FRAME_SIZE) {
         map_page(pdt, pde_flags, pte_flags, vaddr, paddr);
+        /* FIXME: vaddr_beginによる */
+        // if (cnt++ == 0) {
+        //     Page_directory_entry* pde = get_pde(pdt, vaddr);
+        //     if (pde->present_flag == 0 && pdt != kernel_pdt) {
+        //         /* Allocate page for user pdt */
+        //         Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM);
+        //         pde->page_table_addr = ((vir_to_phys_addr((uintptr_t)pt) & 0xFFFFF000) >> PDE_PT_ADDR_SHIFT_NUM);
+        //     }
+        //     pde->bit_expr = (PDE_FLAGS_AREA_MASK & pde->bit_expr) | pde_flags;
+
+        //     pt = get_pt(pde);
+        // }
+
+        // if (cnt == 9) {
+        //     cnt = 0;
+        // }
+
+        // Page_table_entry* const pte = get_pte(pt, vaddr);
+        // pte->bit_expr = (PTE_FLAGS_AREA_MASK & pte->bit_expr) | pte_flags;
+
+        // set_frame_addr(pte, paddr);
     }
 }
 
@@ -366,18 +394,6 @@ inline void unmap_page_area(Page_directory_table pdt, uintptr_t const begin_vadd
         unmap_page(pdt, vaddr);
     }
 }
-
-
-/*
- * static inline uintptr_t get_vaddr_from_pde_index(size_t const idx) {
- *     return idx <<  PDE_IDX_SHIFT_NUM;
- * }
- *
- *
- * static inline uintptr_t get_vaddr_from_pte_index(size_t const idx) {
- *     return idx <<  PTE_IDX_SHIFT_NUM;
- * }
- */
 
 
 Page_directory_table make_user_pdt(void) {
@@ -441,4 +457,140 @@ Axel_state_code synchronize_pdt(Page_directory_table user_pdt, uintptr_t vaddr) 
     // *u_pte = *k_pte;
 
     return AXEL_SUCCESS;
+}
+
+
+static inline uintptr_t get_vaddr_from_pde_index(size_t const idx) {
+    return idx <<  PDE_IDX_SHIFT_NUM;
+}
+
+
+static inline uintptr_t get_vaddr_from_pte_index(size_t const idx) {
+    return idx <<  PTE_IDX_SHIFT_NUM;
+}
+
+
+size_t size_to_frame_nr(size_t s) {
+    size_t aligned = (s + (FRAME_SIZE - 1u)) & ~(FRAME_SIZE - 1u);
+    return aligned >> FRAME_SIZE_LOG2;
+}
+
+
+/*
+ * Return head address of free virtual memorys
+ * It has frame_nr * FRAME_SIZE size.
+ */
+uintptr_t get_free_vmems(size_t frame_nr) {
+    size_t pde_idx = get_pde_index(get_kernel_vir_end_addr());
+    size_t pde_idx_limit = get_pde_index(0xf0000000);
+
+    uintptr_t begin_vaddr = 0;
+    size_t nr = 0;
+    bool f = true;
+    while (pde_idx < pde_idx_limit && f == true) {
+        Page_table pt = get_pt(kernel_pdt + pde_idx);
+        for (size_t i = 0; i < PAGE_TABLE_ENTRY_NUM; i++) {
+            if (pt[i].present_flag == 1) {
+                begin_vaddr = 0;
+                continue;
+            }
+
+            if (begin_vaddr == 0) {
+                begin_vaddr = (pde_idx << PDE_IDX_SHIFT_NUM) | (i << PTE_IDX_SHIFT_NUM);
+            }
+
+            ++nr;
+
+            if (frame_nr <= nr) {
+                f = false;
+                break;
+            }
+        }
+
+        pde_idx++;
+    }
+
+    return begin_vaddr;
+}
+
+
+Frame* vlmalloc(size_t req_nr) {
+    uintptr_t s = (FRAME_SIZE * req_nr);
+    Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(s));
+    if (f == NULL) {
+        return NULL;
+    }
+    size_t alloc_nr = 1 << f->order;
+
+    s = (FRAME_SIZE * alloc_nr);
+    uintptr_t bvaddr  = get_free_vmems(alloc_nr);
+    if (bvaddr == 0) {
+        buddy_free_frames(axel_s.bman, f);
+        return NULL;
+    }
+    uintptr_t evaddr  = bvaddr + s;
+    uintptr_t bpaddr  = get_frame_addr(axel_s.bman, f);
+    uintptr_t epaddr  = bpaddr + s;
+    map_page_area(kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
+
+    for (Frame* i = f; i < &f[alloc_nr]; i++, bvaddr += PAGE_SIZE) {
+        i->mapped_vaddr = bvaddr;
+    }
+
+    return f;
+}
+
+
+void vlfree(Frame* f) {
+    unmap_page_area(kernel_pdt, f->mapped_vaddr, f->mapped_vaddr + (FRAME_SIZE * (1 << f->order)));
+
+    buddy_free_frames(axel_s.bman, f);
+}
+
+
+void vmalloc2(Elist* head, size_t req_nr) {
+    elist_init(head);
+
+    uintptr_t s     = (FRAME_SIZE * req_nr);
+    uint8_t order   = size_to_order(s);
+    size_t alloc_nr = 0;
+    do {
+        Frame* f = buddy_alloc_frames(axel_s.bman, order);
+        if (f != NULL) {
+            alloc_nr += (1 << order);
+            elist_insert_next(head, &f->list);
+        }
+        order--;
+    } while (alloc_nr < req_nr && order < BUDDY_SYSTEM_MAX_ORDER);
+
+    uintptr_t bvaddr  = get_free_vmems(alloc_nr);
+
+    if (alloc_nr < req_nr || bvaddr == 0) {
+        elist_foreach(i, head, Frame, list) {
+            Frame* p = elist_derive(Frame, list, i->list.prev);
+            elist_remove(&i->list);
+            buddy_free_frames(axel_s.bman, i);
+            i = p;
+        }
+        return;
+    }
+
+    elist_foreach(i, head, Frame, list) {
+        uintptr_t f_nr   = (1 << i->order);
+        uintptr_t s      = (FRAME_SIZE * f_nr);
+        uintptr_t bpaddr = get_frame_addr(axel_s.bman, i);
+        uintptr_t epaddr = bpaddr + s;
+        uintptr_t evaddr = bvaddr + s;
+
+        map_page_area(kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
+
+        for (Frame* j = i; j < &i[f_nr]; j++, bvaddr += PAGE_SIZE) {
+            j->mapped_vaddr = bvaddr;
+        }
+    }
+}
+
+
+void vfree2(Elist* head) {
+
 }

@@ -161,6 +161,24 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("Total memory         : %zuKB\n", get_total_memory_size() / 1024);
     printf("BuddySystem Total    : %zuKB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
     printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
+    printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    extern void vfree2(Elist*);
+    extern void vmalloc2(Elist*, size_t);
+    extern Frame* vlmalloc(size_t req_nr);
+    extern void vlfree(Frame* f);
+
+    Elist head;
+    size_t nr = 25;
+    vmalloc2(&head, nr);
+    elist_foreach(i, &head, Frame, list) {
+        printf("addr: 0x%zx\n", i->mapped_vaddr);
+        memset((void*)i->mapped_vaddr, 0xff, (1 << i->order) * FRAME_SIZE);
+    }
+    /* Frame* f = vlmalloc(nr); */
+    /* memset((void*)f->mapped_vaddr, 0xff, (FRAME_SIZE * (1 << f->order))); */
+    printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    /* vlfree(f); */
+    printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
@@ -305,7 +323,6 @@ static inline void init_gdt(void) {
 
 
 static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* offset, uint16_t selector_index, uint32_t flags) {
-
     g->bit_expr_high    = flags;
     g->offset_low       = ECAST_UINT16((uintptr_t)offset);
     g->offset_high      = ECAST_UINT16((uintptr_t)offset >> 16);
@@ -318,8 +335,7 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* off
 static void hlt(Interrupt_context* ic) {
     /* BOCHS_MAGIC_BREAK(); */
     io_cli();
-    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, ic);
-    INF_LOOP();
+    DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, ic);
 }
 
 
