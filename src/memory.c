@@ -159,29 +159,7 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
  * @return pointer to allocated memory.
  */
 void* pmalloc(size_t size) {
-    static size_t order_nr[] = {
-        FRAME_SIZE * 1,
-        FRAME_SIZE * 2,
-        FRAME_SIZE * 4,
-        FRAME_SIZE * 8,
-        FRAME_SIZE * 16,
-        FRAME_SIZE * 32,
-        FRAME_SIZE * 64,
-        FRAME_SIZE * 128,
-        FRAME_SIZE * 256,
-        FRAME_SIZE * 512,
-        FRAME_SIZE * 1024,
-    };
-
-    uint8_t order = 0;
-    for (uint8_t i = 0; i < 10; i++) {
-        if (size <= order_nr[i]) {
-            order = i;
-            break;
-        }
-    }
-
-    Frame* f = buddy_alloc_frames(axel_s.bman, order);
+    Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(size));
 
     return (void*)(get_frame_addr(axel_s.bman, f));
 }

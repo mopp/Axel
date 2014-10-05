@@ -17,10 +17,14 @@
 
 /* Order in buddy system: 0 1 2 3  4  5  6   7   8   9   10 */
 /* The number of frame  : 1 2 4 8 16 32 64 128 256 512 1024 */
-#define BUDDY_SYSTEM_MAX_ORDER (10 + 1)
+enum  {
+    BUDDY_SYSTEM_MAX_ORDER = (10 + 1),
+};
+
 
 struct frame {
     Elist list;
+    uintptr_t mapped_vaddr;
     uint8_t status;
     uint8_t order;
 };
@@ -53,6 +57,8 @@ extern size_t buddy_get_alloc_memory_size(Buddy_manager const* const);
 extern uintptr_t get_frame_addr(Buddy_manager const* const, Frame const* const);
 extern Frame* get_frame_by_addr(Buddy_manager const * const, uintptr_t);
 extern size_t buddy_get_total_memory_size(Buddy_manager const* const);
+extern uint8_t size_to_order(size_t);
+extern size_t order_to_size(uint8_t);
 
 
 

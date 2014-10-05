@@ -10,11 +10,10 @@
 #include <elist.h>
 #include <buddy.h>
 #include <stdbool.h>
+#include <paging.h>
 #include <utils.h>
 
 
-/* FIXME: */
-#define FRAME_SIZE 0x1000U
 #define ORDER_NUMBER(order) (1U << (order))
 #define ORDER_FRAME_SIZE(order) (ORDER_NUMBER(order) * FRAME_SIZE)
 
@@ -227,4 +226,36 @@ uintptr_t get_frame_addr(Buddy_manager const* const bman, Frame const* const fra
 
 Frame* get_frame_by_addr(Buddy_manager const * const bman, uintptr_t addr) {
     return &bman->frame_pool[(addr - bman->base_addr) / FRAME_SIZE];
+}
+
+
+static size_t const order_nr[] = {
+    FRAME_SIZE * 1,
+    FRAME_SIZE * 2,
+    FRAME_SIZE * 4,
+    FRAME_SIZE * 8,
+    FRAME_SIZE * 16,
+    FRAME_SIZE * 32,
+    FRAME_SIZE * 64,
+    FRAME_SIZE * 128,
+    FRAME_SIZE * 256,
+    FRAME_SIZE * 512,
+    FRAME_SIZE * 1024,
+};
+uint8_t size_to_order(size_t s) {
+    assert(s <= order_nr[10]);
+
+    for (uint8_t i = 0; i < 10; i++) {
+        if (s <= order_nr[i]) {
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+
+size_t order_to_size(uint8_t o) {
+    assert(o < BUDDY_SYSTEM_MAX_ORDER);
+    return order_nr[o];
 }
