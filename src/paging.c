@@ -323,8 +323,8 @@ inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_
  */
 inline void map_page_area(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_vaddr, uintptr_t const end_vaddr, uintptr_t const begin_paddr, uintptr_t const end_paddr) {
     /* Generally speaking, PAGE_SIZE equals FRAME_SIZE. */
-    size_t cnt = 0;
-    Page_table pt;
+    /* size_t cnt = 0; */
+    /* Page_table pt; */
     for (uintptr_t vaddr = begin_vaddr, paddr = begin_paddr; (vaddr < end_vaddr) && (paddr < end_paddr); vaddr += PAGE_SIZE, paddr += FRAME_SIZE) {
         map_page(pdt, pde_flags, pte_flags, vaddr, paddr);
         /* FIXME: vaddr_beginによる */
@@ -460,27 +460,11 @@ Axel_state_code synchronize_pdt(Page_directory_table user_pdt, uintptr_t vaddr) 
 }
 
 
-static inline uintptr_t get_vaddr_from_pde_index(size_t const idx) {
-    return idx <<  PDE_IDX_SHIFT_NUM;
-}
-
-
-static inline uintptr_t get_vaddr_from_pte_index(size_t const idx) {
-    return idx <<  PTE_IDX_SHIFT_NUM;
-}
-
-
-size_t size_to_frame_nr(size_t s) {
-    size_t aligned = (s + (FRAME_SIZE - 1u)) & ~(FRAME_SIZE - 1u);
-    return aligned >> FRAME_SIZE_LOG2;
-}
-
-
 /*
  * Return head address of free virtual memorys
  * It has frame_nr * FRAME_SIZE size.
  */
-uintptr_t get_free_vmems(size_t frame_nr) {
+static inline uintptr_t get_free_vmems(size_t frame_nr) {
     size_t pde_idx = get_pde_index(get_kernel_vir_end_addr());
     size_t pde_idx_limit = get_pde_index(0xf0000000);
 
@@ -514,46 +498,65 @@ uintptr_t get_free_vmems(size_t frame_nr) {
 }
 
 
-Frame* vlmalloc(size_t req_nr) {
+Page* vlmalloc(Page* p, size_t req_nr) {
+    memset(p, 0, sizeof(Page));
+    elist_init(&p->mapped_frames);
+
     uintptr_t s = (FRAME_SIZE * req_nr);
     Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(s));
     if (f == NULL) {
-        return NULL;
+        return p;
     }
-    size_t alloc_nr = 1 << f->order;
+    elist_insert_next(&p->mapped_frames, &f->list);
+    size_t alloc_nr = p->frame_nr = (1 << f->order);
 
     s = (FRAME_SIZE * alloc_nr);
-    uintptr_t bvaddr  = get_free_vmems(alloc_nr);
+    uintptr_t bvaddr = get_free_vmems(alloc_nr);
     if (bvaddr == 0) {
         buddy_free_frames(axel_s.bman, f);
-        return NULL;
+        p->frame_nr = 0;
+        return p;
     }
-    uintptr_t evaddr  = bvaddr + s;
-    uintptr_t bpaddr  = get_frame_addr(axel_s.bman, f);
-    uintptr_t epaddr  = bpaddr + s;
+    p->addr          = bvaddr;
+    uintptr_t evaddr = bvaddr + s;
+    uintptr_t bpaddr = get_frame_addr(axel_s.bman, f);
+    uintptr_t epaddr = bpaddr + s;
     map_page_area(kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
 
     for (Frame* i = f; i < &f[alloc_nr]; i++, bvaddr += PAGE_SIZE) {
         i->mapped_vaddr = bvaddr;
     }
 
-    return f;
+    return p;
 }
 
 
-void vlfree(Frame* f) {
-    unmap_page_area(kernel_pdt, f->mapped_vaddr, f->mapped_vaddr + (FRAME_SIZE * (1 << f->order)));
+void vlfree(Page* p) {
+    /* unmap_page_area(kernel_pdt, f->mapped_vaddr, f->mapped_vaddr + (FRAME_SIZE * (1 << f->order))); */
 
-    buddy_free_frames(axel_s.bman, f);
+    /* buddy_free_frames(axel_s.bman, f); */
 }
 
 
-void vmalloc2(Elist* head, size_t req_nr) {
+static inline void free_buddy_frames(Elist* head) {
+    elist_foreach(i, head, Frame, list) {
+        Frame* p = elist_derive(Frame, list, i->list.prev);
+        elist_remove(&i->list);
+        buddy_free_frames(axel_s.bman, i);
+        i = p;
+    }
+}
+
+
+Page* vmalloc2(Page* p, size_t req_nr) {
+    memset(p, 0, sizeof(Page));
+    Elist* head = &p->mapped_frames;
     elist_init(head);
 
     uintptr_t s     = (FRAME_SIZE * req_nr);
     uint8_t order   = size_to_order(s);
     size_t alloc_nr = 0;
+
     do {
         Frame* f = buddy_alloc_frames(axel_s.bman, order);
         if (f != NULL) {
@@ -566,14 +569,12 @@ void vmalloc2(Elist* head, size_t req_nr) {
     uintptr_t bvaddr  = get_free_vmems(alloc_nr);
 
     if (alloc_nr < req_nr || bvaddr == 0) {
-        elist_foreach(i, head, Frame, list) {
-            Frame* p = elist_derive(Frame, list, i->list.prev);
-            elist_remove(&i->list);
-            buddy_free_frames(axel_s.bman, i);
-            i = p;
-        }
-        return;
+        free_buddy_frames(&p->mapped_frames);
+        p->mapped_frames = (Elist){NULL, NULL};
+        return p;
     }
+    p->frame_nr = alloc_nr;
+    p->addr     = bvaddr;
 
     elist_foreach(i, head, Frame, list) {
         uintptr_t f_nr   = (1 << i->order);
@@ -588,9 +589,15 @@ void vmalloc2(Elist* head, size_t req_nr) {
             j->mapped_vaddr = bvaddr;
         }
     }
+
+    return p;
 }
 
 
-void vfree2(Elist* head) {
+void vfree2(Page* p) {
+    unmap_page_area(kernel_pdt, p->addr, p->addr + (FRAME_SIZE * p->frame_nr));
 
+    free_buddy_frames(&p->mapped_frames);
+
+    memset(p, 0, sizeof(Page));
 }

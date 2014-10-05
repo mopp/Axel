@@ -162,21 +162,27 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("BuddySystem Total    : %zuKB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
     printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
     printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
-    extern void vfree2(Elist*);
-    extern void vmalloc2(Elist*, size_t);
-    extern Frame* vlmalloc(size_t req_nr);
-    extern void vlfree(Frame* f);
 
-    Elist head;
     size_t nr = 25;
-    vmalloc2(&head, nr);
-    elist_foreach(i, &head, Frame, list) {
+    Page p;
+    Page* pp = vlmalloc(&p, nr);
+    if (pp->frame_nr == 0) {
+        printf("ERROE\n");
+    }
+
+    elist_foreach(i, &pp->mapped_frames, Frame, list) {
         printf("addr: 0x%zx\n", i->mapped_vaddr);
         memset((void*)i->mapped_vaddr, 0xff, (1 << i->order) * FRAME_SIZE);
     }
+    uintptr_t lim = pp->addr + (pp->frame_nr * FRAME_SIZE);
+    for (uintptr_t i = pp->addr; i < lim; i++) {
+        *(uint8_t*)i = 0xff;
+    }
+
     /* Frame* f = vlmalloc(nr); */
     /* memset((void*)f->mapped_vaddr, 0xff, (FRAME_SIZE * (1 << f->order))); */
     printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    vfree2(pp);
     /* vlfree(f); */
     printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
 

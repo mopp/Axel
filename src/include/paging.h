@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <dlist.h>
+#include <elist.h>
+#include <buddy.h>
 #include <state_code.h>
 
 
@@ -176,6 +178,15 @@ struct paging_data {
 typedef struct paging_data Paging_data;
 
 
+struct page {
+    Elist mapped_frames;
+    uintptr_t addr;
+    size_t frame_nr;
+    uint8_t state;
+};
+typedef struct page Page;
+
+
 static inline uintptr_t phys_to_vir_addr(uintptr_t addr) {
     return addr + KERNEL_VIRTUAL_BASE_ADDR;
 }
@@ -203,21 +214,23 @@ static inline size_t round_page_size(size_t size) {
 }
 
 
-extern void init_paging(Paging_data const* const);
-extern void* vmalloc(size_t);
-extern void* uvmalloc(size_t, Page_directory_table const* const);
-extern void vfree(void*);
-extern Page_directory_table make_user_pdt(void);
+extern Axel_state_code synchronize_pdt(Page_directory_table, uintptr_t);
 extern Page_directory_table get_kernel_pdt(void);
+extern Page_directory_table make_user_pdt(void);
+extern bool is_kernel_pdt(Page_directory_table const);
+extern void init_paging(Paging_data const* const);
 extern void map_page(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
 extern void map_page_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
 extern void map_page_same_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
 extern void unmap_page(Page_directory_table pdt, uintptr_t);
 extern void unmap_page_area(Page_directory_table pdt, uintptr_t const, uintptr_t const);
-extern bool is_kernel_pdt(Page_directory_table const);
-extern Axel_state_code synchronize_pdt(Page_directory_table, uintptr_t);
+extern void vfree(void*);
+extern void* vmalloc(size_t);
 extern void* vmalloc_zeroed(size_t);
 
+extern Page* vlmalloc(Page*, size_t);
+extern Page* vmalloc2(Page*, size_t);
+extern void vfree2(Page*);
 
 static inline uintptr_t vmalloc_addr(size_t size) {
     return (uintptr_t)(void*)vmalloc(size);
