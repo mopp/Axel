@@ -120,6 +120,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     if (AXEL_SUCCESS != init_window()) {
         /* TODO: panic */
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0xff);
     }
 
     Point2d p0, p1;
@@ -311,8 +312,8 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
 
 
 static inline void init_gdt(void) {
-    axel_s.gdt = (Segment_descriptor*)vmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
-    axel_s.tss = (Task_state_segment*)vmalloc(sizeof(Task_state_segment));
+    axel_s.gdt = (Segment_descriptor*)kmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
+    axel_s.tss = (Task_state_segment*)kmalloc(sizeof(Task_state_segment));
 
     memset(axel_s.gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
     memset(axel_s.tss, 0, sizeof(Task_state_segment));
@@ -355,7 +356,7 @@ static void hlt(Interrupt_context* ic) {
 
 
 static inline void init_idt(void) {
-    Gate_descriptor* const idt = (Gate_descriptor*)vmalloc(sizeof(Gate_descriptor) * IDT_NUM);
+    Gate_descriptor* const idt = (Gate_descriptor*)kmalloc(sizeof(Gate_descriptor) * IDT_NUM);
 
     /* zero clear Gate_descriptor. */
     memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);

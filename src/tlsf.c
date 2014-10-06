@@ -452,12 +452,14 @@ Tlsf_manager* tlsf_supply_memory(Tlsf_manager* tman, size_t size) {
 
     Page* p = &page_struct_pool[page_pool_idx++];
     vmalloc2(p, size_to_frame_nr(size));
+    elist_init(&p->list);
 
     if (p->frame_nr == 0) {
-        printf("vmalloc2 failed\n");
+        /* printf("vmalloc2 failed\n"); */
         return NULL;
     }
 
+    DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, page_pool_idx);
     elist_insert_next(&tman->pages, &p->list);
 
     size_t ns = (get_page_size(p) - BLOCK_OFFSET);
@@ -492,7 +494,7 @@ static inline void check_alloc_watermark(Tlsf_manager* tman) {
         /* WATERMARK_BLOCK_SIZE以上のブロックが無いので確保. */
         void* m = tlsf_supply_memory(tman, w + BLOCK_OFFSET * 3);
         if (m == NULL) {
-            printf("alloc failed\n");
+            /* printf("alloc failed\n"); */
         }
     }
 }

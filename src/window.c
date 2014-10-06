@@ -37,38 +37,38 @@ static void flush_area(Point2d const* const, Point2d const* const);
 
 
 Axel_state_code init_window(void) {
-    win_man = vmalloc_zeroed(sizeof(Window_manager));
+    win_man = kmalloc_zeroed(sizeof(Window_manager));
     if (NULL == win_man) {
         return AXEL_MEMORY_ALLOC_ERROR;
     }
     win_man->display_size = make_point2d(get_max_x_resolution(), get_max_y_resolution());
 
-    win_man->display_buffer = vmalloc_zeroed(sizeof(RGB8) * (size_t)(win_man->display_size.x * win_man->display_size.y));
+    win_man->display_buffer = kmalloc_zeroed(sizeof(RGB8) * (size_t)(win_man->display_size.x * win_man->display_size.y));
     if (win_man->display_buffer == NULL) {
-        vfree(win_man);
+        kfree(win_man);
         return AXEL_MEMORY_ALLOC_ERROR;
     }
 
     /* alloc mouse window */
-    Window* mouse_win = vmalloc_zeroed(sizeof(Window));
+    Window* mouse_win = kmalloc_zeroed(sizeof(Window));
     if (mouse_win == NULL) {
-        vfree(win_man->display_buffer);
-        vfree(win_man);
+        kfree(win_man->display_buffer);
+        kfree(win_man);
         return AXEL_MEMORY_ALLOC_ERROR;
     }
-    mouse_win->buf = vmalloc_zeroed(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->height));
-    mouse_win->pos = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2);
-    mouse_win->size = make_point2d(mouse_cursor->width, mouse_cursor->height);
-    mouse_win->lock = false;
-    mouse_win->dirty = true;
-    mouse_win->enable = true;
+    mouse_win->buf           = kmalloc_zeroed(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->height));
+    mouse_win->pos           = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2);
+    mouse_win->size          = make_point2d(mouse_cursor->width, mouse_cursor->height);
+    mouse_win->lock          = false;
+    mouse_win->dirty         = true;
+    mouse_win->enable        = true;
     mouse_win->has_inv_color = true;
-    mouse_win->reserved = 0;
+    mouse_win->reserved      = 0;
 
     if (mouse_win->buf == NULL) {
-        vfree(win_man->display_buffer);
-        vfree(win_man);
-        vfree(mouse_win);
+        kfree(win_man->display_buffer);
+        kfree(win_man);
+        kfree(mouse_win);
         return AXEL_MEMORY_ALLOC_ERROR;
     }
     window_draw_bitmap(mouse_win, mouse_cursor, 2);
@@ -88,7 +88,7 @@ Window* get_mouse_window(void) {
 
 
 Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
-    Window* w = vmalloc_zeroed(sizeof(Window));
+    Window* w = kmalloc_zeroed(sizeof(Window));
     if (w == NULL) {
         return NULL;
     }
@@ -104,9 +104,9 @@ Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
     calibrate(&w->pos);
     calibrate(&w->size);
 
-    w->buf = vmalloc_zeroed(sizeof(RGB8) * (size_t)(w->size.x * w->size.y));
+    w->buf = kmalloc_zeroed(sizeof(RGB8) * (size_t)(w->size.x * w->size.y));
     if (w->buf == NULL) {
-        vfree(w);
+        kfree(w);
         return NULL;
     }
 

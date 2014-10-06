@@ -299,8 +299,8 @@ inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_
 
     if (pdt != kernel_pdt && pde->present_flag == 0) {
         /* Allocate page for user pdt */
-        Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM);
-        pde->page_table_addr = ((vir_to_phys_addr((uintptr_t)pt) & 0xFFFFF000) >> PDE_PT_ADDR_SHIFT_NUM);
+        /* Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM); */
+        /* pde->page_table_addr = ((vir_to_phys_addr((uintptr_t)pt) & 0xFFFFF000) >> PDE_PT_ADDR_SHIFT_NUM); */
     }
 
     pde->bit_expr = (PDE_FLAGS_AREA_MASK & pde->bit_expr) | pde_flags;
