@@ -163,28 +163,37 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
     printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
 
-    size_t nr = 25;
-    Page p;
-    Page* pp = vlmalloc(&p, nr);
-    if (pp->frame_nr == 0) {
-        printf("ERROE\n");
-    }
+    // size_t nr = 25;
+    // Page p;
+    // Page* pp = vlmalloc(&p, nr);
+    // if (pp->frame_nr == 0) {
+    //     printf("ERROE\n");
+    // }
 
-    elist_foreach(i, &pp->mapped_frames, Frame, list) {
-        printf("addr: 0x%zx\n", i->mapped_vaddr);
-        memset((void*)i->mapped_vaddr, 0xff, (1 << i->order) * FRAME_SIZE);
-    }
-    uintptr_t lim = pp->addr + (pp->frame_nr * FRAME_SIZE);
-    for (uintptr_t i = pp->addr; i < lim; i++) {
-        *(uint8_t*)i = 0xff;
-    }
+    // elist_foreach(i, &pp->mapped_frames, Frame, list) {
+    //     printf("addr: 0x%zx\n", i->mapped_vaddr);
+    //     memset((void*)i->mapped_vaddr, 0xff, (1 << i->order) * FRAME_SIZE);
+    // }
+    // uintptr_t lim = pp->addr + (pp->frame_nr * FRAME_SIZE);
+    // for (uintptr_t i = pp->addr; i < lim; i++) {
+    //     *(uint8_t*)i = 0xff;
+    // }
 
-    /* Frame* f = vlmalloc(nr); */
-    /* memset((void*)f->mapped_vaddr, 0xff, (FRAME_SIZE * (1 << f->order))); */
-    printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
-    vfree2(pp);
-    /* vlfree(f); */
-    printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    // /* Frame* f = vlmalloc(nr); */
+    // /* memset((void*)f->mapped_vaddr, 0xff, (FRAME_SIZE * (1 << f->order))); */
+    // printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    // vfree2(pp);
+    // /* vlfree(f); */
+    // printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+
+    tlsf_init(axel_s.tman);
+    printf("free_memory_size  : 0x%zx\n", axel_s.tman->free_memory_size);
+    printf("total_memory_size : 0x%zx\n", axel_s.tman->total_memory_size);
+    // while (1) {
+    //     void* m = kmalloc(0x1000);
+    //     kfree(m);
+    // }
+
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {

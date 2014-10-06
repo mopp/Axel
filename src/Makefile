@@ -37,7 +37,7 @@ KERNEL_LNK			:= kernel.ld
 KERNEL_MAP			:= kernel.map
 
 SUB_DIRS 			:= $(BOOT_DIR)
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o dlist.o aqueue.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o paging.o kernel.o
+LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o dlist.o aqueue.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o tlsf.o paging.o kernel.o
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -93,6 +93,7 @@ ps2.o			: $(MAKEFILE) ps2.c $(AXEL_INCLUDE_PATH)ps2.h $(AXEL_INCLUDE_PATH)state_
 window.o		: $(MAKEFILE) window.c $(AXEL_INCLUDE_PATH)window.h graphic.o
 proc.o			: $(MAKEFILE) proc.c $(AXEL_INCLUDE_PATH)proc.h
 buddy.o			: $(MAKEFILE) buddy.c $(AXEL_INCLUDE_PATH)buddy.h
+tlsf.o			: $(MAKEFILE) tlsf.c $(AXEL_INCLUDE_PATH)tlsf.h
 exception.o		: $(MAKEFILE) exception.c $(AXEL_INCLUDE_PATH)exception.h
 kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o paging.o
 

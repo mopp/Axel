@@ -111,6 +111,9 @@ void init_paging(Paging_data const * const pd) {
     pp->size = 0xFFFFFFFF - vram_addr;
     pp->state = PAGE_INFO_STATE_ALLOC;
     dlist_insert_node_last(&p_man->list, n);
+
+    /* tlsf_init(&tman); */
+    axel_s.tman = &tman;
 }
 
 
@@ -600,4 +603,26 @@ void vfree2(Page* p) {
     free_buddy_frames(&p->mapped_frames);
 
     memset(p, 0, sizeof(Page));
+}
+
+
+size_t size_to_frame_nr(size_t s) {
+    /* FIXME: */
+    return round_page_size(s) / FRAME_SIZE;
+}
+
+
+void* kmalloc(size_t s) {
+    return tlsf_malloc(axel_s.tman, s);
+}
+
+
+void* kmalloc_zeroed(size_t s) {
+    void* m = kmalloc(s);
+    return memset(m, 0, s);
+}
+
+
+void kfree(void* p) {
+    tlsf_free(axel_s.tman, p);
 }

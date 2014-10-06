@@ -179,12 +179,18 @@ typedef struct paging_data Paging_data;
 
 
 struct page {
+    Elist list;
     Elist mapped_frames;
     uintptr_t addr;
     size_t frame_nr;
     uint8_t state;
 };
 typedef struct page Page;
+
+
+static inline size_t get_page_size(Page const * const p ) {
+    return p->frame_nr * FRAME_SIZE;
+}
 
 
 static inline uintptr_t phys_to_vir_addr(uintptr_t addr) {
@@ -231,6 +237,10 @@ extern void* vmalloc_zeroed(size_t);
 extern Page* vlmalloc(Page*, size_t);
 extern Page* vmalloc2(Page*, size_t);
 extern void vfree2(Page*);
+extern size_t size_to_frame_nr(size_t);
+extern void* kmalloc(size_t);
+extern void kfree(void*);
+extern void* kmalloc_zeroed(size_t);
 
 static inline uintptr_t vmalloc_addr(size_t size) {
     return (uintptr_t)(void*)vmalloc(size);
