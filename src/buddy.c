@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <paging.h>
 #include <utils.h>
+#include <macros.h>
 
 
 #define ORDER_NUMBER(order) (1U << (order))
@@ -243,9 +244,9 @@ static size_t const order_nr[] = {
     FRAME_SIZE * 1024,
 };
 uint8_t size_to_order(size_t s) {
-    assert(s <= order_nr[10]);
+    assert(s <= *ARRAY_LAST_ELEM(order_nr));
 
-    for (uint8_t i = 0; i < 10; i++) {
+    for (uint8_t i = 0; i < ARRAY_SIZE_OF(order_nr); i++) {
         if (s <= order_nr[i]) {
             return i;
         }

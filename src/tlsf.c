@@ -53,26 +53,26 @@ typedef struct block Block;
 
 
 enum {
-    ALIGNMENT_LOG2           = 2,
-    ALIGNMENT_SIZE           = PO2(ALIGNMENT_LOG2),
-    ALIGNMENT_MASK           = ALIGNMENT_SIZE - 1,
+    ALIGNMENT_LOG2 = 2,
+    ALIGNMENT_SIZE = PO2(ALIGNMENT_LOG2),
+    ALIGNMENT_MASK = ALIGNMENT_SIZE - 1,
 
-    SL_INDEX_MASK            = (1u << SL_MAX_INDEX_LOG2) - 1u,
+    SL_INDEX_MASK = (1u << SL_MAX_INDEX_LOG2) - 1u,
 
-    FL_BLOCK_MIN_SIZE        = PO2(FL_BASE_INDEX + 1),
-    SL_BLOCK_MIN_SIZE_LOG2   = (FL_BASE_INDEX + 1 - SL_MAX_INDEX_LOG2),
-    SL_BLOCK_MIN_SIZE        = PO2(SL_BLOCK_MIN_SIZE_LOG2),
+    FL_BLOCK_MIN_SIZE = PO2(FL_BASE_INDEX + 1),
+    SL_BLOCK_MIN_SIZE_LOG2 = (FL_BASE_INDEX + 1 - SL_MAX_INDEX_LOG2),
+    SL_BLOCK_MIN_SIZE = PO2(SL_BLOCK_MIN_SIZE_LOG2),
 
-    BLOCK_OFFSET             = sizeof(Block),
-    BLOCK_FLAG_BIT_FREE      = 0x01,
+    BLOCK_OFFSET = sizeof(Block),
+    BLOCK_FLAG_BIT_FREE = 0x01,
     BLOCK_FLAG_BIT_PREV_FREE = 0x02,
-    BLOCK_FLAG_MASK          = 0x03,
+    BLOCK_FLAG_MASK = 0x03,
 
-    MAX_ALLOC_ALIGN          = PO2(12),
-    MAX_ALLOCATION_SIZE      = FRAME_SIZE * 10,
-    WATERMARK_BLOCK_SIZE     = MAX_ALLOC_ALIGN + MAX_ALLOCATION_SIZE, /* このサイズをブロックを水位計とする. */
+    MAX_ALLOC_ALIGN = PO2(12),
+    MAX_ALLOCATION_SIZE = FRAME_SIZE * 10,
+    WATERMARK_BLOCK_SIZE = MAX_ALLOC_ALIGN + MAX_ALLOCATION_SIZE, /* このサイズをブロックを水位計とする. */
     WATERMARK_BLOCK_NR_ALLOC = 1,
-    WATERMARK_BLOCK_NR_FREE  = 4,
+    WATERMARK_BLOCK_NR_FREE = 4,
 
     PAGE_STRUCT_NR = 100,
 };
@@ -107,16 +107,16 @@ static inline size_t find_set_bit_idx_last(size_t n) {
 
 #else
 __asm__(
-        "find_set_bit_idx_last: \n\t"
-        "bsrl 4(%esp), %eax     \n\t"
-        "ret                    \n\t");
+    "find_set_bit_idx_last: \n\t"
+    "bsrl 4(%esp), %eax     \n\t"
+    "ret                    \n\t");
 size_t find_set_bit_idx_last(size_t);
 
 
 __asm__(
-        "find_set_bit_idx_first: \n\t"
-        "bsfl 4(%esp), %eax      \n\t"
-        "ret                     \n\t");
+    "find_set_bit_idx_first: \n\t"
+    "bsfl 4(%esp), %eax      \n\t"
+    "ret                     \n\t");
 size_t find_set_bit_idx_first(size_t);
 #endif
 
@@ -240,7 +240,7 @@ static inline void insert_block(Tlsf_manager* const tman, Block* b) {
 
     assert(ALIGNMENT_SIZE <= s);
 
-    tman->fl_bitmap      |= PO2(fl);
+    tman->fl_bitmap |= PO2(fl);
     tman->sl_bitmaps[fl] |= PO2(sl);
 
     elist_insert_next(get_block_list_head(tman, fl, sl), &b->list);
@@ -379,7 +379,7 @@ static inline void merge_phys_block(Tlsf_manager* tman, Block* b1, Block* b2) {
     remove_block(tman, b1);
     remove_block(tman, b2);
 
-    Block* old_next      = get_phys_next_block(b1);
+    Block* old_next = get_phys_next_block(b1);
     old_next->prev_block = b1;
 
     set_size(b1, get_size(b1) + BLOCK_OFFSET + get_size(b2));
@@ -426,6 +426,7 @@ Tlsf_manager* tlsf_init(Tlsf_manager* tman) {
         elist_init(tman->blocks + i);
     }
 
+    BOCHS_MAGIC_BREAK();
     tlsf_supply_memory(tman, FRAME_SIZE * 6);
 
     return tman;
@@ -437,19 +438,23 @@ void tlsf_destruct(Tlsf_manager* tman) {
         return;
     }
 
-    elist_foreach(itr, &tman->pages, Frame, list) {
-    }
+    // elist_foreach(itr, &tman->pages, Frame, list) {
+    //     /* TODO: */
+    // }
 
     memset(tman, 0, sizeof(Tlsf_manager));
 }
 
-
+bool flag = false;
 Tlsf_manager* tlsf_supply_memory(Tlsf_manager* tman, size_t size) {
     assert((2 * BLOCK_OFFSET) <= size);
     if (size < (2 * BLOCK_OFFSET)) {
         return NULL;
     }
 
+    if (PAGE_STRUCT_NR <= page_pool_idx) {
+        return NULL;
+    }
     Page* p = &page_struct_pool[page_pool_idx++];
     vmalloc2(p, size_to_frame_nr(size));
     elist_init(&p->list);
@@ -459,7 +464,6 @@ Tlsf_manager* tlsf_supply_memory(Tlsf_manager* tman, size_t size) {
         return NULL;
     }
 
-    DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, page_pool_idx);
     elist_insert_next(&tman->pages, &p->list);
 
     size_t ns = (get_page_size(p) - BLOCK_OFFSET);
@@ -467,9 +471,9 @@ Tlsf_manager* tlsf_supply_memory(Tlsf_manager* tman, size_t size) {
     set_free(new_block);
     elist_init(&new_block->list);
 
-    Block* sentinel      = (Block*)(p->addr + (uintptr_t)ns);
+    Block* sentinel = (Block*)(p->addr + (uintptr_t)ns);
     sentinel->prev_block = new_block;
-    sentinel->size       = 0;
+    sentinel->size = 0;
 
     assert(get_phys_next_block(new_block) == sentinel);
 
@@ -477,24 +481,32 @@ Tlsf_manager* tlsf_supply_memory(Tlsf_manager* tman, size_t size) {
     insert_block(tman, new_block);
 
     ns = get_size(new_block);
-    tman->free_memory_size  += ns;
+    tman->free_memory_size += ns;
     tman->total_memory_size += ns;
 
     return tman;
 }
 
 
-static inline void check_alloc_watermark(Tlsf_manager* tman) {
+static inline void check_alloc_watermark(Tlsf_manager* tman, size_t s) {
     size_t const w = block_align_up(WATERMARK_BLOCK_SIZE);
     size_t fl, sl;
     set_idxs(w, &fl, &sl);
 
-    size_t fl_map = tman->fl_bitmap & (~0u << fl);
-    if (fl_map == 0) {
-        /* WATERMARK_BLOCK_SIZE以上のブロックが無いので確保. */
-        void* m = tlsf_supply_memory(tman, w + BLOCK_OFFSET * 3);
+    if (tman->free_memory_size < s) {
+        size_t t = s + BLOCK_OFFSET * 3;
+        void* m = tlsf_supply_memory(tman, t);
         if (m == NULL) {
             /* printf("alloc failed\n"); */
+        }
+    } else {
+        size_t fl_map = tman->fl_bitmap & (~0u << fl);
+        if (fl_map == 0) {
+            /* WATERMARK_BLOCK_SIZE以上のブロックが無いので確保. */
+            void* m = tlsf_supply_memory(tman, w + BLOCK_OFFSET * 3);
+            if (m == NULL) {
+                /* printf("alloc failed\n"); */
+            }
         }
     }
 }
@@ -508,12 +520,16 @@ void* tlsf_malloc_align(Tlsf_manager* tman, size_t size, size_t align) {
         return NULL;
     }
 
-    check_alloc_watermark(tman);
-
     size_t a_size = adjust_size(size + align + BLOCK_OFFSET);
+
+    check_alloc_watermark(tman, a_size);
 
     Block* gb = remove_good_block(tman, a_size);
     if (gb == NULL) {
+        extern bool flag;
+        if (flag == true) {
+            DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x10);
+        }
         return NULL;
     }
 

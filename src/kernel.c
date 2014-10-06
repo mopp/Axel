@@ -155,46 +155,16 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
-    printf("kernel size          : %zuKB\n", get_kernel_size() / 1024);
-    printf("kernel static size   : %zuKB\n", get_kernel_static_size() / 1024);
-    printf("kernel virtual  addr : 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-    printf("kernel physical addr : 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    printf("Total memory         : %zuKB\n", get_total_memory_size() / 1024);
-    printf("BuddySystem Total    : %zuKB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
-    printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
-    printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
-
-    // size_t nr = 25;
-    // Page p;
-    // Page* pp = vlmalloc(&p, nr);
-    // if (pp->frame_nr == 0) {
-    //     printf("ERROE\n");
-    // }
-
-    // elist_foreach(i, &pp->mapped_frames, Frame, list) {
-    //     printf("addr: 0x%zx\n", i->mapped_vaddr);
-    //     memset((void*)i->mapped_vaddr, 0xff, (1 << i->order) * FRAME_SIZE);
-    // }
-    // uintptr_t lim = pp->addr + (pp->frame_nr * FRAME_SIZE);
-    // for (uintptr_t i = pp->addr; i < lim; i++) {
-    //     *(uint8_t*)i = 0xff;
-    // }
-
-    // /* Frame* f = vlmalloc(nr); */
-    // /* memset((void*)f->mapped_vaddr, 0xff, (FRAME_SIZE * (1 << f->order))); */
-    // printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
-    // vfree2(pp);
-    // /* vlfree(f); */
-    // printf("BuddySystem Free nr : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
-
-    tlsf_init(axel_s.tman);
-    printf("free_memory_size  : 0x%zx\n", axel_s.tman->free_memory_size);
-    printf("total_memory_size : 0x%zx\n", axel_s.tman->total_memory_size);
-    // while (1) {
-    //     void* m = kmalloc(0x1000);
-    //     kfree(m);
-    // }
-
+    printf("kernel size            : %zu KB\n", get_kernel_size() / 1024);
+    printf("kernel static size     : %zu KB\n", get_kernel_static_size() / 1024);
+    printf("kernel virtual  addr   : 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
+    printf("kernel physical addr   : 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    printf("Total memory           : %zu KB\n", get_total_memory_size() / 1024);
+    printf("BuddySystem Total      : %zu KB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
+    printf("BuddySystem Frame nr   : %zu\n", axel_s.bman->total_frame_nr);
+    printf("BuddySystem Free nr    : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    printf("Tlsf total_memory_size : %zu KB\n", axel_s.tman->total_memory_size / 1024);
+    printf("Tlsf free_memory_size  : %zu KB\n", axel_s.tman->free_memory_size / 1024);
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {

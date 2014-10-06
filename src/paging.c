@@ -112,7 +112,7 @@ void init_paging(Paging_data const * const pd) {
     pp->state = PAGE_INFO_STATE_ALLOC;
     dlist_insert_node_last(&p_man->list, n);
 
-    /* tlsf_init(&tman); */
+    tlsf_init(&tman);
     axel_s.tman = &tman;
 }
 
@@ -619,7 +619,7 @@ void* kmalloc(size_t s) {
 
 void* kmalloc_zeroed(size_t s) {
     void* m = kmalloc(s);
-    return memset(m, 0, s);
+    return (m == NULL) ? (NULL) : (memset(m, 0, s));
 }
 
 
