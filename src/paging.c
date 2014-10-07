@@ -22,10 +22,6 @@
  * This contains pages that is assigned KERNEL_VIRTUAL_BASE_ADDR to (KERNEL_VIRTUAL_BASE_ADDR + get_kernel_size()).
  */
 static Page_directory_table kernel_pdt;
-static Page_manager* p_man;
-static Dlist_node* p_list_nodes;
-static Page_info* p_info;
-static bool* used_list_node;
 static Tlsf_manager tman;
 
 static size_t get_pde_index(uintptr_t const);
@@ -34,8 +30,6 @@ static Page_directory_entry* get_pde(Page_directory_table const, uintptr_t const
 static Page_table get_pt(Page_directory_entry const* const);
 static Page_table_entry* get_pte(Page_table const, uintptr_t const);
 static Page_table_entry* set_frame_addr(Page_table_entry* const, uintptr_t const);
-static Dlist_node* dlist_get_new_page_node(void);
-static void remove_page_list_node(Dlist_node*);
 
 
 
@@ -46,10 +40,6 @@ static void remove_page_list_node(Dlist_node*);
  */
 void init_paging(Paging_data const * const pd) {
     kernel_pdt     = pd->pdt;
-    p_man          = pd->p_man;
-    p_info         = pd->p_info;
-    p_list_nodes   = pd->p_list_nodes;
-    used_list_node = pd->used_p_info;
     memset(kernel_pdt, 0, ALL_PAGE_STRUCT_SIZE);
 
     /* Calculate and set page table addr to page directory entry */
@@ -72,187 +62,9 @@ void init_paging(Paging_data const * const pd) {
     turn_off_4MB_paging();
     turn_on_pge();
 
-    /* Inirialize page manager. */
-    for (size_t i = 0; i < PAGE_INFO_NODE_NUM; ++i) {
-        p_list_nodes[i].data = &p_info[i];
-    }
-
-    Dlist_node* n;
-    Page_info* pp;
-
-    /* Set user space. */
-    // dlist_init(&p_man->user_area_list, sizeof(Page_info), NULL);
-    // n = dlist_get_new_page_node();
-    // pp = (Page_info*)n->data;
-    // pp->base_addr = 0x00000000;
-    // pp->size = (size_t)get_kernel_vir_start_addr();
-    // pp->state = PAGE_INFO_STATE_FREE;
-    // dlist_insert_node_last(&p_man->user_area_list, n);
-
-    /* Set kernel space. */
-    dlist_init(&p_man->list, sizeof(Page_info), NULL);
-    n = dlist_get_new_page_node();
-    pp = (Page_info*)n->data;
-    pp->base_addr = get_kernel_vir_start_addr();
-    pp->size = get_kernel_size();
-    pp->state = PAGE_INFO_STATE_ALLOC;
-    dlist_insert_node_last(&p_man->list, n);
-
-    n = dlist_get_new_page_node();
-    pp = (Page_info*)n->data;
-    pp->base_addr = get_kernel_vir_start_addr() + get_kernel_size();
-    pp->size = vram_addr - pp->base_addr;
-    pp->state = PAGE_INFO_STATE_FREE;
-    dlist_insert_node_last(&p_man->list, n);
-
-    n = dlist_get_new_page_node();
-    pp = (Page_info*)n->data;
-    pp->base_addr = 0xe0000000;
-    pp->size = 0xFFFFFFFF - vram_addr;
-    pp->state = PAGE_INFO_STATE_ALLOC;
-    dlist_insert_node_last(&p_man->list, n);
-
     tlsf_init(&tman);
     axel_s.tman = &tman;
 }
-
-
-static bool for_each_in_vmalloc(Dlist* l, void* d) {
-    Page_info const* const p = (Page_info*)d;
-    return ((p->state == PAGE_INFO_STATE_FREE) && (((Page_manager const *)l)->alloc_request_size <= p->size)) ? true : false;
-}
-
-
-/**
- * @brief Virtual memory allocation.
- *        This uses only kernel space.
- * @param size requested allocation size.
- * @return If allocation success, pointer to allocated area.
- *         Otherwise, this returns NULL.
- */
-void* vmalloc(size_t size) {
-    size = round_page_size(size);
-
-    void* palloced = pmalloc(size);
-    if (palloced == NULL) {
-        return NULL;
-    }
-
-    Dlist* const list = &p_man->list;
-
-    /* Search enough size node in kernel area. */
-    p_man->alloc_request_size = size;
-    Dlist_node* n = dlist_for_each(list, for_each_in_vmalloc, false);
-    if (n == NULL) {
-        pfree(palloced);
-        return NULL;
-    }
-
-    /* Get new node */
-    Dlist_node* const new = dlist_get_new_page_node();
-    if (new == NULL) {
-        pfree(palloced);
-        return NULL;
-    }
-
-    /* Allocate new area */
-    /* FIXME: considering other case */
-    Page_info* pi     = (Page_info*)n->data;
-    Page_info* new_pi = (Page_info*)new->data;
-    new_pi->base_addr = pi->base_addr + size;
-    new_pi->size      = pi->size - size;
-    new_pi->state     = PAGE_INFO_STATE_FREE;
-
-    pi->size = size;
-    pi->state = PAGE_INFO_STATE_ALLOC;
-
-    dlist_insert_node_next(list, n, new);
-
-    map_page_area(kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, pi->base_addr, pi->base_addr + pi->size, (uintptr_t)palloced, (uintptr_t)palloced + size);
-
-    return (void*)pi->base_addr;
-}
-
-
-void* vmalloc_zeroed(size_t size) {
-    void* mem = vmalloc(size);
-    return (mem == NULL) ? (NULL) : memset(mem, 0, size);
-}
-
-
-static bool for_each_in_vfree(Dlist* l, void* d) {
-    Page_info const* const p = (Page_info*)d;
-    return ((p->state == PAGE_INFO_STATE_ALLOC) && (p->base_addr == ((Page_manager const *)l)->free_request_addr)) ? true : false;
-}
-
-
-void vfree(void* addr) {
-    if (addr == NULL) {
-        return;
-    }
-
-    Dlist* const list = &p_man->list;
-
-    p_man->free_request_addr = (uintptr_t)addr;
-    Dlist_node* n = dlist_for_each(list, for_each_in_vfree, false);
-    if (n == NULL) {
-        return;
-    }
-    Page_info* n_pi = (Page_info*)n->data;
-
-    /* Fix page directory table infomation. */
-    unmap_page_area(kernel_pdt, n_pi->base_addr, n_pi->base_addr + n_pi->size);
-
-    Dlist_node* const prev_node = n->prev;
-    Dlist_node* const next_node = n->next;
-    Page_info* const prev_pi    = (Page_info*)prev_node->data;
-    Page_info* const next_pi    = (Page_info*)next_node->data;
-
-    if (prev_pi->state == PAGE_INFO_STATE_FREE && prev_pi->state == PAGE_INFO_STATE_FREE) {
-        /* merge next and previous. */
-        prev_pi->size += (n_pi->size + next_pi->size);
-        remove_page_list_node(n);
-        remove_page_list_node(next_node);
-    } else if (prev_pi->state == PAGE_INFO_STATE_FREE) {
-        /* merge previous. */
-        prev_pi->size += n_pi->size;
-        remove_page_list_node(n);
-    } else if (next_pi->state == PAGE_INFO_STATE_FREE) {
-        /* merge next. */
-        n_pi->size += next_pi->size;
-        n_pi->state = PAGE_INFO_STATE_FREE;
-        remove_page_list_node(next_node);
-    } else {
-        n_pi->state = PAGE_INFO_STATE_FREE;
-    }
-}
-
-
-static Dlist_node* dlist_get_new_page_node(void) {
-    static size_t cnt = 0;         /* Counter for nextfix */
-    size_t const stored_cnt = cnt; /* It is used for detecting already checking all node. */
-
-    do {
-        cnt = MOD_MAX_PAGE_INFO_NODE_NUM(cnt + 1);
-        if (stored_cnt == cnt) {
-            /* All node is already used :( */
-            return NULL;
-        }
-    } while (used_list_node[cnt] == true);
-
-    used_list_node[cnt] = true;
-
-    return &p_list_nodes[cnt];
-}
-
-
-static void remove_page_list_node(Dlist_node* target) {
-    dlist_remove_node(&p_man->list, target);
-
-    /* Instead of free(). */
-    used_list_node[((uintptr_t)target - (uintptr_t)p_list_nodes) / sizeof(Dlist_node)] = false;
-}
-
 
 static inline size_t get_pde_index(uintptr_t const addr) {
     return (addr >> PDE_IDX_SHIFT_NUM) & 0x03FF;
@@ -400,7 +212,7 @@ inline void unmap_page_area(Page_directory_table pdt, uintptr_t const begin_vadd
 
 
 Page_directory_table make_user_pdt(void) {
-    Page_directory_table pdt = vmalloc(ALL_PAGE_STRUCT_SIZE);
+    Page_directory_table pdt = kmalloc(ALL_PAGE_STRUCT_SIZE);
     /* Page_table pt = (Page_table)pdt + PAGE_DIRECTORY_ENTRY_NUM; */
 
     /* Copy kernel area. */
@@ -501,10 +313,11 @@ static inline uintptr_t get_free_vmems(size_t frame_nr) {
 }
 
 
-Page* vlmalloc(Page* p, size_t req_nr) {
+Page* vcmalloc(Page* p, size_t req_nr) {
     memset(p, 0, sizeof(Page));
     elist_init(&p->mapped_frames);
 
+    /* allocate physical memory from BuddySystem. */
     uintptr_t s = (FRAME_SIZE * req_nr);
     Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(s));
     if (f == NULL) {
@@ -513,6 +326,7 @@ Page* vlmalloc(Page* p, size_t req_nr) {
     elist_insert_next(&p->mapped_frames, &f->list);
     size_t alloc_nr = p->frame_nr = (1 << f->order);
 
+    /* allocate virtual memory from kernel page directory. */
     s = (FRAME_SIZE * alloc_nr);
     uintptr_t bvaddr = get_free_vmems(alloc_nr);
     if (bvaddr == 0) {
@@ -534,13 +348,6 @@ Page* vlmalloc(Page* p, size_t req_nr) {
 }
 
 
-void vlfree(Page* p) {
-    /* unmap_page_area(kernel_pdt, f->mapped_vaddr, f->mapped_vaddr + (FRAME_SIZE * (1 << f->order))); */
-
-    /* buddy_free_frames(axel_s.bman, f); */
-}
-
-
 static inline void free_buddy_frames(Elist* head) {
     elist_foreach(i, head, Frame, list) {
         Frame* p = elist_derive(Frame, list, i->list.prev);
@@ -551,7 +358,7 @@ static inline void free_buddy_frames(Elist* head) {
 }
 
 
-Page* vmalloc2(Page* p, size_t req_nr) {
+Page* vmalloc(Page* p, size_t req_nr) {
     memset(p, 0, sizeof(Page));
     Elist* head = &p->mapped_frames;
     elist_init(head);
@@ -597,7 +404,7 @@ Page* vmalloc2(Page* p, size_t req_nr) {
 }
 
 
-void vfree2(Page* p) {
+void vfree(Page* p) {
     unmap_page_area(kernel_pdt, p->addr, p->addr + (FRAME_SIZE * p->frame_nr));
 
     free_buddy_frames(&p->mapped_frames);

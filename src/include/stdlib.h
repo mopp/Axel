@@ -8,12 +8,12 @@
 
 
 static inline void* malloc(size_t size) {
-    return vmalloc(size);
+    return kmalloc(size);
 }
 
 
 static inline void free(void* addr) {
-    vfree(addr);
+    kfree(addr);
 }
 
 

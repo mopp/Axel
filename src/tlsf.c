@@ -427,7 +427,7 @@ static inline Tlsf_manager* supply_memory(Tlsf_manager* tman, size_t size) {
         return NULL;
     }
     Page* p = &page_struct_pool[page_pool_idx++];
-    vmalloc2(p, size_to_frame_nr(size));
+    vmalloc(p, size_to_frame_nr(size));
     elist_init(&p->list);
 
     if (p->frame_nr == 0) {
@@ -514,7 +514,7 @@ static inline void check_free_watermark(Tlsf_manager* tman, Block* b) {
     assert(p != NULL);
 
     elist_remove(&p->list);
-    vfree2(p);
+    vfree(p);
 }
 
 
@@ -525,7 +525,6 @@ Tlsf_manager* tlsf_init(Tlsf_manager* tman) {
         elist_init(tman->blocks + i);
     }
 
-    BOCHS_MAGIC_BREAK();
     supply_memory(tman, FRAME_SIZE * 6);
 
     return tman;
