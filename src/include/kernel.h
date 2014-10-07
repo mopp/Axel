@@ -11,9 +11,10 @@
 
 
 
+#include <buddy.h>
+#include <paging.h>
 #include <ps2.h>
 #include <segment.h>
-#include <buddy.h>
 #include <tlsf.h>
 
 
@@ -28,6 +29,7 @@ struct axel_struct {
     Mouse* mouse;
     Buddy_manager* bman;
     Tlsf_manager* tman;
+    Page_directory_table kernel_pdt;
 };
 typedef struct axel_struct Axel_struct;
 

@@ -100,14 +100,9 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
      * But it is too big to allocate in a compile time.
      * 4150 KB.
      */
-    axel_s.bman = smalloc(sizeof(Buddy_manager));
-    Paging_data pd = {
-        .p_man        = smalloc(sizeof(Page_manager)),
-        .p_list_nodes = smalloc(sizeof(Dlist_node) * PAGE_INFO_NODE_NUM),
-        .p_info       = smalloc(sizeof(Page_info) * PAGE_INFO_NODE_NUM),
-        .used_p_info  = smalloc(sizeof(bool) * PAGE_INFO_NODE_NUM),
-        .pdt          = smalloc_align(ALL_PAGE_STRUCT_SIZE, 4096),
-    };
+    axel_s.bman       = smalloc(sizeof(Buddy_manager));
+    axel_s.tman       = smalloc(sizeof(Tlsf_manager));
+    axel_s.kernel_pdt = smalloc_align(ALL_PAGE_STRUCT_SIZE, PAGE_SIZE);
 
     /*
      * Calculate the number of frame for buddy system.
@@ -129,25 +124,16 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
     frame_nr = addr_len / FRAME_SIZE;
 
     axel_s.bman = buddy_init(axel_s.bman, get_kernel_phys_end_addr(), frames, frame_nr);
-    /* 0x005304e4 - 0x00100000 = 0x4304e4 = 4289 KB */
 
     if (frames == NULL || axel_s.bman == NULL) {
         return AXEL_ERROR_INITIALIZE_MEMORY;
     }
 
     /*
-     * for (int i = BUDDY_SYSTEM_MAX_ORDER - 1; 0 <= i; --i) {
-     *     while (buddy_alloc_frames(&bman, i & 0xff) != NULL);
-     * }
-     * assert(buddy_get_alloc_memory_size(&bman));
-     * assert(buddy_get_free_memory_size(&bman));
-     */
-
-    /*
      * Physical memory managing is just finished.
      * Next, let's set paging.
      */
-    init_paging(&pd);
+    init_paging();
 
     return AXEL_SUCCESS;
 }

@@ -21,7 +21,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <dlist.h>
 #include <elist.h>
 #include <buddy.h>
 #include <state_code.h>
@@ -144,40 +143,6 @@ enum Paging_constants {
 };
 
 
-enum page_manager_constants {
-    PAGE_INFO_NODE_NUM = 2048,
-    PAGE_INFO_STATE_FREE = 0,
-    PAGE_INFO_STATE_ALLOC,
-};
-#define MOD_MAX_PAGE_INFO_NODE_NUM(n) (n & 0x04ffu)
-
-
-struct page_info {
-    uintptr_t base_addr; /* base address */
-    uint8_t state;       /* managed area state */
-    size_t size;         /* allocated size */
-};
-typedef struct page_info Page_info;
-
-
-struct page_manager {
-    Dlist list;
-    size_t alloc_request_size;
-    uintptr_t free_request_addr;
-};
-typedef struct page_manager Page_manager;
-
-
-struct paging_data {
-    Page_directory_table pdt;
-    Page_manager* p_man;
-    Dlist_node* p_list_nodes;
-    Page_info* p_info;
-    bool* used_p_info;
-};
-typedef struct paging_data Paging_data;
-
-
 struct page {
     Elist list;
     Elist mapped_frames;
@@ -224,7 +189,7 @@ extern Axel_state_code synchronize_pdt(Page_directory_table, uintptr_t);
 extern Page_directory_table get_kernel_pdt(void);
 extern Page_directory_table make_user_pdt(void);
 extern bool is_kernel_pdt(Page_directory_table const);
-extern void init_paging(Paging_data const* const);
+extern void init_paging(void);
 extern void map_page(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
 extern void map_page_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
 extern void map_page_same_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);

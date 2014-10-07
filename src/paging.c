@@ -17,13 +17,6 @@
 #include <utils.h>
 
 
-/*
- * Kernel page directory table.
- * This contains pages that is assigned KERNEL_VIRTUAL_BASE_ADDR to (KERNEL_VIRTUAL_BASE_ADDR + get_kernel_size()).
- */
-static Page_directory_table kernel_pdt;
-static Tlsf_manager tman;
-
 static size_t get_pde_index(uintptr_t const);
 static size_t get_pte_index(uintptr_t const);
 static Page_directory_entry* get_pde(Page_directory_table const, uintptr_t const);
@@ -36,10 +29,10 @@ static Page_table_entry* set_frame_addr(Page_table_entry* const, uintptr_t const
 /**
  * @brief Initialize paging.
  *          This is called in physical memory initialization.
- * @param pd allocated memory by physical memory.
  */
-void init_paging(Paging_data const * const pd) {
-    kernel_pdt     = pd->pdt;
+void init_paging(void) {
+    Page_directory_table kernel_pdt = axel_s.kernel_pdt;
+
     memset(kernel_pdt, 0, ALL_PAGE_STRUCT_SIZE);
 
     /* Calculate and set page table addr to page directory entry */
@@ -62,8 +55,7 @@ void init_paging(Paging_data const * const pd) {
     turn_off_4MB_paging();
     turn_on_pge();
 
-    tlsf_init(&tman);
-    axel_s.tman = &tman;
+    tlsf_init(axel_s.tman);
 }
 
 static inline size_t get_pde_index(uintptr_t const addr) {
@@ -109,7 +101,7 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
 inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
     Page_directory_entry* const pde = get_pde(pdt, vaddr);
 
-    if (pdt != kernel_pdt && pde->present_flag == 0) {
+    if (pdt != axel_s.kernel_pdt && pde->present_flag == 0) {
         /* Allocate page for user pdt */
         /* Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM); */
         /* pde->page_table_addr = ((vir_to_phys_addr((uintptr_t)pt) & 0xFFFFF000) >> PDE_PT_ADDR_SHIFT_NUM); */
@@ -185,7 +177,7 @@ inline void map_page_same_area(Page_directory_table pdt,  uint32_t const pde_fla
 inline void unmap_page(Page_directory_table pdt, uintptr_t vaddr) {
     if (KERNEL_VIRTUAL_BASE_ADDR <= vaddr) {
         /* Kernel area unmapping. */
-        Page_directory_entry* const pde = get_pde(kernel_pdt, vaddr);
+        Page_directory_entry* const pde = get_pde(axel_s.kernel_pdt, vaddr);
         if (pde->present_flag == 0) {
             return;
         }
@@ -219,7 +211,7 @@ Page_directory_table make_user_pdt(void) {
     size_t s = get_pde_index(get_kernel_vir_start_addr());
     size_t e = get_pde_index(get_kernel_vir_end_addr());
     do {
-        pdt[s].bit_expr = kernel_pdt[s].bit_expr;
+        pdt[s].bit_expr = axel_s.kernel_pdt[s].bit_expr;
     } while (++s <= e);
 
     return pdt;
@@ -227,12 +219,12 @@ Page_directory_table make_user_pdt(void) {
 
 
 Page_directory_table get_kernel_pdt(void) {
-    return kernel_pdt;
+    return axel_s.kernel_pdt;
 }
 
 
 inline bool is_kernel_pdt(Page_directory_table const pdt) {
-    return (kernel_pdt == pdt) ? true : false;
+    return (axel_s.kernel_pdt == pdt) ? true : false;
 }
 
 
@@ -244,7 +236,7 @@ Axel_state_code synchronize_pdt(Page_directory_table user_pdt, uintptr_t vaddr) 
     }
 
     Page_directory_entry* u_pde = get_pde(user_pdt, vaddr);
-    Page_directory_entry* k_pde = get_pde(kernel_pdt, vaddr);
+    Page_directory_entry* k_pde = get_pde(axel_s.kernel_pdt, vaddr);
 
     if (k_pde->present_flag == 0) {
         /*
@@ -287,7 +279,7 @@ static inline uintptr_t get_free_vmems(size_t frame_nr) {
     size_t nr = 0;
     bool f = true;
     while (pde_idx < pde_idx_limit && f == true) {
-        Page_table pt = get_pt(kernel_pdt + pde_idx);
+        Page_table pt = get_pt(axel_s.kernel_pdt + pde_idx);
         for (size_t i = 0; i < PAGE_TABLE_ENTRY_NUM; i++) {
             if (pt[i].present_flag == 1) {
                 begin_vaddr = 0;
@@ -338,7 +330,7 @@ Page* vcmalloc(Page* p, size_t req_nr) {
     uintptr_t evaddr = bvaddr + s;
     uintptr_t bpaddr = get_frame_addr(axel_s.bman, f);
     uintptr_t epaddr = bpaddr + s;
-    map_page_area(kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
+    map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
 
     for (Frame* i = f; i < &f[alloc_nr]; i++, bvaddr += PAGE_SIZE) {
         i->mapped_vaddr = bvaddr;
@@ -393,7 +385,7 @@ Page* vmalloc(Page* p, size_t req_nr) {
         uintptr_t epaddr = bpaddr + s;
         uintptr_t evaddr = bvaddr + s;
 
-        map_page_area(kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
+        map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
 
         for (Frame* j = i; j < &i[f_nr]; j++, bvaddr += PAGE_SIZE) {
             j->mapped_vaddr = bvaddr;
@@ -405,7 +397,7 @@ Page* vmalloc(Page* p, size_t req_nr) {
 
 
 void vfree(Page* p) {
-    unmap_page_area(kernel_pdt, p->addr, p->addr + (FRAME_SIZE * p->frame_nr));
+    unmap_page_area(axel_s.kernel_pdt, p->addr, p->addr + (FRAME_SIZE * p->frame_nr));
 
     free_buddy_frames(&p->mapped_frames);
 
