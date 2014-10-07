@@ -113,7 +113,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_graphic(boot_info);
     init_gdt();
     init_idt();
-    /* init_process(); */
+    init_process();
     init_pic();
     init_pit();
     io_sti();
@@ -163,6 +163,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     printf("BuddySystem Total      : %zu KB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
     printf("BuddySystem Frame nr   : %zu\n", axel_s.bman->total_frame_nr);
     printf("BuddySystem Free nr    : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
+        printf("  %zu - %zu - %zu nr\n", i, axel_s.bman->free_frame_nr[i], axel_s.bman->free_frame_nr[i] * (1 << i));
+    }
     printf("Tlsf total_memory_size : %zu KB\n", axel_s.tman->total_memory_size / 1024);
     printf("Tlsf free_memory_size  : %zu KB\n", axel_s.tman->free_memory_size / 1024);
 

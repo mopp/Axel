@@ -11,7 +11,6 @@
 #include <utils.h>
 #include <macros.h>
 #include <paging.h>
-#include <memory.h>
 #include <asm_functions.h>
 #include <segment.h>
 
@@ -171,10 +170,10 @@ _Noreturn void task_user(void) {
     }
 }
 
-
+#if 0
 Process* make_user_process(void) {
-    Process* p = vmalloc(sizeof(Process));
-    Program_segments* ps = vmalloc(sizeof(Program_segments));
+    Process* p = kmalloc(sizeof(Process));
+    Program_segments* ps = kmalloc(sizeof(Program_segments));
 
     p->cpu_time    = 0;
     p->segments    = ps;
@@ -188,7 +187,7 @@ Process* make_user_process(void) {
     ps->stack_size = INIT_USER_STACK_SIZE;
     p->pdt         = make_user_pdt();
     p->pid         = 100;
-    p->thread      = vmalloc(sizeof(Thread));
+    p->thread      = kmalloc(sizeof(Thread));
     p->thread->ip  = 0x1000; /* XXX: start virtual address 0x1000; */
     p->thread->sp  = ps->stack_addr + ps->stack_size;
 
@@ -213,32 +212,34 @@ Process* make_user_process(void) {
 
     return p;
 }
-
+#endif
 
 Axel_state_code init_process(void) {
     is_enable_process = true;
 
     pk.pid = 0;
     pk.pdt = NULL;
-    pk.thread = vmalloc(sizeof(Thread));
+    pk.thread = kmalloc(sizeof(Thread));
 
     pa.pid = 1;
     pa.pdt = NULL;
-    pa.thread = vmalloc(sizeof(Thread));
-    pa.thread->sp = vmalloc_addr(0x1000);
-    pa.thread->ip = (uintptr_t) task_a;
+    pa.thread = kmalloc(sizeof(Thread));
+    void* p = kmalloc(0x1000);
+    pa.thread->sp = (uintptr_t)p + 0x1000;
+    pa.thread->ip = (uintptr_t)task_a;
 
     pb.pid = 2;
     pb.pdt = NULL;
-    pb.thread = vmalloc(sizeof(Thread));
-    pb.thread->sp = vmalloc_addr(0x1000);
-    pb.thread->ip = (uintptr_t) task_b;
+    pb.thread = kmalloc(sizeof(Thread));
+    p = kmalloc(0x1000);
+    pb.thread->sp = (uintptr_t)p + 0x1000;
+    pb.thread->ip = (uintptr_t)task_b;
 
-    pu = *(make_user_process());
+    /* pu = *(make_user_process()); */
     /* 0:	f4                   	hlt     */
     /* 1:	eb fd                	jmp    0 <usr> */
 
-    processes = vmalloc(sizeof(Process*) * process_num);
+    processes = kmalloc(sizeof(Process*) * process_num);
     processes[0] = &pk;
     processes[1] = &pa;
     processes[2] = &pb;
