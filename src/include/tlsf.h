@@ -14,8 +14,8 @@
 
 #include <stddef.h>
 #include <elist.h>
+#include <macros.h>
 
-#define PO2(x) (1u << (x))
 
 enum {
     FL_BASE_INDEX     = 10 - 1,
@@ -36,11 +36,11 @@ struct tlsf_manager {
 typedef struct tlsf_manager Tlsf_manager;
 
 
-Tlsf_manager* tlsf_init(Tlsf_manager*);
-void tlsf_destruct(Tlsf_manager*);
-void* tlsf_malloc_align(Tlsf_manager*, size_t, size_t);
-void* tlsf_malloc(Tlsf_manager*, size_t);
-void tlsf_free(Tlsf_manager*, void*);
+extern Tlsf_manager* tlsf_init(Tlsf_manager*);
+extern void tlsf_destruct(Tlsf_manager*);
+extern void* tlsf_malloc_align(Tlsf_manager*, size_t, size_t);
+extern void* tlsf_malloc(Tlsf_manager*, size_t);
+extern void tlsf_free(Tlsf_manager*, void*);
 
 
 

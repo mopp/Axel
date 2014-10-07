@@ -28,13 +28,11 @@
 
 
 #include <assert.h>
-#include <buddy.h>
 #include <kernel.h>
 #include <paging.h>
 #include <stdbool.h>
 #include <tlsf.h>
 #include <utils.h>
-#include <macros.h>
 
 
 struct block {
@@ -53,30 +51,31 @@ typedef struct block Block;
 
 
 enum {
-    ALIGNMENT_LOG2 = 2,
-    ALIGNMENT_SIZE = PO2(ALIGNMENT_LOG2),
-    ALIGNMENT_MASK = ALIGNMENT_SIZE - 1,
+    ALIGNMENT_LOG2           = 2,
+    ALIGNMENT_SIZE           = PO2(ALIGNMENT_LOG2),
+    ALIGNMENT_MASK           = ALIGNMENT_SIZE - 1,
 
-    SL_INDEX_MASK = (1u << SL_MAX_INDEX_LOG2) - 1u,
+    SL_INDEX_MASK            = (1u << SL_MAX_INDEX_LOG2) - 1u,
 
-    FL_BLOCK_MIN_SIZE = PO2(FL_BASE_INDEX + 1),
-    SL_BLOCK_MIN_SIZE_LOG2 = (FL_BASE_INDEX + 1 - SL_MAX_INDEX_LOG2),
-    SL_BLOCK_MIN_SIZE = PO2(SL_BLOCK_MIN_SIZE_LOG2),
+    FL_BLOCK_MIN_SIZE        = PO2(FL_BASE_INDEX + 1),
+    SL_BLOCK_MIN_SIZE_LOG2   = (FL_BASE_INDEX + 1 - SL_MAX_INDEX_LOG2),
+    SL_BLOCK_MIN_SIZE        = PO2(SL_BLOCK_MIN_SIZE_LOG2),
 
-    BLOCK_OFFSET = sizeof(Block),
-    BLOCK_FLAG_BIT_FREE = 0x01,
+    BLOCK_OFFSET             = sizeof(Block),
+    BLOCK_FLAG_BIT_FREE      = 0x01,
     BLOCK_FLAG_BIT_PREV_FREE = 0x02,
-    BLOCK_FLAG_MASK = 0x03,
+    BLOCK_FLAG_MASK          = 0x03,
 
-    MAX_ALLOC_ALIGN = PO2(12),
-    MAX_ALLOCATION_SIZE = FRAME_SIZE * 10,
-    WATERMARK_BLOCK_SIZE = MAX_ALLOC_ALIGN + MAX_ALLOCATION_SIZE, /* このサイズをブロックを水位計とする. */
+    MAX_ALLOC_ALIGN          = PO2(12),
+    MAX_ALLOCATION_SIZE      = FRAME_SIZE * 10,
+    WATERMARK_BLOCK_SIZE     = MAX_ALLOC_ALIGN + MAX_ALLOCATION_SIZE, /* このサイズをブロックを水位計とする. */
     WATERMARK_BLOCK_NR_ALLOC = 1,
-    WATERMARK_BLOCK_NR_FREE = 4,
+    WATERMARK_BLOCK_NR_FREE  = 4,
 
-    PAGE_STRUCT_NR = 100,
+    PAGE_STRUCT_NR           = 50,
 };
 
+/* FIXME */
 static Page page_struct_pool[PAGE_STRUCT_NR];
 static size_t page_pool_idx;
 
@@ -240,7 +239,7 @@ static inline void insert_block(Tlsf_manager* const tman, Block* b) {
 
     assert(ALIGNMENT_SIZE <= s);
 
-    tman->fl_bitmap |= PO2(fl);
+    tman->fl_bitmap      |= PO2(fl);
     tman->sl_bitmaps[fl] |= PO2(sl);
 
     elist_insert_next(get_block_list_head(tman, fl, sl), &b->list);
@@ -418,35 +417,7 @@ static inline Block* merge_phys_neighbor_blocks(Tlsf_manager* tman, Block* b) {
 }
 
 
-Tlsf_manager* tlsf_supply_memory(Tlsf_manager* tman, size_t size);
-Tlsf_manager* tlsf_init(Tlsf_manager* tman) {
-    memset(tman, 0, sizeof(Tlsf_manager));
-    elist_init(&tman->pages);
-    for (size_t i = 0; i < (FL_MAX_INDEX * SL_MAX_INDEX); i++) {
-        elist_init(tman->blocks + i);
-    }
-
-    BOCHS_MAGIC_BREAK();
-    tlsf_supply_memory(tman, FRAME_SIZE * 6);
-
-    return tman;
-}
-
-
-void tlsf_destruct(Tlsf_manager* tman) {
-    if (elist_is_empty(&tman->pages) == true) {
-        return;
-    }
-
-    // elist_foreach(itr, &tman->pages, Frame, list) {
-    //     /* TODO: */
-    // }
-
-    memset(tman, 0, sizeof(Tlsf_manager));
-}
-
-bool flag = false;
-Tlsf_manager* tlsf_supply_memory(Tlsf_manager* tman, size_t size) {
+static inline Tlsf_manager* supply_memory(Tlsf_manager* tman, size_t size) {
     assert((2 * BLOCK_OFFSET) <= size);
     if (size < (2 * BLOCK_OFFSET)) {
         return NULL;
@@ -495,7 +466,7 @@ static inline void check_alloc_watermark(Tlsf_manager* tman, size_t s) {
 
     if (tman->free_memory_size < s) {
         size_t t = s + BLOCK_OFFSET * 3;
-        void* m = tlsf_supply_memory(tman, t);
+        void* m = supply_memory(tman, t);
         if (m == NULL) {
             /* printf("alloc failed\n"); */
         }
@@ -503,58 +474,12 @@ static inline void check_alloc_watermark(Tlsf_manager* tman, size_t s) {
         size_t fl_map = tman->fl_bitmap & (~0u << fl);
         if (fl_map == 0) {
             /* WATERMARK_BLOCK_SIZE以上のブロックが無いので確保. */
-            void* m = tlsf_supply_memory(tman, w + BLOCK_OFFSET * 3);
+            void* m = supply_memory(tman, w + BLOCK_OFFSET * 3);
             if (m == NULL) {
                 /* printf("alloc failed\n"); */
             }
         }
     }
-}
-
-
-void* tlsf_malloc_align(Tlsf_manager* tman, size_t size, size_t align) {
-    assert((align == 0) || ((align - 1u) & align) == 0);
-    assert(align <= MAX_ALLOC_ALIGN);
-
-    if (size == 0 || tman == NULL) {
-        return NULL;
-    }
-
-    size_t a_size = adjust_size(size + align + BLOCK_OFFSET);
-
-    check_alloc_watermark(tman, a_size);
-
-    Block* gb = remove_good_block(tman, a_size);
-    if (gb == NULL) {
-        extern bool flag;
-        if (flag == true) {
-            DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x10);
-        }
-        return NULL;
-    }
-
-    assert(a_size < get_size(gb));
-
-    Block* sb, * ab = divide_block(gb, adjust_size(size), align);
-    if (ab == NULL) {
-        /* 分割出来なかったのでそのまま使用 */
-        sb = gb;
-    } else {
-        /* 分割したので使わないブロックを戻す. */
-        sb = ab;
-        insert_block(tman, gb);
-        tman->free_memory_size -= BLOCK_OFFSET;
-    }
-
-    tman->free_memory_size -= get_size(sb);
-
-    claer_free(sb);
-    return convert_mem_ptr(sb);
-}
-
-
-void* tlsf_malloc(Tlsf_manager* tman, size_t size) {
-    return tlsf_malloc_align(tman, size, 0);
 }
 
 
@@ -590,6 +515,75 @@ static inline void check_free_watermark(Tlsf_manager* tman, Block* b) {
 
     elist_remove(&p->list);
     vfree2(p);
+}
+
+
+Tlsf_manager* tlsf_init(Tlsf_manager* tman) {
+    memset(tman, 0, sizeof(Tlsf_manager));
+    elist_init(&tman->pages);
+    for (size_t i = 0; i < (FL_MAX_INDEX * SL_MAX_INDEX); i++) {
+        elist_init(tman->blocks + i);
+    }
+
+    BOCHS_MAGIC_BREAK();
+    supply_memory(tman, FRAME_SIZE * 6);
+
+    return tman;
+}
+
+
+void tlsf_destruct(Tlsf_manager* tman) {
+    if (elist_is_empty(&tman->pages) == true) {
+        return;
+    }
+
+    // elist_foreach(itr, &tman->pages, Frame, list) {
+    //     /* TODO: */
+    // }
+
+    memset(tman, 0, sizeof(Tlsf_manager));
+}
+
+
+inline void* tlsf_malloc_align(Tlsf_manager* tman, size_t size, size_t align) {
+    assert((align == 0) || ((align - 1u) & align) == 0);
+    assert(align <= MAX_ALLOC_ALIGN);
+
+    if (size == 0 || tman == NULL) {
+        return NULL;
+    }
+
+    size_t a_size = adjust_size(size + align + BLOCK_OFFSET);
+
+    check_alloc_watermark(tman, a_size);
+
+    Block* gb = remove_good_block(tman, a_size);
+    if (gb == NULL) {
+        return NULL;
+    }
+
+    assert(a_size < get_size(gb));
+
+    Block* sb, * ab = divide_block(gb, adjust_size(size), align);
+    if (ab == NULL) {
+        /* 分割出来なかったのでそのまま使用 */
+        sb = gb;
+    } else {
+        /* 分割したので使わないブロックを戻す. */
+        sb = ab;
+        insert_block(tman, gb);
+        tman->free_memory_size -= BLOCK_OFFSET;
+    }
+
+    tman->free_memory_size -= get_size(sb);
+
+    claer_free(sb);
+    return convert_mem_ptr(sb);
+}
+
+
+void* tlsf_malloc(Tlsf_manager* tman, size_t size) {
+    return tlsf_malloc_align(tman, size, 0);
 }
 
 

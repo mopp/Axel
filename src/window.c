@@ -43,11 +43,8 @@ Axel_state_code init_window(void) {
     }
     win_man->display_size = make_point2d(get_max_x_resolution(), get_max_y_resolution());
 
-    extern bool flag;
-    flag = true;
     win_man->display_buffer = kmalloc_zeroed(sizeof(RGB8) * (size_t)(win_man->display_size.x * win_man->display_size.y));
     if (win_man->display_buffer == NULL) {
-        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0xfafa);
         kfree(win_man);
         return AXEL_MEMORY_ALLOC_ERROR;
     }

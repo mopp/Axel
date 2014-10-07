@@ -83,5 +83,7 @@
 #define BOCHS_MAGIC_BREAK() __asm__ volatile( "xchgw %%bx, %%bx" : :  : );
 
 
+#define PO2(x) (1u << (x))
+
 
 #endif
