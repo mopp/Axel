@@ -400,8 +400,6 @@ void vfree(Page* p) {
     unmap_page_area(axel_s.kernel_pdt, p->addr, p->addr + (FRAME_SIZE * p->frame_nr));
 
     free_buddy_frames(&p->mapped_frames);
-
-    memset(p, 0, sizeof(Page));
 }
 
 

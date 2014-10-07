@@ -5,25 +5,26 @@
  * @version 0.1
  * @date 2014-09-29
  *
- * NOTE: First level
- *          2^n < size ≤ 2^(n+1) の n
- *       Second level
- *          L2 を 2^4 = 16分割
- *      0 -  1 =    0 -    2
- *      1 -  2 =    2 -    4
- *      2 -  3 =    4 -    8
- *      3 -  4 =    8 -   16
- *      4 -  5 =   16 -   32 (  1 byte * 16)
- *      5 -  6 =   32 -   64 (  2 byte * 16)
- *      6 -  7 =   64 -  128 (  4 byte * 16)
- *      7 -  8 =  128 -  256 (  8 byte * 16)
- *      8 -  9 =  512 - 1024 ( 32 byte * 16)
+ * NOTE:
+ *  First level
+ *      2^n < size ≤ 2^(n+1) の n
+ *  Second level
+ *      L2  2^4 = 16 subdivide.
+ *  0 -  1 =    0 -    2
+ *  1 -  2 =    2 -    4
+ *  2 -  3 =    4 -    8
+ *  3 -  4 =    8 -   16
+ *  4 -  5 =   16 -   32 (  1 byte * 16)
+ *  5 -  6 =   32 -   64 (  2 byte * 16)
+ *  6 -  7 =   64 -  128 (  4 byte * 16)
+ *  7 -  8 =  128 -  256 (  8 byte * 16)
+ *  8 -  9 =  512 - 1024 ( 32 byte * 16)
  *
- *      1024 byte 以下はひとまとめのflリストとする.
- *      00 - 09 = 0000 - 1024 ( 64 byte * 16)
- *      09 - 10 = 1024 - 2048 ( 64 byte * 16)
- *      11 - 12 = 2048 - 4096 (128 byte * 16)
- *      12 - 13 = 4096 - 8192 (256 byte * 16)
+ *  Under 1024 byte is summarised into one fl list.
+ *   0 -  9 =    0 - 1024 ( 64 byte * 16)
+ *   9 - 10 = 1024 - 2048 ( 64 byte * 16)
+ *  11 - 12 = 2048 - 4096 (128 byte * 16)
+ *  12 - 13 = 4096 - 8192 (256 byte * 16)
  */
 
 
@@ -40,8 +41,8 @@ struct block {
     Elist list;               /* Logical previous and next block. */
     union {
         struct {
-            uint8_t is_free : 1;
-            uint8_t is_free_prev : 1;
+            uint8_t is_free : 1;        /* If current block is free, this is set. */
+            uint8_t is_free_prev : 1;   /* If previous block is free.this is set. */
             size_t dummy : (sizeof(size_t) * 8 - 2);
         };
         size_t size;
@@ -55,7 +56,7 @@ enum {
     ALIGNMENT_SIZE           = PO2(ALIGNMENT_LOG2),
     ALIGNMENT_MASK           = ALIGNMENT_SIZE - 1,
 
-    SL_INDEX_MASK            = (1u << SL_MAX_INDEX_LOG2) - 1u,
+    SL_INDEX_MASK            = PO2(SL_MAX_INDEX_LOG2) - 1,
 
     FL_BLOCK_MIN_SIZE        = PO2(FL_BASE_INDEX + 1),
     SL_BLOCK_MIN_SIZE_LOG2   = (FL_BASE_INDEX + 1 - SL_MAX_INDEX_LOG2),
@@ -68,16 +69,15 @@ enum {
 
     MAX_ALLOC_ALIGN          = PO2(12),
     MAX_ALLOCATION_SIZE      = FRAME_SIZE * 10,
-    WATERMARK_BLOCK_SIZE     = MAX_ALLOC_ALIGN + MAX_ALLOCATION_SIZE, /* このサイズをブロックを水位計とする. */
+    WATERMARK_BLOCK_SIZE     = MAX_ALLOC_ALIGN + MAX_ALLOCATION_SIZE,
     WATERMARK_BLOCK_NR_ALLOC = 1,
     WATERMARK_BLOCK_NR_FREE  = 4,
 
     PAGE_STRUCT_NR           = 50,
 };
 
-/* FIXME */
+
 static Page page_struct_pool[PAGE_STRUCT_NR];
-static size_t page_pool_idx;
 
 
 #ifdef NO_OPTIMIZE
@@ -105,17 +105,15 @@ static inline size_t find_set_bit_idx_last(size_t n) {
 
 
 #else
-__asm__(
-    "find_set_bit_idx_last: \n\t"
-    "bsrl 4(%esp), %eax     \n\t"
-    "ret                    \n\t");
+__asm__("find_set_bit_idx_last: \n\t"
+        "bsrl 4(%esp), %eax     \n\t"
+        "ret                    \n\t");
 size_t find_set_bit_idx_last(size_t);
 
 
-__asm__(
-    "find_set_bit_idx_first: \n\t"
-    "bsfl 4(%esp), %eax      \n\t"
-    "ret                     \n\t");
+__asm__("find_set_bit_idx_first: \n\t"
+        "bsfl 4(%esp), %eax      \n\t"
+        "ret                     \n\t");
 size_t find_set_bit_idx_first(size_t);
 #endif
 
@@ -143,7 +141,7 @@ static inline size_t align_up(size_t x, size_t a) {
 
 
 static inline size_t align_down(size_t x, size_t a) {
-    return x & ~(a - 1);
+    return x & ~(a - 1u);
 }
 
 
@@ -292,30 +290,29 @@ static inline size_t round_up_block(size_t s) {
 static inline Block* remove_good_block(Tlsf_manager* tman, size_t size) {
     size += BLOCK_OFFSET;
 
-    /*
-     * ここで、要求サイズ以上の内で、最も大きい範囲に繰り上げを行うことによって
-     * 内部フラグメントは生じるが、外部フラグメント、構造フラグメントを抑えることが出来る.
-     */
     size = round_up_block(size);
 
     size_t fl, sl;
     set_idxs(size, &fl, &sl);
 
-    /* 現在のsl以上のフラグのみ取得 */
+    /* Get sl flags equal or greater than current index. */
     size_t sl_map = tman->sl_bitmaps[fl] & (~0u << sl);
     if (sl_map == 0) {
-        /* 現在のflにはメモリが無いので、一つ上のindexのフラグを取得 */
+        /*
+         * There are not adaptive memory at current fl .
+         * Try to get flags of next index.
+         */
         size_t fl_map = tman->fl_bitmap & (~0u << (fl + 1u));
         if (fl_map == 0) {
             return NULL;
         }
 
-        /* 大きい空きエリアを探す. */
+        /* find big free area. */
         fl = find_set_bit_idx_first(fl_map);
 
         sl_map = tman->sl_bitmaps[fl];
     }
-    /* 使えるsl内のメモリを取得. */
+    /* get available memory in sl. */
     sl = find_set_bit_idx_first(sl_map);
 
     return take_any_block(tman, fl, sl);
@@ -324,6 +321,7 @@ static inline Block* remove_good_block(Tlsf_manager* tman, size_t size) {
 
 /*
  * 引数で与えられたブロックの持つメモリからsize分の新しいブロックを取り出して返す.
+ * d
  */
 static inline Block* divide_block(Block* b, size_t size, size_t align) {
     assert(b != NULL);
@@ -417,30 +415,53 @@ static inline Block* merge_phys_neighbor_blocks(Tlsf_manager* tman, Block* b) {
 }
 
 
+static inline Page* get_unused_page(void) {
+    static size_t page_pool_idx = 0;
+    Page* p = &page_struct_pool[page_pool_idx++];
+
+    if (p->addr == 0) {
+        return p;
+    }
+
+    size_t store = page_pool_idx;
+    while (store != ++page_pool_idx) {
+        if (PAGE_STRUCT_NR <= page_pool_idx) {
+            page_pool_idx = 0;
+        }
+
+        p = &page_struct_pool[page_pool_idx];
+        if (p->addr == 0) {
+            return p;
+        }
+    }
+
+    return NULL;
+}
+
+
 static inline Tlsf_manager* supply_memory(Tlsf_manager* tman, size_t size) {
     assert((2 * BLOCK_OFFSET) <= size);
     if (size < (2 * BLOCK_OFFSET)) {
         return NULL;
     }
 
-    if (PAGE_STRUCT_NR <= page_pool_idx) {
+    Page* p = get_unused_page();
+    if (p == NULL) {
         return NULL;
     }
-    Page* p = &page_struct_pool[page_pool_idx++];
+
+    /* Allocate virtual memory. */
     vmalloc(p, size_to_frame_nr(size));
-    elist_init(&p->list);
-
     if (p->frame_nr == 0) {
-        /* printf("vmalloc2 failed\n"); */
         return NULL;
     }
 
+    /* Insert to manager and make new block. */
     elist_insert_next(&tman->pages, &p->list);
 
     size_t ns = (get_page_size(p) - BLOCK_OFFSET);
     Block* new_block = generate_block((void*)p->addr, ns);
     set_free(new_block);
-    elist_init(&new_block->list);
 
     Block* sentinel = (Block*)(p->addr + (uintptr_t)ns);
     sentinel->prev_block = new_block;
@@ -448,7 +469,10 @@ static inline Tlsf_manager* supply_memory(Tlsf_manager* tman, size_t size) {
 
     assert(get_phys_next_block(new_block) == sentinel);
 
-    /* センチネルは物理メモリ上のものなので論理的なリストへは追加しない. */
+    /*
+     * New block is only inserted.
+     * Sentinel is NOT logicaly object on physical memory.
+     */
     insert_block(tman, new_block);
 
     ns = get_size(new_block);
@@ -488,6 +512,7 @@ static inline void check_free_watermark(Tlsf_manager* tman, Block* b) {
         return;
     }
 
+    /* Count block that have memory under WATERMARK_BLOCK_SIZE. */
     size_t const w = block_align_up(WATERMARK_BLOCK_SIZE);
     size_t fl, sl, cnt = 1;
     set_idxs(w, &fl, &sl);
@@ -515,6 +540,8 @@ static inline void check_free_watermark(Tlsf_manager* tman, Block* b) {
 
     elist_remove(&p->list);
     vfree(p);
+
+    memset(p, 0, sizeof(Page));
 }
 
 
@@ -536,9 +563,12 @@ void tlsf_destruct(Tlsf_manager* tman) {
         return;
     }
 
-    // elist_foreach(itr, &tman->pages, Frame, list) {
-    //     /* TODO: */
-    // }
+    elist_foreach(i, &tman->pages, Page, list) {
+        Page* p = elist_derive(Page, list, i->list.prev);
+        elist_remove(&i->list);
+        vfree(p);
+        i = p;
+    }
 
     memset(tman, 0, sizeof(Tlsf_manager));
 }
@@ -565,10 +595,13 @@ inline void* tlsf_malloc_align(Tlsf_manager* tman, size_t size, size_t align) {
 
     Block* sb, * ab = divide_block(gb, adjust_size(size), align);
     if (ab == NULL) {
-        /* 分割出来なかったのでそのまま使用 */
+        /* Directly used because block cannot be divided. */
         sb = gb;
     } else {
-        /* 分割したので使わないブロックを戻す. */
+        /*
+         * Block is divided.
+         * Return unused pair block.
+         */
         sb = ab;
         insert_block(tman, gb);
         tman->free_memory_size -= BLOCK_OFFSET;
