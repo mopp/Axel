@@ -25,10 +25,10 @@ static inline Frame* elist_get_frame(Elist const* const l) {
 
 
 /**
- * @brief フレームのindexを求める..
- * @param bman  フレームの属するマネージャ.
- * @param frame indexを求めるフレーム.
- * @return フレームのindex.
+ * @brief Calculate frame index.
+ * @param bman  manager which have frame in argument.
+ * @param frame frame for calculating frame.
+ * @return index of frame.
  */
 static inline size_t get_frame_idx(Buddy_manager const* const bman, Frame const* const frame) {
     assert(bman != NULL);
@@ -111,8 +111,8 @@ Buddy_manager* buddy_init(Buddy_manager* const bman, uintptr_t base, Frame* fram
 
 
 /**
- * @brief バディマネージャを破棄.
- * @param bman        破棄対象
+ * @brief destruct buddy manager.
+ * @param bman destruct target manager.
  */
 void buddy_destruct(Buddy_manager* const bman) {
     memset(bman, 0, sizeof(Buddy_manager));
@@ -120,10 +120,10 @@ void buddy_destruct(Buddy_manager* const bman) {
 
 
 /**
- * @brief 指定オーダーのフレームを確保する.
- * @param bman          確保先のフレームを持つマネージャ.
- * @param request_order 確保するオーダー.
- * @return 確保出来なかった場合NULLが返る.
+ * @brief allocate frame by order.
+ * @param bman          buddy manager.
+ * @param request_order allocate order.
+ * @return If this cannot allocate, this will return NULL.
  */
 Frame* buddy_alloc_frames(Buddy_manager* const bman, uint8_t request_order) {
     assert(bman != NULL);
@@ -160,9 +160,9 @@ Frame* buddy_alloc_frames(Buddy_manager* const bman, uint8_t request_order) {
 
 
 /**
- * @brief フレームを解放する.
- * @param bman フレームの返却先マネージャ.
- * @param ffs  解放するフレーム.
+ * @brief free frames.
+ * @param bman destination manager of freed frame.
+ * @param ffs  freed frames.
  */
 void buddy_free_frames(Buddy_manager* const bman, Frame* ffs) {
     Frame* bf;
@@ -183,9 +183,9 @@ void buddy_free_frames(Buddy_manager* const bman, Frame* ffs) {
 
 
 /**
- * @brief マネージャ管理下の空きメモリ容量を求める.
- * @param bman 求める対象のマネージャ.
- * @return 空きメモリ容量.
+ * @brief Calculate free memory size of BuddySystem.
+ * @param bman buddy manager.
+ * @return free memory size.
  */
 size_t buddy_get_free_memory_size(Buddy_manager const* const bman) {
     size_t free_mem_size = 0;
@@ -198,25 +198,30 @@ size_t buddy_get_free_memory_size(Buddy_manager const* const bman) {
 
 
 /**
- * @brief マネージャ管理下の使用メモリ容量を求める.
- * @param bman 求める対象のマネージャ.
- * @return 使用メモリ容量.
+ * @brief Calculate alloc memory size of BuddySystem.
+ * @param bman buddy manager
+ * @return current memory usage.
  */
 size_t buddy_get_alloc_memory_size(Buddy_manager const* const bman) {
     return (bman->total_frame_nr * FRAME_SIZE) - buddy_get_free_memory_size(bman);
 }
 
 
+/**
+ * @brief Calculate total memory size.
+ * @param bman buddy manager.
+ * @return total memory size.
+ */
 size_t buddy_get_total_memory_size(Buddy_manager const* const bman) {
     return bman->total_frame_nr * FRAME_SIZE;
 }
 
 
 /**
- * @brief フレームのアドレスを求める.
- * @param bman  フレームの属するマネージャ.
- * @param frame アドレスを求めるフレーム.
- * @return フレームのアドレス.
+ * @brief Calculate frame address.
+ * @param bman  manager which have frame in argument.
+ * @param frame frame for calculating address.
+ * @return address of frame.
  */
 uintptr_t get_frame_addr(Buddy_manager const* const bman, Frame const* const frame) {
     assert(bman != NULL);
@@ -230,7 +235,7 @@ Frame* get_frame_by_addr(Buddy_manager const * const bman, uintptr_t addr) {
 }
 
 
-static size_t const order_nr[] = {
+static size_t const order_nr[BUDDY_SYSTEM_MAX_ORDER] = {
     FRAME_SIZE * 1,
     FRAME_SIZE * 2,
     FRAME_SIZE * 4,
@@ -242,16 +247,21 @@ static size_t const order_nr[] = {
     FRAME_SIZE * 256,
     FRAME_SIZE * 512,
     FRAME_SIZE * 1024,
+    FRAME_SIZE * 2048,
+    FRAME_SIZE * 4096,
+    FRAME_SIZE * 8192,
+    FRAME_SIZE * 16384,
 };
 uint8_t size_to_order(size_t s) {
-    assert(s <= *ARRAY_LAST_ELEM(order_nr));
+    assert(s <= order_nr[BUDDY_SYSTEM_MAX_ORDER - 1]);
 
-    for (uint8_t i = 0; i < ARRAY_SIZE_OF(order_nr); i++) {
+    for (uint8_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
         if (s <= order_nr[i]) {
             return i;
         }
     }
 
+    assert(0);
     return 0;
 }
 

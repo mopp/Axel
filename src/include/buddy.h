@@ -15,10 +15,12 @@
 #include <stddef.h>
 #include <elist.h>
 
-/* Order in buddy system: 0 1 2 3  4  5  6   7   8   9   10 */
-/* The number of frame  : 1 2 4 8 16 32 64 128 256 512 1024 */
+/*
+ * Order in buddy system : 0  1  2  3  4  5  6   7   8   9   10   11   12   13    14
+ * The number of frame   : 1  2  4  8 16 32 64 128 256 512 1024 2048 4096 8192 16384
+ */
 enum  {
-    BUDDY_SYSTEM_MAX_ORDER = (10 + 1),
+    BUDDY_SYSTEM_MAX_ORDER = (14 + 1),
 };
 
 
@@ -37,13 +39,12 @@ enum frame_constants {
 };
 
 
-/* Buddy system manager. */
 struct buddy_manager {
-    Frame* frame_pool;                            /* 管理用の全フレーム */
+    Frame* frame_pool;                            /* All managed frames */
     uintptr_t base_addr;
-    size_t total_frame_nr;                        /* マネージャの持つ全フレーム数 */
-    size_t free_frame_nr[BUDDY_SYSTEM_MAX_ORDER]; /* 各オーダーの空きフレーム数 */
-    Elist frames[BUDDY_SYSTEM_MAX_ORDER];         /* 各オーダーのリスト先頭要素(ダミー), 実際のデータはこのリストのnext要素から始まる. */
+    size_t total_frame_nr;                        /* The number of all frame under the manager. */
+    size_t free_frame_nr[BUDDY_SYSTEM_MAX_ORDER]; /* The number of free frames each order. */
+    Elist frames[BUDDY_SYSTEM_MAX_ORDER];         /* Head of list each order of frame. */
 };
 typedef struct buddy_manager Buddy_manager;
 
