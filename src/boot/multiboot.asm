@@ -118,6 +118,7 @@ kernel_init_page_directory_table:
     dd 0x00400083                               ; Virtual 0x0C0400000 map to physical 0x00400000
     dd 0x00800083                               ; Virtual 0x0C0800000 map to physical 0x00800000
     dd 0x00C00083                               ; Virtual 0x0C0C00000 map to physical 0x00C00000
+    dd 0x01000083                               ; Virtual 0x0C1000000 map to physical 0x01000000
                                                 ;   -> 0x0C00000 - 0x0C1000000 (16MB) is available.
     times (0x3ff - (KERNEL_PDT_IDX - 4)) dd 0   ; Clear remain area.
 
