@@ -176,13 +176,13 @@ load_cr2:
 
 
 ; void set_task_register(uint16_t seg_selector);
-set_task_register;
+set_task_register:
     mov ax, [esp + 4]
     ltr ax
     ret
 
 ; uint16_t get_task_register(void);
-get_task_register;
+get_task_register:
     or  eax, 0
     str ax
     ret
