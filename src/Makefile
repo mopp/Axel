@@ -6,38 +6,41 @@
 # @date 2014-06-05
 #############################################################
 
-export RM 		:= rm -rf
-export CLANG	:= clang
-export LD 		:= ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
-export NASM 	:= nasm -g -f elf32
-export AR_R		:= ar r --target elf32-i386
-export OBJCOPY	:= objcopy
-export QEMU 	:= qemu-system-i386 -monitor stdio -vga std -m 32 -d int -no-reboot
-export QEMU_D 	:= qemu-system-i386 -vga std -m 32
-export BOCHS	:= bochs
-export GDB	 	:= gdb
+export RM          := rm -rf
+export CLANG       := clang
+export LD          := ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
+export NASM        := nasm -g -f elf32
+export AR_R        := ar r --target elf32-i386
+export OBJCOPY     := objcopy
+export QEMU        := qemu-system-i386 -monitor stdio -vga std -m 32 -d int -no-reboot
+export QEMU_D      := qemu-system-i386 -vga std -m 32
+export BOCHS       := bochs
+export GDB         := gdb
+export MAKEFILE    := Makefile
+export ROOT_DIR    := $(PWD)/
+export INCLUDE_DIR := $(ROOT_DIR)include/
 
-export AXEL_ROOT_DIR		:= $(shell pwd)/
-export AXEL_INCLUDE_PATH 	:= $(AXEL_ROOT_DIR)include/
-export AXEL_LIB_PATH 		:= $(AXEL_ROOT_DIR)lib
+AXEL_BIN    := axel.bin
+AXEL_SYM    := axel.sym
 
-export MAKEFILE 	:= Makefile
+ISO_NAME    := axel.iso
+ISO_DIR     := $(ROOT_DIR)iso/
 
-AXEL_BIN 			:= axel.bin
-AXEL_SYM 			:= axel.sym
+BOOT_DIR    := $(ROOT_DIR)boot/
+BOOT_OBJ    := $(BOOT_DIR)multiboot.o
+GRUB_CONFIG := $(BOOT_DIR)grub.cfg
 
-ISO_NAME 			:= axel.iso
-ISO_DIR 			:= $(AXEL_ROOT_DIR)iso_dir/
+KERNEL_LNK  := kernel.ld
+KERNEL_MAP  := kernel.map
 
-BOOT_DIR			:= $(AXEL_ROOT_DIR)boot/
-BOOT_OBJ 			:= $(BOOT_DIR)multiboot.o
-GRUB_CONFIG 		:= $(BOOT_DIR)grub.cfg
+SUB_DIRS    := $(BOOT_DIR)
 
-KERNEL_LNK			:= kernel.ld
-KERNEL_MAP			:= kernel.map
-
-SUB_DIRS 			:= $(BOOT_DIR)
-LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o aqueue.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o tlsf.o paging.o kernel.o
+C_SRCS      := aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c ps2.c tlsf.c utils.c window.c kernel.c
+C_OBJS      := $(C_SRCS:%.c=%.o)
+C_DEPS      := $(C_SRCS:%.c=%.d)
+A_SRCS      := asm_functions.asm interrupt_asm.asm
+A_OBJS      := $(A_SRCS:%.asm=%.o)
+OBJS        := $(BOOT_OBJ) $(A_OBJS) $(C_OBJS)
 
 # CC          C compiler command
 # CFLAGS      C compiler flags
@@ -46,65 +49,48 @@ LINK_OBJS 			:= $(BOOT_OBJ) asm_functions.o utils.o font.o graphic_txt.o graphic
 # CPPFLAGS    C/C++/Objective C preprocessor flags, e.g. -I<include dir> if you have headers in a nonstandard directory <include dir>
 # CXX         C++ compiler command
 # CXXFLAGS    C++ compiler flags
-CPPFLAGS			:= -I$(AXEL_INCLUDE_PATH)
-# W_FLAGS 			:= -Wall -Wextra -Wpadded -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
-W_FLAGS 			:= -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
 # gcc option
 # 	-fdiagnostics-color=always
 # clang option
 # 	-nostdinc cause error(macro redifine)
 # debug option
 # 	--analyze -g
-CFLAGS				:= --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
-LDFLAGS				:= -L$(AXEL_LIB_PATH) -Map $(KERNEL_MAP) -nostdlib
-export CC 			:= $(CLANG) $(CFLAGS) $(CPPFLAGS)
-export PP 			:= $(CLANG) $(CPPFLAGS) -x c -E -P
+CPPFLAGS  := -I$(INCLUDE_DIR)
+W_FLAGS   := -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
+CFLAGS    := --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
+LDFLAGS   := -Map $(KERNEL_MAP) -nostdlib
+export CC := $(CLANG) $(CFLAGS) $(CPPFLAGS)
+export PP := $(CLANG) $(CPPFLAGS) -x c -E -P
 
 
 # 一般生成規則
 .SUFFIXES: .c .o .asm
 .c.o:
-	$(CC) -c $< -o $@
+	$(CC) -MMD -c $< -o $@
 .asm.o:
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $< > $(TMP_FILE)
 	$(NASM) -l $*.lst -o $@ $(TMP_FILE)
 
 
-.PHONY: default
-default :
-	$(MAKE) all
+.PHONY: all
+all: $(SUB_DIRS)
+	@for dir in $(SUB_DIRS) ; do \
+		($(MAKE) -C $$dir); \
+		done
+	$(MAKE) $(ISO_NAME)
 	ctags -R ./*
 
 
-aqueue.o		: $(MAKEFILE) aqueue.c $(AXEL_INCLUDE_PATH)aqueue.h
-asm_functions.o : $(MAKEFILE) asm_functions.asm $(AXEL_INCLUDE_PATH)asm_functions.h
-buddy.o			: $(MAKEFILE) buddy.c $(AXEL_INCLUDE_PATH)buddy.h
-exception.o		: $(MAKEFILE) exception.c $(AXEL_INCLUDE_PATH)exception.h
-font.o			: $(MAKEFILE) font.c $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
-graphic.o		: $(MAKEFILE) graphic.c $(AXEL_INCLUDE_PATH)graphic.h $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)graphic_vbe.h
-graphic_txt.o	: $(MAKEFILE) graphic_txt.c $(AXEL_INCLUDE_PATH)graphic_txt.h $(AXEL_INCLUDE_PATH)point.h
-graphic_vbe.o	: $(MAKEFILE) graphic_vbe.c $(AXEL_INCLUDE_PATH)graphic_vbe.h $(AXEL_INCLUDE_PATH)point.h $(AXEL_INCLUDE_PATH)macros.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)vbe.h $(AXEL_INCLUDE_PATH)font.h $(AXEL_INCLUDE_PATH)drawable.h
-interrupt.o 	: $(MAKEFILE) interrupt.c $(AXEL_INCLUDE_PATH)interrupt.h $(AXEL_INCLUDE_PATH)asm_functions.h
-interrupt_asm.o : $(MAKEFILE) interrupt_asm.asm $(AXEL_INCLUDE_PATH)interrupt.h interrupt.o
-kernel.o		: $(MAKEFILE) $(KERNEL_LNK) kernel.c $(AXEL_INCLUDE_PATH)kernel.h $(AXEL_INCLUDE_PATH)multiboot.h asm_functions.o utils.o font.o graphic_txt.o graphic_vbe.o graphic.o proc.o interrupt.o interrupt_asm.o exception.o ps2.o window.o memory.o buddy.o paging.o
-memory.o		: $(MAKEFILE) memory.c $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h $(AXEL_INCLUDE_PATH)paging.h
-paging.o		: $(MAKEFILE) paging.c $(AXEL_INCLUDE_PATH)paging.h $(AXEL_INCLUDE_PATH)memory.h $(AXEL_INCLUDE_PATH)asm_functions.h
-proc.o			: $(MAKEFILE) proc.c $(AXEL_INCLUDE_PATH)proc.h
-ps2.o			: $(MAKEFILE) ps2.c $(AXEL_INCLUDE_PATH)ps2.h $(AXEL_INCLUDE_PATH)state_code.h $(AXEL_INCLUDE_PATH)aqueue.h
-tlsf.o			: $(MAKEFILE) tlsf.c $(AXEL_INCLUDE_PATH)tlsf.h
-utils.o			: $(MAKEFILE) utils.c $(AXEL_INCLUDE_PATH)utils.h $(AXEL_INCLUDE_PATH)graphic.h
-window.o		: $(MAKEFILE) window.c $(AXEL_INCLUDE_PATH)window.h graphic.o
+-include $(C_DEPS)
+asm_functions.o : $(MAKEFILE) asm_functions.asm $(INCLUDE_DIR)asm_functions.h $(INCLUDE_DIR)segment.h $(INCLUDE_DIR)paging.h
+interrupt_asm.o : $(MAKEFILE) interrupt_asm.asm $(INCLUDE_DIR)interrupt.h interrupt.o
 
 
-$(BOOT_OBJ) : $(MAKEFILE)
-	make -C $(BOOT_DIR)
-
-
-$(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(LINK_OBJS)
+$(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $(KERNEL_LNK) > $(TMP_FILE)
-	$(LD) $(LINK_OBJS) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
+	$(LD) $(OBJS) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
 	$(OBJCOPY) --only-keep-debug $(AXEL_BIN) $(AXEL_SYM)
 	$(OBJCOPY) --strip-debug $(AXEL_BIN)
 
@@ -117,20 +103,12 @@ $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
 
 
-.PHONY: all
-all: $(SUB_DIRS)
-	@for dir in $(SUB_DIRS) ; do \
-		($(MAKE) -C $$dir); \
-		done
-	make $(ISO_NAME)
-
-
 .PHONY: clean
 clean:
 	@for dir in $(SUB_DIRS) ; \
 		do ($(MAKE) -C $$dir clean); \
 		done
-	$(RM) *.o *.bin *.iso *.map *.lst *.log *.sym $(ISO_DIR) tags
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym $(ISO_DIR) tags
 	ctags -R ./*
 
 
