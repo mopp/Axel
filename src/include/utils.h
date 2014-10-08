@@ -22,6 +22,7 @@ extern void *memset(void *, int, size_t);
 extern int strcmp(const char *, const char *);
 extern char *strcpy(char *, const char *);
 extern size_t strlen(const char *);
+extern int isdigit(int);
 
 extern int printf(const char*, ...);
 extern char* itoa(int, char*, int);

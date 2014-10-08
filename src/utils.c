@@ -10,6 +10,7 @@
 #include <utils.h>
 #include <stdarg.h>
 #include <graphic.h>
+#include <stdbool.h>
 
 
 void* memchr(const void* s, int c, size_t n) {
@@ -146,32 +147,118 @@ char* itoa(int value, char* s, int radix) {
 }
 
 
+int isdigit(int c) {
+    return ('0' <= c && c <= '9') ? 1 : 0;
+}
+
+
 int puts(const char* s) {
+    int n = 0;
+
     while (*s != '\0') {
         putchar(*s++);
+        ++n;
     }
 
-    return 1;
+    return n;
+}
+
+
+static inline void print_spaces(size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        putchar(' ');
+    }
+}
+
+
+static inline void print_zeros(size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        putchar('0');
+    }
+}
+
+
+static inline size_t print(char const* c, size_t width, bool is_left_align, bool is_zero_fill) {
+    size_t n = 0;
+    void (*f)(size_t n) = (is_zero_fill == true ? print_zeros : print_spaces);
+
+    if (is_left_align == true) {
+        n += (size_t)puts(c);
+        if (width != 0 && n < width) {
+            f(width - n);
+        }
+    } else {
+        size_t s = strlen(c);
+        if (width != 0 && s < width) {
+            f(width - s);
+        }
+        n += (size_t)puts(c);
+    }
+
+    return n;
 }
 
 
 int printf(const char* format, ...) {
     va_list args;
-    /* string buffer */
-    char buf[11];
-    /* char len_modif = 0; */
-    uint8_t r = 0;
-
     va_start(args, format);
 
-    for (const char* c = format; *c != '\0'; ++c) {
+    int n = 0;
+
+    for (char const* c = format; *c != '\0'; ++c) {
         if (*c != '%') {
             putchar(*c);
+            ++n;
             continue;
         }
         ++c;
 
-        /* check length modifier. */
+        /* Check flag */
+        bool is_left_align = false;
+        bool is_exist_flag = false;
+        bool is_zero_fill  = false;
+        switch (*c) {
+            case '-':
+                /* left aligned */
+                is_left_align = true;
+                break;
+            case '+':
+                /* allways print sign */
+                putchar('+');
+                break;
+            case ' ':
+                /* TODO: */
+                break;
+            case '#':
+                /* TODO: */
+                break;
+            case '0':
+                is_zero_fill = true;
+                break;
+            default :
+                is_exist_flag = true;
+                break;
+        }
+
+        if (is_exist_flag == false) {
+            ++c;
+        }
+
+        /* Check minimal number of output characters. */
+        size_t num_len = 0;
+        while (isdigit(*c) == 1) {
+            ++c;
+            ++num_len;
+        }
+        --c;
+        size_t width = 0;
+        for (size_t i = num_len, base = 1; 0 < i; --i, base *= 10) {
+            width += ((size_t)*c - (size_t)'0') * base;
+            --c;
+        }
+        c += num_len + 1;
+
+        /* TODO: Check length modifier. */
         if (*c == 'h') {
             /* short */
             ++c;
@@ -200,30 +287,50 @@ int printf(const char* format, ...) {
             ++c;
         }
 
+        char buf[11];
+        uint8_t r = 0;
+        char const* str = NULL;
         switch (*c) {
             case 'c':
-                putchar((unsigned char)va_arg(args, int));
+                if (is_left_align == true) {
+                    print_spaces(width - 1);
+                    putchar((unsigned char)va_arg(args, int));
+                } else {
+                    putchar((unsigned char)va_arg(args, int));
+                    print_spaces(width - 1);
+                }
+
+                n += (width == 0) ? (1) : (width - 1);
+                break;
             case 's':
-                puts(va_arg(args, const char*));
+                str = va_arg(args, char const*);
+                n += print(str, width, is_left_align, is_zero_fill);
                 break;
-            case 'd':
-            case 'i':
-                puts(itoa_big(va_arg(args, int), buf, 10));
-                break;
+            case 'p':
+                puts("0x");
             case 'x':
             case 'X':
             case 'u':
-            case 'p':
                 r = ((*c == 'x' || *c == 'X') ? 16 : 10);
-                puts(utoa(va_arg(args, uint32_t), buf, (*c == 'x' ? 16 : 10)));
+                str = utoa(va_arg(args, uint32_t), buf, r);
+                n += print(str, width, is_left_align, is_zero_fill);
+                break;
+            case 'd':
+            case 'i':
+                str = itoa_big(va_arg(args, int32_t), buf, 10);
+                n += print(str, width, is_left_align, is_zero_fill);
                 break;
             case '%':
                 putchar('%');
+                break;
+            case 'f':
+            case 'g':
+                /* TODO: */
+                break;
         }
     }
 
     va_end(args);
 
-    // TODO
-    return 0;
+    return n;
 }
