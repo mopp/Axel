@@ -22,6 +22,7 @@
 #include <segment.h>
 #include <vbe.h>
 #include <window.h>
+#include <utils.h>
 
 
 /* Interrupt Gate Descriptor Table */
@@ -155,19 +156,19 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
-    printf("kernel size            : %zu KB\n", get_kernel_size() / 1024);
-    printf("kernel static size     : %zu KB\n", get_kernel_static_size() / 1024);
-    printf("kernel virtual  addr   : 0x%zx - 0x%zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-    printf("kernel physical addr   : 0x%zx - 0x%zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    printf("Total memory           : %zu KB\n", get_total_memory_size() / 1024);
-    printf("BuddySystem Total      : %zu KB\n", (buddy_get_total_memory_size(axel_s.bman)) / 1024);
+    printf("kernel size            : %zu KB\n", KB(get_kernel_size()));
+    printf("kernel static size     : %zu KB\n", KB(get_kernel_static_size()));
+    printf("kernel virtual  addr   : 0x%08zx - 0x%08zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
+    printf("kernel physical addr   : 0x%08zx - 0x%08zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    printf("Total memory           : %zu KB\n", KB(get_total_memory_size()));
+    printf("BuddySystem Total      : %zu KB\n", KB(buddy_get_total_memory_size(axel_s.bman)));
     printf("BuddySystem Frame nr   : %zu\n", axel_s.bman->total_frame_nr);
-    printf("BuddySystem Free nr    : %zu KB\n", buddy_get_free_memory_size(axel_s.bman) / 1024);
+    printf("BuddySystem Free       : %zu KB\n", KB(buddy_get_free_memory_size(axel_s.bman)));
     for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
-        printf("  %zu - %zu - %zu nr\n", i, axel_s.bman->free_frame_nr[i], axel_s.bman->free_frame_nr[i] * (1 << i));
+        printf("  Order: %02zu(%05u) - Buddy %02zu nr\n", i, PO2(i), axel_s.bman->free_frame_nr[i]);
     }
-    printf("Tlsf total_memory_size : %zu KB\n", axel_s.tman->total_memory_size / 1024);
-    printf("Tlsf free_memory_size  : %zu KB\n", axel_s.tman->free_memory_size / 1024);
+    printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
+    printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
 
     for (;;) {
         if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
