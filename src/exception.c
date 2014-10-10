@@ -14,8 +14,9 @@
 
 
 
-void exception_page_fault(Interrupt_context* ic) {
+void exception_page_fault(Interrupt_frame* ic) {
     uintptr_t fault_addr = load_cr2();
+    io_cli();
 
     if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
         /* TODO: User space fault */
@@ -24,15 +25,14 @@ void exception_page_fault(Interrupt_context* ic) {
     }
 
     /* Kernel space fault */
-    Page_directory_table pdt = get_cpu_pdt();
-    if (is_kernel_pdt(pdt) == true) {
+    if (is_kernel_pdt((Page_directory_table)(phys_to_vir_addr(get_cpu_pdt()))) == true) {
         /* Maybe kernel error */
         /* TODO: panic */
         io_cli();
         DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x2);
     }
 
-    Axel_state_code result = synchronize_pdt(pdt, fault_addr);
+    Axel_state_code result = synchronize_pdt(fault_addr);
     if (result != AXEL_SUCCESS) {
         /* TODO: panic */
         io_cli();

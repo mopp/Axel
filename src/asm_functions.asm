@@ -142,7 +142,7 @@ turn_on_pge:
 ; address that is set into cr3 should be physical address.
 set_cpu_pdt:
     mov ebx, [esp + 4]
-    sub ebx, KERNEL_VIRTUAL_BASE_ADDR;
+    ; sub ebx, KERNEL_VIRTUAL_BASE_ADDR;
     mov cr3, ebx
     ret
 

@@ -60,7 +60,7 @@ void send_done_interrupt_slave(void) {
 }
 
 
-void interrupt_timer(Interrupt_context* ic) {
+void interrupt_timer(Interrupt_frame* ic) {
     send_done_interrupt_master();
     if (is_enable_process == true) {
         switch_context();

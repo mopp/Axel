@@ -185,9 +185,12 @@ static inline size_t round_page_size(size_t size) {
 }
 
 
-extern Axel_state_code synchronize_pdt(Page_directory_table, uintptr_t);
+extern Axel_state_code synchronize_pdt(uintptr_t);
 extern Page_directory_table get_kernel_pdt(void);
-extern Page_directory_table make_user_pdt(void);
+extern Page_directory_table init_user_pdt(Page_directory_table);
+extern Page_table_entry* get_pte(Page_table const , uintptr_t const );
+extern Page_table get_pt(Page_directory_entry const* const );
+extern Page_directory_entry* get_pde(Page_directory_table const , uintptr_t const );
 extern bool is_kernel_pdt(Page_directory_table const);
 extern void init_paging(void);
 extern void map_page(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
@@ -202,6 +205,7 @@ extern size_t size_to_frame_nr(size_t);
 extern void* kmalloc(size_t);
 extern void kfree(void*);
 extern void* kmalloc_zeroed(size_t);
+extern uintptr_t get_mapped_paddr(Page const *);
 
 
 

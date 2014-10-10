@@ -44,18 +44,23 @@ asm_%2:
 
     call %2
 
+    ; Remove argument.
     add esp, 4
 
-    pop_all
-
-    ; Remove error code from stack.
-    add esp, 4
-
-    iretd
+    jmp interrupt_return
 %endmacro
 
 
 section .text
+
+global interrupt_return
+interrupt_return:
+    pop_all
+
+    ; Remove error code or dummy code from stack.
+    add esp, 4
+
+    iret
 
 ; making interrupt handler.
 ; first argument is 0, if interrupt has NOT error code.

@@ -10,68 +10,28 @@
 #include <stdint.h>
 #include <utils.h>
 #include <macros.h>
-#include <paging.h>
 #include <asm_functions.h>
 #include <segment.h>
+#include <kernel.h>
+#include <interrupt.h>
+#include <assert.h>
 
 
 
-struct thread {
-    uintptr_t sp; /* Stack pointer. */
-    uintptr_t ip; /* Instruction pointer. */
-};
-typedef struct thread Thread;
 
-
-/* Each size is rounded by page size. */
-struct program_segments {
-    uintptr_t text_addr;
-    uintptr_t data_addr;
-    uintptr_t heap_addr;
-    uintptr_t stack_addr;
-    size_t text_size;
-    size_t data_size;
-    size_t heap_size;
-    size_t stack_size;
-};
-typedef struct program_segments Program_segments;
-
-
-enum process_constants {
-    PSTATE_RUN,
-    PSTATE_SLEEP,
-    PSTATE_WAIT,
-    PSTATE_ZOMBI,
-
-    INIT_USER_STACK_SIZE = 1024,
-};
-
-
-struct process {
-    uint8_t priority;
-    uint8_t state;
-    uint16_t pid;
-    uint32_t cpu_time;
-    Program_segments* segments;
-    Thread* thread;
-    Page_directory_table pdt; /* Own memory space. */
-};
-typedef struct process Process;
-
-
-
-static Process pa, pb, pk, pu;
+static Process pa, pb, pk;
 static Process** processes;
-static uint8_t process_num   = 3;
+static Process* init_user_p;
+static uint8_t process_num   = 1;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx    = 1;
 
 bool is_enable_process = false;
 
 
-/* TODO: */
+static Process* current_p;
 Process* get_current_process(void) {
-    return NULL;
+    return current_p;
 }
 
 
@@ -82,22 +42,7 @@ Process* get_current_process(void) {
  * @param next pointer to next process.
  */
 void __fastcall change_context(Process* current, Process* next) {
-    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, current->pid);
-
-    if (next->pdt != NULL) {
-        /*
-         * Next Memory space is user space.
-         * So, change pdt.
-         */
-        BOCHS_MAGIC_BREAK()
-        set_cpu_pdt(next->pdt);
-
-        /* dirty initialize. */
-        static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff};
-        for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
-            *((uint8_t*)next->thread->ip + i) = inst[i];
-        }
-    }
+    /* DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, current->pid); */
 }
 
 
@@ -106,6 +51,9 @@ void switch_context(void) {
     Thread* current_t  = current_p->thread;
     Process* next_p    = processes[next_p_idx];
     Thread* next_t     = next_p->thread;
+    current_p = next_p;
+
+    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, current_p);
 
     current_p_idx++;
     if (process_num <= current_p_idx) {
@@ -117,18 +65,24 @@ void switch_context(void) {
         next_p_idx = 0;
     }
 
+    if (next_p->pdt != NULL) {
+        /*
+         * Next Memory space is user space.
+         * So, change pdt.
+         */
+        set_cpu_pdt(get_mapped_paddr(&next_p->pdt_page));
+    }
+
+    axel_s.tss->esp0 = next_t->sp & 0xffffffff;
+
     __asm__ volatile(
         "pushl %%ebp                        \n\t"
         "pushfl                             \n\t"   // Store eflags
-
         "movl  $next_turn, %[current_ip]    \n\t"   // Store ip
         "movl  %%esp,      %[current_sp]    \n\t"   // Store sp
         "movl  %[next_sp], %%esp            \n\t"   // Restore sp
-
-        "movl  %[current_proc], %%ecx       \n\t"   // Set second argument
-        "movl  %[next_proc],    %%edx       \n\t"   // Set first argument
         "pushl %[next_ip]                   \n\t"   // Restore ip (set return address)
-        "jmp   change_context               \n\t"   // Change context
+        "jmp change_context                 \n\t"   // Change context
 
         ".globl next_turn                   \n\t"
         "next_turn:                         \n\t"
@@ -138,11 +92,9 @@ void switch_context(void) {
 
         :   [current_ip]  "=m" (current_t->ip),
             [current_sp]  "=m" (current_t->sp)
-        :   [next_ip]      "m" (next_t->ip),
-            [next_sp]      "m" (next_t->sp),
-            [current_proc] "m" (current_p),
-            [next_proc]    "m" (next_p)
-        : "memory", "%ecx", "%edx"
+        :   [next_ip]      "r" (next_t->ip),
+            [next_sp]      "r" (next_t->sp)
+        : "memory"
     );
 }
 
@@ -163,60 +115,93 @@ _Noreturn void task_b(void) {
 }
 
 
-_Noreturn void task_user(void) {
-    while (1) {
-        /* *(uint32_t*)1 = 'U'; */
-        /* puts("Task User\n"); */
+/* FIXME: */
+static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size) {
+    Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(size));
+    if (f == NULL) {
+        return AXEL_FRAME_ALLOC_ERROR;
     }
-}
+    elist_insert_next(&s->mapped_frames, &f->list);
 
-#if 0
-Process* make_user_process(void) {
-    Process* p = kmalloc(sizeof(Process));
-    Program_segments* ps = kmalloc(sizeof(Program_segments));
+    size = PO2(f->order) * FRAME_SIZE;
+    uintptr_t p_s = get_frame_addr(axel_s.bman, f);
+    uintptr_t p_e = p_s + size;
+    uintptr_t v_s = s->addr + s->size;
+    uintptr_t v_e = v_s + size;
+    f->mapped_vaddr = v_s;
+    s->size += size;
 
-    p->cpu_time    = 0;
-    p->segments    = ps;
-    ps->text_addr  = 0x1000;
-    ps->text_size  = 0x1000;
-    ps->data_addr  = 0;
-    ps->data_size  = 0;
-    ps->heap_addr  = 0;
-    ps->heap_size  = 0;
-    ps->stack_addr = 0x2000;
-    ps->stack_size = INIT_USER_STACK_SIZE;
-    p->pdt         = make_user_pdt();
-    p->pid         = 100;
-    p->thread      = kmalloc(sizeof(Thread));
-    p->thread->ip  = 0x1000; /* XXX: start virtual address 0x1000; */
-    p->thread->sp  = ps->stack_addr + ps->stack_size;
-
-    /* Init user space. */
-    if (0 != ps->text_size) {
-        /* Text segment */
-        uintptr_t t   = vir_to_phys_addr(vmalloc_addr(ps->text_size));
-        uintptr_t p_s = t;
-        uintptr_t p_e = p_s + ps->text_size;
-        uintptr_t v_s = ps->text_addr;
-        uintptr_t v_e = v_s + ps->text_size;
-        map_page_area(p->pdt, PDE_FLAGS_USER, PTE_FLAGS_USER, v_s, v_e, p_s, p_e);
-
-        /* Stack segment */
-        t   = vir_to_phys_addr(vmalloc_addr(ps->stack_size));
-        p_s = t;
-        p_e = p_s + ps->stack_size;
-        v_s = ps->stack_addr;
-        v_e = v_s + ps->stack_size;
-        map_page_area(p->pdt, PDE_FLAGS_USER, PTE_FLAGS_USER, v_s, v_e, p_s, p_e);
+    /* allocate page table */
+    Page_directory_entry* pde = get_pde(p->pdt, v_s);
+    if (pde->present_flag == 0) {
+        Page* pg = kmalloc_zeroed(sizeof(Page));
+        vcmalloc(pg, (sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM));
+        pde->page_table_addr = ((pg->addr & 0xfffff) >> PDE_PT_ADDR_SHIFT_NUM);
+        elist_insert_next(&p->used_pages, &pg->list);
     }
 
-    return p;
+    map_page_area(p->pdt, PDE_FLAGS_USER, PTE_FLAGS_USER, v_s, v_e, p_s, p_e);
+
+    return AXEL_SUCCESS;
 }
-#endif
+
+
+Axel_state_code init_user_process(void) {
+    Process* p        = kmalloc_zeroed(sizeof(Process));
+    User_segments* ps = kmalloc_zeroed(sizeof(User_segments));
+
+    elist_init(&p->used_pages);
+    elist_init(&ps->text.mapped_frames);
+    elist_init(&ps->data.mapped_frames);
+    elist_init(&ps->stack.mapped_frames);
+
+    ps->text.addr     = DEFAULT_TEXT_ADDR;
+    ps->stack.addr    = DEFAULT_STACK_TOP_ADDR;
+    p->segments       = ps;
+    p->pid            = 0;
+    p->thread         = kmalloc_zeroed(sizeof(Thread));
+    p->thread->ip     = (uintptr_t)interrupt_return;
+
+    /* alloc pdt */
+    vcmalloc(&p->pdt_page, size_to_frame_nr(sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM));
+    p->pdt = init_user_pdt((Page_directory_table)p->pdt_page.addr);
+
+    expand_segment(p, &p->segments->text, DEFAULT_TEXT_SIZE); /* Text segment */
+    expand_segment(p, &p->segments->stack, DEFAULT_STACK_SIZE); /* Stack segment */
+    p->thread->sp = p->segments->stack.addr + DEFAULT_STACK_SIZE - 4;
+
+    /* set pdt for setting init user space. */
+    set_cpu_pdt(get_mapped_paddr(&p->pdt_page));
+
+    p->thread->sp -= sizeof(Interrupt_frame);
+    Interrupt_frame* intf = (Interrupt_frame*)p->thread->sp;
+    memset(intf, 0, sizeof(Interrupt_frame));
+
+    intf->ds       = USER_DATA_SEGMENT_SELECTOR;
+    intf->es       = USER_DATA_SEGMENT_SELECTOR;
+    intf->fs       = USER_DATA_SEGMENT_SELECTOR;
+    intf->gs       = USER_DATA_SEGMENT_SELECTOR;
+    intf->eip      = ps->text.addr & 0xffffffff;
+    intf->cs       = USER_CODE_SEGMENT_SELECTOR;
+    intf->eflags   = 0x00000200;
+    intf->prev_esp = p->thread->sp & 0xffffffff;
+    intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
+
+    /* dirty initialize. */
+    static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff};
+    for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
+        *((uint8_t*)ps->text.addr + i) = inst[i];
+    }
+
+    set_cpu_pdt(vir_to_phys_addr((uintptr_t)(get_kernel_pdt())));
+
+    init_user_p = p;
+
+    return AXEL_SUCCESS;
+}
+
 
 Axel_state_code init_process(void) {
-    is_enable_process = true;
-
     pk.pid = 0;
     pk.pdt = NULL;
     pk.thread = kmalloc(sizeof(Thread));
@@ -235,15 +220,13 @@ Axel_state_code init_process(void) {
     pb.thread->sp = (uintptr_t)p + 0x1000;
     pb.thread->ip = (uintptr_t)task_b;
 
-    /* pu = *(make_user_process()); */
-    /* 0:	f4                   	hlt     */
-    /* 1:	eb fd                	jmp    0 <usr> */
+    init_user_process();
 
     processes = kmalloc(sizeof(Process*) * process_num);
     processes[0] = &pk;
-    processes[1] = &pa;
-    processes[2] = &pb;
-    /* processes[3] = &pu; */
+    processes[1] = init_user_p;
+
+    is_enable_process = true;
 
     return AXEL_SUCCESS;
 }

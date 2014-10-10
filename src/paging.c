@@ -15,15 +15,7 @@
 #include <paging.h>
 #include <tlsf.h>
 #include <utils.h>
-
-
-static size_t get_pde_index(uintptr_t const);
-static size_t get_pte_index(uintptr_t const);
-static Page_directory_entry* get_pde(Page_directory_table const, uintptr_t const);
-static Page_table get_pt(Page_directory_entry const* const);
-static Page_table_entry* get_pte(Page_table const, uintptr_t const);
-static Page_table_entry* set_frame_addr(Page_table_entry* const, uintptr_t const);
-
+#include <proc.h>
 
 
 /**
@@ -51,12 +43,13 @@ void init_paging(void) {
 
     /* Switch paging directory table. */
     turn_off_pge();
-    set_cpu_pdt(kernel_pdt);
+    set_cpu_pdt(vir_to_phys_addr((uintptr_t)kernel_pdt));
     turn_off_4MB_paging();
     turn_on_pge();
 
     tlsf_init(axel_s.tman);
 }
+
 
 static inline size_t get_pde_index(uintptr_t const addr) {
     return (addr >> PDE_IDX_SHIFT_NUM) & 0x03FF;
@@ -68,17 +61,17 @@ static inline size_t get_pte_index(uintptr_t const addr) {
 }
 
 
-static inline Page_directory_entry* get_pde(Page_directory_table const pdt, uintptr_t const vaddr) {
+inline Page_directory_entry* get_pde(Page_directory_table const pdt, uintptr_t const vaddr) {
     return pdt + get_pde_index(vaddr);
 }
 
 
-static inline Page_table get_pt(Page_directory_entry const* const pde) {
+inline Page_table get_pt(Page_directory_entry const* const pde) {
     return (Page_table)(phys_to_vir_addr((uintptr_t)(pde->page_table_addr << PDE_PT_ADDR_SHIFT_NUM)));
 }
 
 
-static inline Page_table_entry* get_pte(Page_table const pt, uintptr_t const vaddr) {
+inline Page_table_entry* get_pte(Page_table const pt, uintptr_t const vaddr) {
     return pt + get_pte_index(vaddr);
 }
 
@@ -101,11 +94,7 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
 inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
     Page_directory_entry* const pde = get_pde(pdt, vaddr);
 
-    if (pdt != axel_s.kernel_pdt && pde->present_flag == 0) {
-        /* Allocate page for user pdt */
-        /* Page_table_entry* pt = vmalloc(sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM); */
-        /* pde->page_table_addr = ((vir_to_phys_addr((uintptr_t)pt) & 0xFFFFF000) >> PDE_PT_ADDR_SHIFT_NUM); */
-    }
+    assert(pde->present_flag != 0);
 
     pde->bit_expr = (PDE_FLAGS_AREA_MASK & pde->bit_expr) | pde_flags;
 
@@ -203,11 +192,9 @@ inline void unmap_page_area(Page_directory_table pdt, uintptr_t const begin_vadd
 }
 
 
-Page_directory_table make_user_pdt(void) {
-    Page_directory_table pdt = kmalloc(ALL_PAGE_STRUCT_SIZE);
-    /* Page_table pt = (Page_table)pdt + PAGE_DIRECTORY_ENTRY_NUM; */
-
+Page_directory_table init_user_pdt(Page_directory_table pdt) {
     /* Copy kernel area. */
+    memset(pdt, 0, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
     size_t s = get_pde_index(get_kernel_vir_start_addr());
     size_t e = get_pde_index(get_kernel_vir_end_addr());
     do {
@@ -229,14 +216,12 @@ inline bool is_kernel_pdt(Page_directory_table const pdt) {
 
 
 /* synchronize user and kernel pdt */
-Axel_state_code synchronize_pdt(Page_directory_table user_pdt, uintptr_t vaddr) {
-    if (is_kernel_pdt(user_pdt) == true) {
-        /* argument pdt is only user pdt. */
-        return AXEL_FAILED;
-    }
-
-    Page_directory_entry* u_pde = get_pde(user_pdt, vaddr);
-    Page_directory_entry* k_pde = get_pde(axel_s.kernel_pdt, vaddr);
+Axel_state_code synchronize_pdt(uintptr_t vaddr) {
+    BOCHS_MAGIC_BREAK();
+    Process* p = get_current_process();
+    Page_directory_table user_pdt = p->pdt;
+    Page_directory_entry* u_pde   = get_pde(user_pdt, vaddr);
+    Page_directory_entry* k_pde   = get_pde(axel_s.kernel_pdt, vaddr);
 
     if (k_pde->present_flag == 0) {
         /*
@@ -247,8 +232,6 @@ Axel_state_code synchronize_pdt(Page_directory_table user_pdt, uintptr_t vaddr) 
         return AXEL_PAGE_SYNC_ERROR;
     }
 
-    /* *u_pde = 0x00000000 */
-    /* *k_pde = 0x00412023 */
     if (u_pde->present_flag == 0) {
         *u_pde = *k_pde;
     }
@@ -422,4 +405,9 @@ void* kmalloc_zeroed(size_t s) {
 
 void kfree(void* p) {
     tlsf_free(axel_s.tman, p);
+}
+
+
+uintptr_t get_mapped_paddr(Page const * p) {
+    return get_frame_addr(axel_s.bman, elist_derive(Frame, list, p->mapped_frames.next));
 }

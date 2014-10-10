@@ -11,7 +11,7 @@
 
 
 
-#define NULL_SEGMENT_INDEX (1)
+#define NULL_SEGMENT_INDEX        (0)
 #define KERNEL_CODE_SEGMENT_INDEX (1)
 #define KERNEL_DATA_SEGMENT_INDEX (2)
 #define USER_CODE_SEGMENT_INDEX   (3)
@@ -28,8 +28,7 @@
 #define KERNEL_DATA_SEGMENT_SELECTOR ((8 * KERNEL_DATA_SEGMENT_INDEX) + KERNEL_PRIVILEGE_LEVEL)
 #define USER_CODE_SEGMENT_SELECTOR   ((8 * USER_CODE_SEGMENT_INDEX) + USER_PRIVILEGE_LEVEL)
 #define USER_DATA_SEGMENT_SELECTOR   ((8 * USER_DATA_SEGMENT_INDEX) + USER_PRIVILEGE_LEVEL)
-
-#define KERNEL_TSS_SEGMENT_SELECTOR ((8 * KERNEL_TSS_SEGMENT_INDEX) + KERNEL_PRIVILEGE_LEVEL)
+#define KERNEL_TSS_SEGMENT_SELECTOR  ((8 * KERNEL_TSS_SEGMENT_INDEX) + KERNEL_PRIVILEGE_LEVEL)
 
 
 
@@ -47,7 +46,7 @@ union segment_descriptor {
         uint16_t limit_low;               /* Segment limit low. */
         uint16_t base_addr_low;           /* Segment address low. */
         uint8_t base_addr_mid;            /* Segment address mid. */
-        uint8_t type : 4;            /* This shows segment main configuration. */
+        uint8_t type : 4;                 /* This shows segment main configuration. */
         unsigned int segment_type : 1;    /* If 0, segment is system segment, if 1, segment is code or data segment. */
         unsigned int plivilege_level : 2; /* This controles accesse level. */
         unsigned int present : 1;         /* Is it exist on memory */
@@ -86,7 +85,7 @@ enum GDT_constants {
     GDT_FLAG_TYPE_CODE_EXRC    = 0x000E00,  /* Execute/Read, conforming */
     GDT_FLAG_TYPE_CODE_EXRCA   = 0x000F00,  /* Execute/Read, conforming, accessed */
     GDT_FLAG_TYPE_TSS          = 0x000900,
-    GDT_FLAG_TSS_BUSY          = 0x000000,
+    GDT_FLAG_TSS_BUSY          = 0x000200,
     GDT_FLAG_CODE_DATA_SEGMENT = 0x001000,
     GDT_FLAG_RING0             = 0x000000,
     GDT_FLAG_RING1             = 0x002000,

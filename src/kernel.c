@@ -286,26 +286,22 @@ static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, 
 
 
 static inline void init_gdt(void) {
-    axel_s.gdt = (Segment_descriptor*)kmalloc(sizeof(Segment_descriptor) * SEGMENT_NUM);
-    axel_s.tss = (Task_state_segment*)kmalloc(sizeof(Task_state_segment));
+    axel_s.gdt = (Segment_descriptor*)kmalloc_zeroed(sizeof(Segment_descriptor) * SEGMENT_NUM);
+    axel_s.tss = (Task_state_segment*)kmalloc_zeroed(sizeof(Task_state_segment));
 
-    memset(axel_s.gdt, 0, sizeof(Segment_descriptor) * SEGMENT_NUM);
-    memset(axel_s.tss, 0, sizeof(Task_state_segment));
-
-    Page_directory_table pdt = get_kernel_pdt();
-    axel_s.tss->ss0          = KERNEL_DATA_SEGMENT_SELECTOR;
-    axel_s.tss->esp0         = (uint32_t)kernel_init_stack_top;
-    axel_s.tss->cr3          = (uint32_t)pdt;
-
-    /* axel_s.tss->cs = USER_DATA_SEGMENT_SELECTOR; */
-    /* axel_s.tss->ss = USER_DATA_SEGMENT_SELECTOR; */
+    axel_s.tss->ss0 = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->cs  = KERNEL_CODE_SEGMENT_SELECTOR;
+    axel_s.tss->ss  = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->es  = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->ds  = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->gs  = KERNEL_DATA_SEGMENT_SELECTOR;
 
     /* Setup flat address model. */
     set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
     set_segment_descriptor(axel_s.gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
     set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_CODE);
     set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_DATA);
-    set_segment_descriptor(axel_s.gdt + KERNEL_TSS_SEGMENT_INDEX, (uint32_t)&axel_s.tss, (uint32_t)&axel_s.tss + sizeof(Task_state_segment), GDT_FLAGS_TSS);
+    set_segment_descriptor(axel_s.gdt + KERNEL_TSS_SEGMENT_INDEX, (uint32_t)axel_s.tss, sizeof(Task_state_segment) - 1, GDT_FLAGS_TSS);
 
     load_gdtr(GDT_LIMIT, (uint32_t)axel_s.gdt);
     set_task_register(KERNEL_TSS_SEGMENT_SELECTOR);
@@ -322,7 +318,7 @@ static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* off
 }
 
 
-static void hlt(Interrupt_context* ic) {
+static void hlt(Interrupt_frame* ic) {
     /* BOCHS_MAGIC_BREAK(); */
     io_cli();
     DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, ic);
