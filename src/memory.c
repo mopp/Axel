@@ -139,23 +139,6 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
 }
 
 
-/**
- * @brief Physical memory allocation.
- * @param size allocated memory size.
- * @return pointer to allocated memory.
- */
-void* pmalloc(size_t size) {
-    Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(size));
-
-    return (void*)(get_frame_addr(axel_s.bman, f));
-}
-
-
-void pfree(void* obj) {
-    buddy_free_frames(axel_s.bman, get_frame_by_addr(axel_s.bman, (uintptr_t)obj));
-}
-
-
 uintptr_t get_kernel_vir_start_addr(void) {
     return kernel_start_addr;
 }
