@@ -16,11 +16,13 @@
 #include <stdint.h>
 #include <paging.h>
 #include <elist.h>
+#include <interrupt.h>
 
 
 struct thread {
     uintptr_t sp; /* Stack pointer. */
     uintptr_t ip; /* Instruction pointer. */
+    Interrupt_frame* iframe;
 };
 typedef struct thread Thread;
 
@@ -73,8 +75,9 @@ typedef struct process Process;
 
 
 Axel_state_code init_process(void);
-void switch_context(void);
+void switch_context(Interrupt_frame*);
 Process* get_current_process(void);
+Process* get_current_pdt_process(void);
 
 extern bool is_enable_process;
 

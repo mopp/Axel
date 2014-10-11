@@ -22,16 +22,22 @@
 static Process pa, pb, pk;
 static Process** processes;
 static Process* init_user_p;
-static uint8_t process_num   = 1;
+static uint8_t process_num   = 2;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx    = 1;
 
 bool is_enable_process = false;
 
 
-static Process* current_p;
+static Process* running_process;
 Process* get_current_process(void) {
-    return current_p;
+    return running_process;
+}
+
+
+static Process* pdt_process;
+Process* get_current_pdt_process(void) {
+    return pdt_process;
 }
 
 
@@ -42,18 +48,17 @@ Process* get_current_process(void) {
  * @param next pointer to next process.
  */
 void __fastcall change_context(Process* current, Process* next) {
-    /* DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, current->pid); */
+    io_sti();
 }
 
 
-void switch_context(void) {
+void switch_context(Interrupt_frame* current_iframe) {
+    io_cli();
     Process* current_p = processes[current_p_idx];
     Thread* current_t  = current_p->thread;
     Process* next_p    = processes[next_p_idx];
     Thread* next_t     = next_p->thread;
-    current_p = next_p;
-
-    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, current_p);
+    current_t->iframe = current_iframe;
 
     current_p_idx++;
     if (process_num <= current_p_idx) {
@@ -70,16 +75,20 @@ void switch_context(void) {
          * Next Memory space is user space.
          * So, change pdt.
          */
+        io_cli();
         set_cpu_pdt(get_mapped_paddr(&next_p->pdt_page));
+        pdt_process = next_p;
+        io_sti();
+        axel_s.tss->esp0 = ECAST_UINT32(next_t->iframe->prev_esp);
     }
-
-    axel_s.tss->esp0 = next_t->sp & 0xffffffff;
 
     __asm__ volatile(
         "pushl %%ebp                        \n\t"
         "pushfl                             \n\t"   // Store eflags
         "movl  $next_turn, %[current_ip]    \n\t"   // Store ip
         "movl  %%esp,      %[current_sp]    \n\t"   // Store sp
+        "movl  %[current_proc], %%ecx       \n\t"   // Set second argument
+        "movl  %[next_proc],    %%edx       \n\t"   // Set first argument
         "movl  %[next_sp], %%esp            \n\t"   // Restore sp
         "pushl %[next_ip]                   \n\t"   // Restore ip (set return address)
         "jmp change_context                 \n\t"   // Change context
@@ -93,8 +102,10 @@ void switch_context(void) {
         :   [current_ip]  "=m" (current_t->ip),
             [current_sp]  "=m" (current_t->sp)
         :   [next_ip]      "r" (next_t->ip),
-            [next_sp]      "r" (next_t->sp)
-        : "memory"
+            [next_sp]      "r" (next_t->sp),
+            [current_proc] "m" (current_p),
+            [next_proc]    "m" (next_p)
+        : "memory", "%ecx", "%edx"
     );
 }
 
@@ -168,7 +179,7 @@ Axel_state_code init_user_process(void) {
 
     expand_segment(p, &p->segments->text, DEFAULT_TEXT_SIZE); /* Text segment */
     expand_segment(p, &p->segments->stack, DEFAULT_STACK_SIZE); /* Stack segment */
-    p->thread->sp = p->segments->stack.addr + DEFAULT_STACK_SIZE - 4;
+    p->thread->sp = p->segments->stack.addr + DEFAULT_STACK_SIZE;
 
     /* set pdt for setting init user space. */
     set_cpu_pdt(get_mapped_paddr(&p->pdt_page));
@@ -177,15 +188,16 @@ Axel_state_code init_user_process(void) {
     Interrupt_frame* intf = (Interrupt_frame*)p->thread->sp;
     memset(intf, 0, sizeof(Interrupt_frame));
 
-    intf->ds       = USER_DATA_SEGMENT_SELECTOR;
-    intf->es       = USER_DATA_SEGMENT_SELECTOR;
-    intf->fs       = USER_DATA_SEGMENT_SELECTOR;
-    intf->gs       = USER_DATA_SEGMENT_SELECTOR;
-    intf->eip      = ps->text.addr & 0xffffffff;
-    intf->cs       = USER_CODE_SEGMENT_SELECTOR;
-    intf->eflags   = 0x00000200;
-    intf->prev_esp = p->thread->sp & 0xffffffff;
-    intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
+    intf->ds          = USER_DATA_SEGMENT_SELECTOR;
+    intf->es          = USER_DATA_SEGMENT_SELECTOR;
+    intf->fs          = USER_DATA_SEGMENT_SELECTOR;
+    intf->gs          = USER_DATA_SEGMENT_SELECTOR;
+    intf->eip         = ECAST_UINT32(ps->text.addr);
+    intf->cs          = USER_CODE_SEGMENT_SELECTOR;
+    intf->eflags      = 0x00000200;
+    intf->prev_esp    = ECAST_UINT32(p->segments->stack.addr + DEFAULT_STACK_SIZE);
+    intf->prev_ss     = USER_DATA_SEGMENT_SELECTOR;
+    p->thread->iframe = intf;
 
     /* dirty initialize. */
     static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff};

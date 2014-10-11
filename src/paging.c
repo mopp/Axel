@@ -196,7 +196,8 @@ Page_directory_table init_user_pdt(Page_directory_table pdt) {
     /* Copy kernel area. */
     memset(pdt, 0, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
     size_t s = get_pde_index(get_kernel_vir_start_addr());
-    size_t e = get_pde_index(get_kernel_vir_end_addr());
+    /* size_t e = get_pde_index(get_kernel_vir_end_addr()); */
+    size_t e = get_pde_index(0xffffffff);
     do {
         pdt[s].bit_expr = axel_s.kernel_pdt[s].bit_expr;
     } while (++s <= e);
@@ -217,8 +218,12 @@ inline bool is_kernel_pdt(Page_directory_table const pdt) {
 
 /* synchronize user and kernel pdt */
 Axel_state_code synchronize_pdt(uintptr_t vaddr) {
+    Process* p = get_current_pdt_process();
+    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, p);
     BOCHS_MAGIC_BREAK();
-    Process* p = get_current_process();
+    if (p->pdt == NULL) {
+        return AXEL_PAGE_SYNC_ERROR;
+    }
     Page_directory_table user_pdt = p->pdt;
     Page_directory_entry* u_pde   = get_pde(user_pdt, vaddr);
     Page_directory_entry* k_pde   = get_pde(axel_s.kernel_pdt, vaddr);
