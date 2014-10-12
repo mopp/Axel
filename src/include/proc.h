@@ -67,7 +67,7 @@ struct process {
     uint16_t pid;
     uint32_t cpu_time;
     Elist used_pages;
-    User_segments* segments;
+    User_segments u_segs;
     Thread* thread;
     struct process* parent;
     uintptr_t km_stack;

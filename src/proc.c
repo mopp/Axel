@@ -156,16 +156,14 @@ static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size
 
 Axel_state_code init_user_process(void) {
     Process* p        = kmalloc_zeroed(sizeof(Process));
-    User_segments* ps = kmalloc_zeroed(sizeof(User_segments));
-
+    User_segments* us = &p->u_segs;
     elist_init(&p->used_pages);
-    elist_init(&ps->text.mapped_frames);
-    elist_init(&ps->data.mapped_frames);
-    elist_init(&ps->stack.mapped_frames);
+    elist_init(&us->text.mapped_frames);
+    elist_init(&us->data.mapped_frames);
+    elist_init(&us->stack.mapped_frames);
 
-    ps->text.addr  = DEFAULT_TEXT_ADDR;
-    ps->stack.addr = DEFAULT_STACK_TOP_ADDR;
-    p->segments    = ps;
+    us->text.addr  = DEFAULT_TEXT_ADDR;
+    us->stack.addr = DEFAULT_STACK_TOP_ADDR;
     p->pid         = 0;
     p->km_stack    = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
     p->thread      = kmalloc_zeroed(sizeof(Thread));
@@ -177,31 +175,31 @@ Axel_state_code init_user_process(void) {
     p->pdt = init_user_pdt(pdt);
 
     /* setting user progam segments. */
-    expand_segment(p, &p->segments->text, DEFAULT_TEXT_SIZE);
-    expand_segment(p, &p->segments->stack, DEFAULT_STACK_SIZE);
+    expand_segment(p, &us->text, DEFAULT_TEXT_SIZE);
+    expand_segment(p, &us->stack, DEFAULT_STACK_SIZE);
 
     /* set pdt for setting init user space. */
     set_cpu_pdt(get_mapped_paddr(&p->pdt_page));
 
     p->thread->sp -= sizeof(Interrupt_frame);
     Interrupt_frame* intf = (Interrupt_frame*)p->thread->sp;
+    p->thread->iframe = intf;
     memset(intf, 0, sizeof(Interrupt_frame));
 
-    intf->ds          = USER_DATA_SEGMENT_SELECTOR;
-    intf->es          = USER_DATA_SEGMENT_SELECTOR;
-    intf->fs          = USER_DATA_SEGMENT_SELECTOR;
-    intf->gs          = USER_DATA_SEGMENT_SELECTOR;
-    intf->eip         = ECAST_UINT32(ps->text.addr);
-    intf->cs          = USER_CODE_SEGMENT_SELECTOR;
-    intf->eflags      = 0x00000200;
-    intf->prev_esp    = ECAST_UINT32(p->segments->stack.addr + DEFAULT_STACK_SIZE);
-    intf->prev_ss     = USER_DATA_SEGMENT_SELECTOR;
-    p->thread->iframe = intf;
+    intf->ds       = USER_DATA_SEGMENT_SELECTOR;
+    intf->es       = USER_DATA_SEGMENT_SELECTOR;
+    intf->fs       = USER_DATA_SEGMENT_SELECTOR;
+    intf->gs       = USER_DATA_SEGMENT_SELECTOR;
+    intf->eip      = ECAST_UINT32(us->text.addr);
+    intf->cs       = USER_CODE_SEGMENT_SELECTOR;
+    intf->eflags   = 0x00000200;
+    intf->prev_esp = ECAST_UINT32(us->stack.addr + DEFAULT_STACK_SIZE);
+    intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
 
     /* dirty initialize. */
     static uint8_t inst[] = {0x35, 0xf5, 0xf5, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff};
     for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
-        *((uint8_t*)ps->text.addr + i) = inst[i];
+        *((uint8_t*)us->text.addr + i) = inst[i];
     }
 
     set_cpu_pdt(vir_to_phys_addr((uintptr_t)(get_kernel_pdt())));
