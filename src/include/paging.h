@@ -198,8 +198,8 @@ extern void map_page_area(Page_directory_table pdt, uint32_t const, uint32_t con
 extern void map_page_same_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
 extern void unmap_page(Page_directory_table pdt, uintptr_t);
 extern void unmap_page_area(Page_directory_table pdt, uintptr_t const, uintptr_t const);
-extern Page* vcmalloc(Page*, size_t);
-extern Page* vmalloc(Page*, size_t);
+extern void* vcmalloc(Page*, size_t);
+extern void* vmalloc(Page*, size_t);
 extern void vfree(Page*);
 extern size_t size_to_frame_nr(size_t);
 extern void* kmalloc(size_t);

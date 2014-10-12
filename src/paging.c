@@ -293,38 +293,38 @@ static inline uintptr_t get_free_vmems(size_t frame_nr) {
 }
 
 
-Page* vcmalloc(Page* p, size_t req_nr) {
+void* vcmalloc(Page* p, size_t size) {
     memset(p, 0, sizeof(Page));
     elist_init(&p->mapped_frames);
 
     /* allocate physical memory from BuddySystem. */
-    uintptr_t s = (FRAME_SIZE * req_nr);
-    Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(s));
+    uint8_t order = size_to_order(size);
+    Frame* f = buddy_alloc_frames(axel_s.bman, order);
     if (f == NULL) {
-        return p;
+        return NULL;
     }
     elist_insert_next(&p->mapped_frames, &f->list);
     size_t alloc_nr = p->frame_nr = (1 << f->order);
 
     /* allocate virtual memory from kernel page directory. */
-    s = (FRAME_SIZE * alloc_nr);
+    size = (FRAME_SIZE * alloc_nr);
     uintptr_t bvaddr = get_free_vmems(alloc_nr);
     if (bvaddr == 0) {
         buddy_free_frames(axel_s.bman, f);
         p->frame_nr = 0;
-        return p;
+        return NULL;
     }
     p->addr          = bvaddr;
-    uintptr_t evaddr = bvaddr + s;
+    uintptr_t evaddr = bvaddr + size;
     uintptr_t bpaddr = get_frame_addr(axel_s.bman, f);
-    uintptr_t epaddr = bpaddr + s;
+    uintptr_t epaddr = bpaddr + size;
     map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
 
     for (Frame* i = f; i < &f[alloc_nr]; i++, bvaddr += PAGE_SIZE) {
         i->mapped_vaddr = bvaddr;
     }
 
-    return p;
+    return (void*)p->addr;
 }
 
 
@@ -338,13 +338,13 @@ static inline void free_buddy_frames(Elist* head) {
 }
 
 
-Page* vmalloc(Page* p, size_t req_nr) {
+void* vmalloc(Page* p, size_t size) {
     memset(p, 0, sizeof(Page));
     Elist* head = &p->mapped_frames;
     elist_init(head);
 
-    uintptr_t s     = (FRAME_SIZE * req_nr);
-    uint8_t order   = size_to_order(s);
+    uint8_t order   = size_to_order(size);
+    size_t req_nr   = PO2(order);
     size_t alloc_nr = 0;
 
     do {
@@ -360,8 +360,8 @@ Page* vmalloc(Page* p, size_t req_nr) {
 
     if (alloc_nr < req_nr || bvaddr == 0) {
         free_buddy_frames(&p->mapped_frames);
-        p->mapped_frames = (Elist){NULL, NULL};
-        return p;
+        memset(p, 0, sizeof(Page));
+        return NULL;
     }
     p->frame_nr = alloc_nr;
     p->addr     = bvaddr;
@@ -380,7 +380,7 @@ Page* vmalloc(Page* p, size_t req_nr) {
         }
     }
 
-    return p;
+    return (void*)p->addr;
 }
 
 

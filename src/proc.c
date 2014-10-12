@@ -174,8 +174,8 @@ Axel_state_code init_user_process(void) {
     p->thread->ip     = (uintptr_t)interrupt_return;
 
     /* alloc pdt */
-    vcmalloc(&p->pdt_page, size_to_frame_nr(sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM));
-    p->pdt = init_user_pdt((Page_directory_table)p->pdt_page.addr);
+    Page_directory_table pdt = vcmalloc(&p->pdt_page, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
+    p->pdt = init_user_pdt(pdt);
 
     expand_segment(p, &p->segments->text, DEFAULT_TEXT_SIZE); /* Text segment */
     expand_segment(p, &p->segments->stack, DEFAULT_STACK_SIZE); /* Stack segment */

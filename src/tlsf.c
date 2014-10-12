@@ -451,8 +451,7 @@ static inline Tlsf_manager* supply_memory(Tlsf_manager* tman, size_t size) {
     }
 
     /* Allocate virtual memory. */
-    vmalloc(p, size_to_frame_nr(size));
-    if (p->frame_nr == 0) {
+    if (NULL == vmalloc(p, size)) {
         return NULL;
     }
 
