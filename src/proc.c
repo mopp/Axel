@@ -17,14 +17,13 @@
 #include <assert.h>
 
 
-
-
 static Process pa, pb, pk;
 static Process** processes;
 static Process* init_user_p;
 static uint8_t process_num   = 2;
 static uint8_t current_p_idx = 0;
 static uint8_t next_p_idx    = 1;
+static uint16_t proc_id_cnt  = 0;
 
 bool is_enable_process = false;
 
@@ -58,7 +57,7 @@ void switch_context(Interrupt_frame* current_iframe) {
     Thread* current_t  = current_p->thread;
     Process* next_p    = processes[next_p_idx];
     Thread* next_t     = next_p->thread;
-    current_t->iframe = current_iframe;
+    current_t->iframe  = current_iframe;
 
     current_p_idx++;
     if (process_num <= current_p_idx) {
@@ -75,11 +74,9 @@ void switch_context(Interrupt_frame* current_iframe) {
          * Next Memory space is user space.
          * So, change pdt.
          */
-        io_cli();
         set_cpu_pdt(get_mapped_paddr(&next_p->pdt_page));
         pdt_process = next_p;
-        io_sti();
-        axel_s.tss->esp0 = ECAST_UINT32(next_t->iframe->prev_esp);
+        axel_s.tss->esp0 = ECAST_UINT32(next_p->km_stack);
     }
 
     __asm__ volatile(
@@ -166,20 +163,22 @@ Axel_state_code init_user_process(void) {
     elist_init(&ps->data.mapped_frames);
     elist_init(&ps->stack.mapped_frames);
 
-    ps->text.addr     = DEFAULT_TEXT_ADDR;
-    ps->stack.addr    = DEFAULT_STACK_TOP_ADDR;
-    p->segments       = ps;
-    p->pid            = 0;
-    p->thread         = kmalloc_zeroed(sizeof(Thread));
-    p->thread->ip     = (uintptr_t)interrupt_return;
+    ps->text.addr  = DEFAULT_TEXT_ADDR;
+    ps->stack.addr = DEFAULT_STACK_TOP_ADDR;
+    p->segments    = ps;
+    p->pid         = 0;
+    p->km_stack    = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
+    p->thread      = kmalloc_zeroed(sizeof(Thread));
+    p->thread->ip  = (uintptr_t)interrupt_return;
+    p->thread->sp  = p->km_stack;
 
     /* alloc pdt */
     Page_directory_table pdt = vcmalloc(&p->pdt_page, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
     p->pdt = init_user_pdt(pdt);
 
-    expand_segment(p, &p->segments->text, DEFAULT_TEXT_SIZE); /* Text segment */
-    expand_segment(p, &p->segments->stack, DEFAULT_STACK_SIZE); /* Stack segment */
-    p->thread->sp = p->segments->stack.addr + DEFAULT_STACK_SIZE;
+    /* setting user progam segments. */
+    expand_segment(p, &p->segments->text, DEFAULT_TEXT_SIZE);
+    expand_segment(p, &p->segments->stack, DEFAULT_STACK_SIZE);
 
     /* set pdt for setting init user space. */
     set_cpu_pdt(get_mapped_paddr(&p->pdt_page));
