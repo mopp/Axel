@@ -416,3 +416,35 @@ void kfree(void* p) {
 uintptr_t get_mapped_paddr(Page const * p) {
     return get_frame_addr(axel_s.bman, elist_derive(Frame, list, p->mapped_frames.next));
 }
+
+
+size_t get_page_size(Page const * const p ) {
+    return p->frame_nr * FRAME_SIZE;
+}
+
+
+uintptr_t phys_to_vir_addr(uintptr_t addr) {
+    return addr + KERNEL_VIRTUAL_BASE_ADDR;
+}
+
+
+uintptr_t vir_to_phys_addr(uintptr_t addr) {
+    return addr - KERNEL_VIRTUAL_BASE_ADDR;
+}
+
+
+void set_phys_to_vir_addr(void* addr) {
+    uintptr_t* p = (uintptr_t*)addr;
+    *p = phys_to_vir_addr(*p);
+}
+
+
+size_t round_page_size(size_t size) {
+    /*
+     * Simple expression is below.
+     * ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE
+     * In particular, PAGE_SIZE is power of 2.
+     * We calculate same thing using below code.
+     */
+    return ((size + PAGE_SIZE - 1) & 0xFFFFFF000);
+}

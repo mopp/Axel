@@ -6,6 +6,8 @@
  * @version 0.1
  * @date 2014-05-20
  */
+
+
 #ifndef _PAGING_H_
 #define _PAGING_H_
 
@@ -17,6 +19,7 @@
 
 
 #if !defined(_ASSEMBLY_H_) && !defined(_LINKER_SCRIPT_)
+
 
 
 #include <stdint.h>
@@ -153,44 +156,12 @@ struct page {
 typedef struct page Page;
 
 
-static inline size_t get_page_size(Page const * const p ) {
-    return p->frame_nr * FRAME_SIZE;
-}
-
-
-static inline uintptr_t phys_to_vir_addr(uintptr_t addr) {
-    return addr + KERNEL_VIRTUAL_BASE_ADDR;
-}
-
-
-static inline uintptr_t vir_to_phys_addr(uintptr_t addr) {
-    return addr - KERNEL_VIRTUAL_BASE_ADDR;
-}
-
-
-static inline void set_phys_to_vir_addr(void* addr) {
-    uintptr_t* p = (uintptr_t*)addr;
-    *p = phys_to_vir_addr(*p);
-}
-
-
-static inline size_t round_page_size(size_t size) {
-    /*
-     * Simple expression is below.
-     * ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE
-     * In particular, PAGE_SIZE is power of 2.
-     * We calculate same thing using below code.
-     */
-    return ((size + PAGE_SIZE - 1) & 0xFFFFFF000);
-}
-
-
 extern Axel_state_code synchronize_pdt(uintptr_t);
 extern Page_directory_table get_kernel_pdt(void);
 extern Page_directory_table init_user_pdt(Page_directory_table);
-extern Page_table_entry* get_pte(Page_table const , uintptr_t const );
-extern Page_table get_pt(Page_directory_entry const* const );
-extern Page_directory_entry* get_pde(Page_directory_table const , uintptr_t const );
+extern Page_table_entry* get_pte(Page_table const, uintptr_t const);
+extern Page_table get_pt(Page_directory_entry const* const);
+extern Page_directory_entry* get_pde(Page_directory_table const, uintptr_t const);
 extern bool is_kernel_pdt(Page_directory_table const);
 extern void init_paging(void);
 extern void map_page(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
@@ -205,7 +176,12 @@ extern size_t size_to_frame_nr(size_t);
 extern void* kmalloc(size_t);
 extern void kfree(void*);
 extern void* kmalloc_zeroed(size_t);
-extern uintptr_t get_mapped_paddr(Page const *);
+extern uintptr_t get_mapped_paddr(Page const*);
+extern size_t get_page_size(Page const* const);
+extern uintptr_t phys_to_vir_addr(uintptr_t);
+extern uintptr_t vir_to_phys_addr(uintptr_t);
+extern void set_phys_to_vir_addr(void*);
+extern size_t round_page_size(size_t);
 
 
 

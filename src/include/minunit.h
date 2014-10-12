@@ -1,8 +1,12 @@
-/************************************************************
- * File: include/minunit.h
- * Description: This file contains custom MinUnit Test macros.
- *  from http://www.jera.com/techinfo/jtns/jtn002.html
- ************************************************************/
+/**
+ * @file minunit.h
+ * @brief This file contains custom MinUnit Test macros.
+ *        from http://www.jera.com/techinfo/jtns/jtn002.html
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
+
 
 #ifndef _MIN_UNIT_H_
 #define _MIN_UNIT_H_
@@ -23,6 +27,7 @@ static int minunit_test_counter;
         }                                          \
     } while (0)
 
+
 #define MIN_UNIT_RUN(func_name)          \
     do {                                 \
         char const *msg = (func_name)(); \
@@ -31,6 +36,7 @@ static int minunit_test_counter;
             return msg;                  \
         }                                \
     } while (0)
+
 
 #define MIN_UNIT_RUN_ALL(func_name)                               \
     do {                                                          \

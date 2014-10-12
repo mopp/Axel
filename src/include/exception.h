@@ -12,8 +12,6 @@
 
 
 
-#include <interrupt.h>
-
 extern void asm_exception_page_fault(void);
 
 

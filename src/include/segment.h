@@ -6,6 +6,7 @@
  * @date 2014-07-22
  */
 
+
 #ifndef _SEGMENT_H_
 #define _SEGMENT_H_
 

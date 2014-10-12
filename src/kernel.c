@@ -9,7 +9,6 @@
 
 #include <asm_functions.h>
 #include <exception.h>
-#include <font.h>
 #include <graphic.h>
 #include <interrupt.h>
 #include <kernel.h>
@@ -23,6 +22,8 @@
 #include <vbe.h>
 #include <window.h>
 #include <utils.h>
+#include <ps2.h>
+#include <tlsf.h>
 
 
 /* Interrupt Gate Descriptor Table */

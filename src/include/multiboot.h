@@ -6,12 +6,18 @@
  * @date 2014-05-21
  */
 
+
 #ifndef _MULTIBOOT_H_
 #define _MULTIBOOT_H_
 
+
+
 #include <flag.h>
 
+
+
 #ifndef _ASSEMBLY_H_
+
 
 
 #include <stdint.h>
@@ -146,21 +152,38 @@ struct multiboot_mod_list {
 typedef struct multiboot_mod_list Multiboot_module;
 
 
+
 #endif /* _ASSEMBLY_H_ */
 
 
+
 #ifdef TEXT_MODE
+
+
+
     #define GRAPHIC_FIELD_MODE 1
     #define DISPLAY_X_RESOLUTION 320
     #define DISPLAY_Y_RESOLUTION 200
     #define DISPLAY_BIT_SIZE 8
+
+
+
 #else
+
+
+
     #define GRAPHIC_FIELD_MODE 0
     #define DISPLAY_X_RESOLUTION 800
     #define DISPLAY_Y_RESOLUTION 600
     #define DISPLAY_BIT_SIZE 32
     /* (800 * 600 * 4) / 1024 = 1875KB = 1.875MB */
+
+
+
 #endif
+
+
+
 #define DISPLAY_NUMBER_OF_PIXEL (DISPLAY_X_RESOLUTION * DISPLAY_Y_RESOLUTION)
 
 /*
@@ -243,6 +266,7 @@ typedef struct multiboot_mod_list Multiboot_module;
 
 /* Alignment of multiboot modules. */
 #define MULTIBOOT_MOD_ALIGN 0x00001000
+
 
 
 #endif

@@ -1,14 +1,19 @@
-/************************************************************
- * File: include/graphic_txt.h
- * Description: TextMode Graphic Header.
- *  global function in this file must be have suffix "txt"
- ************************************************************/
+/**
+ * @file include/graphic_txt.h
+ * @brief TextMode Graphic Header.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
+
 
 #ifndef _GRAPHIC_TXT_H_
 #define _GRAPHIC_TXT_H_
 
-#include <stdint.h>
+
+
 #include <rgb8.h>
+
 
 enum Textmode_gpaphic_constants {
     TEXTMODE_VRAM_ADDR          = 0x000B8000,
@@ -25,7 +30,10 @@ enum Textmode_gpaphic_constants {
     TEXTMODE_DISPLAY_MAX_XY     = (TEXTMODE_DISPLAY_MAX_X * TEXTMODE_DISPLAY_MAX_Y),
 };
 
+
 extern int putchar_txt(int);
 extern void clean_screen_txt(void);
+
+
 
 #endif

@@ -35,7 +35,7 @@ KERNEL_MAP  := kernel.map
 
 SUB_DIRS    := $(BOOT_DIR)
 
-C_SRCS      := aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c ps2.c tlsf.c utils.c window.c kernel.c
+C_SRCS      := rgb8.c elist.c point.c aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c ps2.c tlsf.c utils.c window.c kernel.c
 C_OBJS      := $(C_SRCS:%.c=%.o)
 C_DEPS      := $(C_SRCS:%.c=%.d)
 A_SRCS      := asm_functions.asm interrupt_asm.asm

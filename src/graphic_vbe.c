@@ -1,7 +1,11 @@
-/************************************************************
- * File: graphic.c
- * Description: some output functions for vbe Graphic.
- ************************************************************/
+/**
+ * @file graphic_vbe.c
+ * @brief some output functions for vbe Graphic.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
+
 
 #include <graphic_vbe.h>
 #include <asm_functions.h>
@@ -10,6 +14,9 @@
 #include <font.h>
 #include <drawable.h>
 #include <kernel.h>
+#include <vbe.h>
+#include <ps2.h>
+
 
 /* This represents bit size and position infomation from VBE. */
 struct Color_bit_info {

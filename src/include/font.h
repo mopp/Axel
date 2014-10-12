@@ -10,11 +10,13 @@
 #define _FONT_H_
 
 
+
 #include <stdint.h>
 #include <drawable.h>
 
+
 enum Font_constants {
-    FONT_SIZE = 255 + 1,
+    FONT_SIZE  = 255 + 1,
     FONT_HIGHT = 13,
     FONT_WIDTH = 8,
 };

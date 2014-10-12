@@ -1,7 +1,11 @@
-/************************************************************
- * File: include/interrupt.h
- * Description: Interrupt Handler Header
- ************************************************************/
+/**
+ * @file include/interrupt.h
+ * @brief Interrupt handler header
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
+
 
 #ifndef _INTERRUPT_HANDLER_H_
 #define _INTERRUPT_HANDLER_H_
@@ -9,6 +13,7 @@
 
 
 #include <stdint.h>
+
 
 /* Programmable Interrupt Controller */
 enum PIC_constants {

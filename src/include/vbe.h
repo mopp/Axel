@@ -1,13 +1,19 @@
-/************************************************************
- * File: include/vbe.h
- * Description: VBE 2.0 Structures
- ************************************************************/
+/**
+ * @file include/vbe.h
+ * @brief VBE 2.0 Structures
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
+
 
 #ifndef _VBE_H_
 #define _VBE_H_
 
 
+
 #include <stdint.h>
+
 
 #pragma GCC diagnostic ignored "-Wpadded"
 typedef struct {
@@ -92,5 +98,7 @@ typedef struct {
     uint8_t in_protect_mode;
     uint8_t checksum;
 } Pm_info_block;
+
+
 
 #endif

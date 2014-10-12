@@ -7,18 +7,18 @@
  */
 
 #include <assert.h>
-#include <stdlib.h>
 #include <utils.h>
 #include <aqueue.h>
+#include <paging.h><`0`>
 
 
 Aqueue* aqueue_init(Aqueue* q, size_t type_size, size_t capacity, release_func f) {
     assert(q != NULL);
 
-    q->data = (void**)malloc(sizeof(void*) * capacity);
+    q->data = (void**)kmalloc(sizeof(void*) * capacity);
 
     /* allocate all element area. */
-    void* elements = malloc(type_size * capacity);
+    void* elements = kmalloc(type_size * capacity);
     uintptr_t addr = (uintptr_t)elements;
 
     for (size_t i = 0; i < capacity; i++) {
@@ -93,11 +93,11 @@ void aqueue_destruct(Aqueue* q) {
 
     size_t const size = aqueue_get_size(q);
     for (int i = 0; i < size; i++) {
-        ((q->free != NULL) ? q->free : free)(q->data[i]);
+        ((q->free != NULL) ? q->free : kfree)(q->data[i]);
     }
 
-    free(q->data[0]); /* In aqueue_init, malloced addr is set at index 0 of array. */
-    free(q->data);
+    kfree(q->data[0]); /* In aqueue_init, malloced addr is set at index 0 of array. */
+    kfree(q->data);
 
     q->capacity = 0;
     q->free = 0;

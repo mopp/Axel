@@ -11,6 +11,7 @@
 #include <asm_functions.h>
 #include <paging.h>
 #include <macros.h>
+#include <interrupt.h>
 
 
 

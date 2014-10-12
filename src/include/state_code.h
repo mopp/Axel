@@ -1,7 +1,11 @@
-/************************************************************
- * File: include/state_code.h
- * Description: There are Axel StateCode.
- ************************************************************/
+/**
+ * @file include/state_code.h
+ * @brief There are Axel StateCode.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
+
 
 #ifndef _STATE_CODE_H_
 #define _STATE_CODE_H_

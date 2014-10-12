@@ -17,6 +17,7 @@
 #include <buddy.h>
 #include <macros.h>
 #include <kernel.h>
+#include <tlsf.h>
 
 
 /*

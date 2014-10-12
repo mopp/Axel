@@ -1,13 +1,19 @@
-/************************************************************
- * File: include/macros.h
- * Description: This file contains utility macros.
- ************************************************************/
+/**
+ * @file include/macros.h
+ * @brief This file contains utility macros.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
+
 
 #ifndef _MACROS_H_
 #define _MACROS_H_
 
 
+
 #include <stdint.h>
+
 
 #define QUOTE(x) #x
 #define TO_STR(x) QUOTE(x)
@@ -39,6 +45,7 @@
 #define KB(x) (x >> 10)
 #define MB(x) (x >> 20)
 #define GB(x) (x >> 30)
+
 
 
 #endif

@@ -1,8 +1,10 @@
-/************************************************************
- * File: include/asm_functions.h
- * Description: It provides prototype for
- *              assembly only fanctions
- ************************************************************/
+/**
+ * @file include/asm_functions.h
+ * @brief It provides prototype for assembly only fanctions
+ * @author mopp
+ * @version 0.1
+ * @date 2014-10-13
+ */
 
 #ifndef _ASM_FUNCTIONS_H_
 #define _ASM_FUNCTIONS_H_
@@ -10,7 +12,7 @@
 
 
 #include <stdint.h>
-#include <paging.h>
+
 
 extern void io_cli(void);
 extern void io_sti(void);

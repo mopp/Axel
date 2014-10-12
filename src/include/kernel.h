@@ -6,16 +6,23 @@
  * @date 2014-07-15
  */
 
+
 #ifndef _KERNEL_H_
 #define _KERNEL_H_
 
 
 
-#include <buddy.h>
-#include <paging.h>
-#include <ps2.h>
-#include <segment.h>
-#include <tlsf.h>
+#include <stdint.h>
+
+
+union segment_descriptor;
+struct task_state_segment;
+struct keyboard;
+struct mouse;
+struct buddy_manager;
+struct tlsf_manager;
+struct page_directory_entry;
+typedef struct page_directory_entry* Page_directory_table;
 
 
 /*
@@ -23,18 +30,17 @@
  * This contains important global variable.
  */
 struct axel_struct {
-    Segment_descriptor* gdt;
-    Task_state_segment* tss;
-    Keyboard* keyboard;
-    Mouse* mouse;
-    Buddy_manager* bman;
-    Tlsf_manager* tman;
+    union segment_descriptor* gdt;
+    struct task_state_segment* tss;
+    struct keyboard* keyboard;
+    struct mouse* mouse;
+    struct buddy_manager* bman;
+    struct tlsf_manager* tman;
     Page_directory_table kernel_pdt;
 };
 typedef struct axel_struct Axel_struct;
 
 
-/* FIXME */
 extern Axel_struct axel_s;
 extern uintptr_t kernel_init_stack_top;
 
