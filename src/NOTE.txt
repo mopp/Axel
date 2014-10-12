@@ -6,7 +6,7 @@
 [ ] add function comments.
 [ ] make console.
 [ ] add panic function.
-[ ] fix vmalloc and related function.
+[x] fix vmalloc and related function.
 
 
 
@@ -29,23 +29,17 @@ end; echo "$((a/1024))kb"
 ------------
 
 メモリ管理
-    pmalloc - physical memory allocation
+    pmalloc  - physical memory allocation
         物理メモリ管理
-    vmalloc - virtual memory allocation
-        仮想メモリ管理
-    pfmap - page and frame mapping
-        仮想/物理メモリマッピング
-    umalloc - user memory allocation
-        すでにマッピングされ有効な、ユーザ権限の仮想メモリ
-    kmalloc - kernel memory allocation
-        すでにマッピングされ有効な、カーネル権限の仮想メモリ
+    vmalloc  - virtual memory allocation
+        仮想メモリ管理(マップ先物理メモリが連続である必要はない)
+    vcmalloc - virtual contiguous memory allocation
+        仮想メモリ管理(マップ先物理メモリが連続である必要がある)
+    vfree    - virtual memory free
+        vmalloc, vcmallocの双方のメモリ解放.
 
-    kmalloc -> vmalloc + map_page(kernel) -> pmalloc
-    umalloc -> vmalloc + map_page(user)   -> pmalloc
         umallocはユーザ空間におけるmallocに相当するのでOSの実装には不要では
         なので、テキストセグメントとデータセグメントの操作、スワッピングなどがいい感じにできればよいはず
-    vmalloc + map_page(kernel) -> pmalloc
-    これだけでいいかな
 
     ユーザ空間の初期化
         一時的に初期化したいユーザ空間と同じフレームをカーネル空間にマップする
@@ -70,7 +64,7 @@ end; echo "$((a/1024))kb"
 
     理想的実装
     物理メモリ管理 - バディシステム
-    仮想メモリ管理 - スラブアロケータ
+    仮想メモリ管理 - tlsf
     バディシステムが(2^n * FRAME_SIZE)単位で物理メモリを管理.
         ex. 4KB, 8KB, 16KB, 32KB...
     これでは断片化が激しい
