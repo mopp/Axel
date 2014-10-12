@@ -15,10 +15,6 @@
 #include <macros.h>
 
 
-#define ORDER_NUMBER(order) (1U << (order))
-#define ORDER_FRAME_SIZE(order) (ORDER_NUMBER(order) * FRAME_SIZE)
-
-
 static inline Frame* elist_get_frame(Elist const* const l) {
     return (Frame*)l;
 }
@@ -55,7 +51,7 @@ static inline size_t get_frame_idx(Buddy_manager const* const bman, Frame const*
  */
 static inline Frame* get_buddy_frame(Buddy_manager const* const bman, Frame const* const frame, uint8_t order) {
     Frame* p = bman->frame_pool;
-    Frame* f = p + (get_frame_idx(bman, frame) ^ ORDER_NUMBER(order));
+    Frame* f = p + (get_frame_idx(bman, frame) ^ PO2(order));
     return ((p + bman->total_frame_nr) <= f) ? NULL : f;
 }
 
@@ -93,7 +89,7 @@ Buddy_manager* buddy_init(Buddy_manager* const bman, uintptr_t base, Frame* fram
     Frame* itr = frames;
     do {
         --order;
-        size_t o_nr = ORDER_NUMBER(order);
+        size_t o_nr = PO2(order);
         while (n != 0 && o_nr <= n) {
             /* フレームを現在オーダのリストに追加. */
             itr->order  = order;
@@ -190,7 +186,7 @@ void buddy_free_frames(Buddy_manager* const bman, Frame* ffs) {
 size_t buddy_get_free_memory_size(Buddy_manager const* const bman) {
     size_t free_mem_size = 0;
     for (uint8_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
-        free_mem_size += (bman->free_frame_nr[i] * ORDER_FRAME_SIZE(i));
+        free_mem_size += (bman->free_frame_nr[i] * get_order_frame_size(i));
     }
 
     return free_mem_size;
@@ -203,7 +199,7 @@ size_t buddy_get_free_memory_size(Buddy_manager const* const bman) {
  * @return current memory usage.
  */
 size_t buddy_get_alloc_memory_size(Buddy_manager const* const bman) {
-    return (bman->total_frame_nr * FRAME_SIZE) - buddy_get_free_memory_size(bman);
+    return (bman->total_frame_nr << FRAME_SIZE_LOG2) - buddy_get_free_memory_size(bman);
 }
 
 
@@ -213,7 +209,7 @@ size_t buddy_get_alloc_memory_size(Buddy_manager const* const bman) {
  * @return total memory size.
  */
 size_t buddy_get_total_memory_size(Buddy_manager const* const bman) {
-    return bman->total_frame_nr * FRAME_SIZE;
+    return bman->total_frame_nr << FRAME_SIZE_LOG2;
 }
 
 
@@ -231,7 +227,7 @@ uintptr_t get_frame_addr(Buddy_manager const* const bman, Frame const* const fra
 
 
 Frame* get_frame_by_addr(Buddy_manager const * const bman, uintptr_t addr) {
-    return &bman->frame_pool[(addr - bman->base_addr) / FRAME_SIZE];
+    return &bman->frame_pool[(addr - bman->base_addr) >> FRAME_SIZE_LOG2];
 }
 
 
@@ -269,4 +265,8 @@ uint8_t size_to_order(size_t s) {
 size_t order_to_size(uint8_t o) {
     assert(o < BUDDY_SYSTEM_MAX_ORDER);
     return order_nr[o];
+}
+
+size_t get_order_frame_size(uint8_t o) {
+    return PO2(o) << FRAME_SIZE_LOG2;
 }
