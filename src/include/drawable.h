@@ -20,7 +20,7 @@ struct Drawable_bitmap {
     int32_t height;
     int32_t width;
     RGB8 color;
-    int32_t const* data;
+    uint32_t const* data;
 };
 typedef struct Drawable_bitmap Drawable_bitmap;
 
@@ -30,7 +30,7 @@ struct Drawable_multi_bitmap {
     int32_t width;
     int32_t size;
     RGB8 color;
-    int32_t const* data[];
+    uint32_t const* data[];
 };
 typedef struct Drawable_multi_bitmap Drawable_multi_bitmap;
 
