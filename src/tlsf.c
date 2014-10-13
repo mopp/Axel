@@ -488,7 +488,7 @@ static inline void check_alloc_watermark(Tlsf_manager* tman, size_t s) {
     set_idxs(w, &fl, &sl);
 
     if (tman->free_memory_size < s) {
-        size_t t = s + BLOCK_OFFSET * 3;
+        size_t t = round_up_block(s) + BLOCK_OFFSET * 3;
         void* m = supply_memory(tman, t);
         if (m == NULL) {
             /* printf("alloc failed\n"); */
