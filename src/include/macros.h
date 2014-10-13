@@ -46,6 +46,8 @@
 #define MB(x) (x >> 20)
 #define GB(x) (x >> 30)
 
+#define toggle_boolean(x) ((x) = ((x) == true ? false : true));
+
 
 
 #endif
