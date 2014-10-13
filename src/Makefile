@@ -17,6 +17,7 @@ export QEMU_D      := qemu-system-i386 -vga std -m 32
 export BOCHS       := bochs
 export GDB         := gdb
 export MAKEFILE    := Makefile
+export MKDIR       := mkdir -p
 export ROOT_DIR    := $(PWD)/
 export INCLUDE_DIR := $(ROOT_DIR)include/
 
@@ -33,13 +34,16 @@ GRUB_CONFIG := $(BOOT_DIR)grub.cfg
 KERNEL_LNK  := kernel.ld
 KERNEL_MAP  := kernel.map
 
+OBJS_DIR    := objs/
+DEPS_DIR    := deps/
+WORK_DIRS	:= $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR)
 SUB_DIRS    := $(BOOT_DIR)
 
 C_SRCS      := rgb8.c elist.c point.c aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c ps2.c tlsf.c utils.c window.c kernel.c
-C_OBJS      := $(C_SRCS:%.c=%.o)
-C_DEPS      := $(C_SRCS:%.c=%.d)
+C_OBJS      := $(addprefix $(OBJS_DIR), $(C_SRCS:%.c=%.o))
+C_DEPS      := $(addprefix $(DEPS_DIR), $(C_SRCS:%.c=%.d))
 A_SRCS      := asm_functions.asm interrupt_asm.asm
-A_OBJS      := $(A_SRCS:%.asm=%.o)
+A_OBJS      := $(addprefix $(OBJS_DIR), $(A_SRCS:%.asm=%.o))
 OBJS        := $(BOOT_OBJ) $(A_OBJS) $(C_OBJS)
 
 # CC          C compiler command
@@ -63,28 +67,32 @@ export CC := $(CLANG) $(CFLAGS) $(CPPFLAGS)
 export PP := $(CLANG) $(CPPFLAGS) -x c -E -P
 
 
-# 一般生成規則
-.SUFFIXES: .c .o .asm
-.c.o:
-	$(CC) -MMD -c $< -o $@
-.asm.o:
+$(OBJS_DIR)%.o : %.c
+	@test -d $(OBJDIR) || $(MKDIR) $(WORK_DIRS)
+	$(CC) -MMD -MQ $@ -MF ./$(DEPS_DIR)$*.d -c $< -o $@
+
+
+$(OBJS_DIR)%.o : %.asm
+	$(MKDIR) $(WORK_DIRS)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $< > $(TMP_FILE)
-	$(NASM) -l $*.lst -o $@ $(TMP_FILE)
+	$(NASM) -l $(OBJS_DIR)$*.lst -o $@ $(TMP_FILE)
 
 
 .PHONY: all
 all: $(SUB_DIRS)
-	@for dir in $(SUB_DIRS) ; do \
-		($(MAKE) -C $$dir); \
-		done
+	$(MKDIR) $(WORK_DIRS)
 	$(MAKE) $(ISO_NAME)
 	ctags -R ./*
 
 
 -include $(C_DEPS)
-asm_functions.o : $(MAKEFILE) asm_functions.asm $(INCLUDE_DIR)asm_functions.h $(INCLUDE_DIR)segment.h $(INCLUDE_DIR)paging.h
-interrupt_asm.o : $(MAKEFILE) interrupt_asm.asm $(INCLUDE_DIR)interrupt.h interrupt.o
+$(OBJS_DIR)asm_functions.o : $(MAKEFILE) asm_functions.asm $(INCLUDE_DIR)asm_functions.h $(INCLUDE_DIR)segment.h $(INCLUDE_DIR)paging.h
+$(OBJS_DIR)interrupt_asm.o : $(MAKEFILE) interrupt_asm.asm $(INCLUDE_DIR)interrupt.h $(OBJS_DIR)interrupt.o
+
+
+$(BOOT_OBJ) : $(MAKEFILE)
+	$(MAKE) -C $(BOOT_DIR)
 
 
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS)
@@ -96,7 +104,7 @@ $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS)
 
 
 $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
-	mkdir -p $(ISO_DIR)boot/grub
+	$(MKDIR) $(ISO_DIR)boot/grub
 	cp $(AXEL_BIN) $(ISO_DIR)boot/
 	cp $(GRUB_CONFIG) $(ISO_DIR)boot/grub/grub.cfg
 	grub-mkimage -O i386-pc -o $(ISO_DIR)efi.img multiboot biosdisk iso9660
@@ -105,10 +113,8 @@ $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 
 .PHONY: clean
 clean:
-	@for dir in $(SUB_DIRS) ; \
-		do ($(MAKE) -C $$dir clean); \
-		done
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym $(ISO_DIR) tags
+	$(MAKE) -C $(BOOT_DIR) clean
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIRS)
 	ctags -R ./*
 
 
