@@ -86,6 +86,8 @@ enum PIT_constants {
 Axel_struct axel_s;
 
 
+static void draw_desktop(void);
+static void decode_key(void);
 static void decode_mouse(void);
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint32_t);
 static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, void*, uint16_t, uint32_t);
@@ -93,7 +95,6 @@ static void init_gdt(void);
 static void init_idt(void);
 static void init_pit(void);
 static void clear_bss(void);
-
 
 
 /**
@@ -112,32 +113,58 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         /* TODO: panic */
     }
 
-    init_graphic(boot_info);
     init_gdt();
     init_idt();
-    init_process();
+    init_graphic(boot_info);
+    if (AXEL_SUCCESS == init_window()) {
+        draw_desktop();
+    }
+    /* init_process(); */
     init_pic();
     init_pit();
-    io_sti();
 
-    if (AXEL_SUCCESS != init_window()) {
-        /* TODO: panic */
-        uint32_t* v = (uint32_t*)0xc00A0000;
-        for (; v < (uint32_t*)0xc00B0000; v++) {
-            *v = 0xff0000;
-        }
-        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0xcc);
+    if (init_keyboard() == AXEL_FAILED) {
+        puts("Keyboard initialize failed\n");
     }
 
+    if (init_mouse() == AXEL_FAILED) {
+        puts("Mouse initialize failed\n");
+    }
+    io_sti();
+
+    Window* mouse_win = get_mouse_window();
+    Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
+
+    aqueue_delete_first(&axel_s.keyboard->aqueue);
+    for (;;) {
+        if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
+            decode_key();
+        }
+
+        if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
+            decode_mouse();
+        } else if (axel_s.mouse->is_pos_update == false) {
+            io_hlt();
+        } else {
+            Point2d const p = axel_s.mouse->pos;
+            move_window(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
+            mouse_p = axel_s.mouse->pos;
+            axel_s.mouse->is_pos_update = false;
+        }
+    }
+}
+
+
+static inline void draw_desktop(void) {
     Point2d p0, p1;
     RGB8 c;
     int32_t const max_x = get_max_x_resolution();
     int32_t const max_y = get_max_y_resolution();
 
     /* allocate background. */
-    alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), 0, set_rgb_by_color(&c, 0x3A6EA5));
+    alloc_filled_window(&make_point2d(0, 0), &make_point2d(get_max_x_resolution(), get_max_y_resolution()), set_rgb_by_color(&c, 0x3A6EA5));
 
-    Window* const status_bar = alloc_filled_window(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, 27), 0, set_rgb_by_color(&c, 0xC6C6C6));
+    Window* const status_bar = alloc_filled_window(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, 27), set_rgb_by_color(&c, 0xC6C6C6));
 
     /* 60x20 Button */
     window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1, 60,  1), set_rgb_by_color(&c, 0xFFFFFF));    // above edge.
@@ -145,19 +172,10 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0xFFFFFF));    // left edge.
     window_fill_area(status_bar, set_point2d(&p0, 61, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x848484));    // right edge.
     window_fill_area(status_bar, set_point2d(&p0, 62, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge.
-    Window* const console = alloc_filled_window(set_point2d(&p0, 400, 100), set_point2d(&p1, 100, 100), 0, set_rgb_by_color(&c,0xec6d71));
+    Window* const console = alloc_filled_window(set_point2d(&p0, 400, 100), set_point2d(&p1, 100, 100), set_rgb_by_color(&c,0xec6d71));
     window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 10, 1), set_rgb_by_color(&c, 0x19448e), 5);
     window_draw_line(console, set_point2d(&p0, 10, 10), set_point2d(&p1, 10, 100), set_rgb_by_color(&c, 0x19448e), 10);
     flush_windows();
-
-    if (init_keyboard() == AXEL_FAILED) {
-        puts("=Keyboard initialize failed=\n");
-    }
-    if (init_mouse() == AXEL_FAILED) {
-        puts("=Mouse initialize failed=\n");
-    }
-    Window* mouse_win = get_mouse_window();
-    Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
 
     puts("-------------------- Start Axel ! --------------------\n\n");
 
@@ -174,22 +192,146 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     }
     printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
     printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
+}
 
-    for (;;) {
-        if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
-            aqueue_delete_first(&axel_s.keyboard->aqueue);
-        }
 
-        if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
-            decode_mouse();
-        } else if (axel_s.mouse->is_pos_update == false) {
-            io_hlt();
-        } else {
-            Point2d const p = axel_s.mouse->pos;
-            move_window(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
-            mouse_p = axel_s.mouse->pos;
-            axel_s.mouse->is_pos_update = false;
-        }
+static inline void decode_key(void) {
+    static uint8_t on_break = false;
+    static char const keymap[] = {
+        [0x1C] = 'a',
+        [0x32] = 'b',
+        [0x21] = 'c',
+        [0x23] = 'd',
+        [0x24] = 'e',
+        [0x2B] = 'f',
+        [0x34] = 'g',
+        [0x33] = 'h',
+        [0x43] = 'i',
+        [0x3B] = 'j',
+        [0x42] = 'k',
+        [0x4B] = 'l',
+        [0x3A] = 'm',
+        [0x31] = 'n',
+        [0x44] = 'o',
+        [0x4D] = 'p',
+        [0x15] = 'q',
+        [0x2D] = 'r',
+        [0x1B] = 's',
+        [0x2C] = 't',
+        [0x3C] = 'u',
+        [0x2A] = 'v',
+        [0x1D] = 'w',
+        [0x22] = 'x',
+        [0x35] = 'y',
+        [0x1A] = 'z',
+
+        [0x45] = '0',
+        [0x16] = '1',
+        [0x1E] = '2',
+        [0x26] = '3',
+        [0x25] = '4',
+        [0x2E] = '5',
+        [0x36] = '6',
+        [0x3D] = '7',
+        [0x3E] = '8',
+        [0x46] = '9',
+
+        [0x0E] = '`',
+        [0x4E] = '-',
+        [0x55] = '=',
+        [0x5D] = '\\',
+    };
+    static char const keymap_s[] = {
+        [0x45] = ')',
+        [0x16] = '!',
+        [0x1E] = '@',
+        [0x26] = '#',
+        [0x25] = '$',
+        [0x2E] = '%',
+        [0x36] = '^',
+        [0x3D] = '&',
+        [0x3E] = '\'',
+        [0x46] = '(',
+
+        [0x0E] = '~',
+        [0x4E] = '_',
+        [0x55] = '+',
+        [0x5D] = '|',
+    };
+
+    enum {
+        enter     = 0x5a,
+        esc       = 0x76,
+        backspace = 0x66,
+        space     = 0x29,
+        tab       = 0x0D,
+        caps      = 0x58,
+        l_shift   = 0x12,
+        l_alt     = 0x11,
+        l_ctrl    = 0x14,
+        r_shift   = 0x59,
+        /* r_alt     = , */
+        /* r_ctrl    = , */
+        break_code = 0xf0,
+    };
+
+    uint8_t* t = aqueue_get_first(&axel_s.keyboard->aqueue);
+    uint8_t kc = *t;
+    aqueue_delete_first(&axel_s.keyboard->aqueue);
+
+    switch (kc) {
+        case l_shift:
+        case r_shift:
+            toggle_boolean(axel_s.keyboard->shift_on);
+            return;
+        case l_alt:
+            toggle_boolean(axel_s.keyboard->alt_on);
+            return;
+        case l_ctrl:
+            toggle_boolean(axel_s.keyboard->ctrl_on);
+            return;
+        case caps:
+            toggle_boolean(axel_s.keyboard->enable_calps_lock);
+            return;
+    }
+
+    if (on_break == true) {
+        on_break = false;
+        return;
+    }
+
+    if (break_code == kc) {
+        on_break = true;
+        return;
+    }
+
+    char c;
+    switch (kc) {
+        case enter:
+            putchar('\n');
+            break;
+        case esc:
+            break;
+        case backspace:
+            putchar('\b');
+            break;
+        case space:
+            putchar(' ');
+            break;
+        case tab:
+            putchar('    ');
+            break;
+        default:
+            c = keymap[kc];
+            if (axel_s.keyboard->shift_on == true) {
+                if ('a' <= c && c <= 'z') {
+                    c -= ('a' - 'A');
+                } else {
+                    c = keymap_s[kc];
+                }
+            }
+            putchar(c);
+            break;
     }
 }
 
