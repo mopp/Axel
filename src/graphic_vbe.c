@@ -48,9 +48,21 @@ static inline void set_vram5650(int32_t const, int32_t const, RGB8 const* const)
 
 
 Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
-    /* Vbe_info_block const* const info = (Vbe_info_block*)(uintptr_t)mb_info->vbe_control_info; */
     Vbe_mode_info_block const* const m_info = (Vbe_mode_info_block*)(uintptr_t)mb_info->vbe_mode_info;
     if (m_info->phys_base_ptr == 0) {
+        /* failsafe */
+        max_x_resolution = 320;
+        max_y_resolution = 200;
+        max_xy_resolution = max_x_resolution * max_y_resolution;
+        byte_per_pixel = 1;
+        vram_size = max_xy_resolution * byte_per_pixel;
+        vram = (intptr_t)0xc00A0000;
+        bit_info.serialised_size = 0x08080800;
+        bit_info.r_pos = 16;
+        bit_info.g_pos = 8;
+        bit_info.b_pos = 0;
+        set_vram = set_vram8880;
+        set_point2d(&pos, 0, 0);
         return AXEL_FAILED;
     }
 
@@ -235,149 +247,6 @@ int putchar_vbe(int c) {
     add_point2d(&pos, fwidth, 0);
 
     return c;
-}
-
-
-#define font_color (RGB8){ .r = 240, .g = 96, .b = 173, .rsvd = 0 }
-void test_draw(RGB8 const* const c) {
-    /* TODO: move other place. */
-    static uint32_t const font_mo[] = {
-        0x0200, /* ......@.........*/
-        0x0200, /* ......@.........*/
-        0x0200, /* ......@.........*/
-        0x1fc0, /* ...@@@@@@@@.....*/
-        0x0200, /* ......@.........*/
-        0x0200, /* ......@.........*/
-        0x0460, /* .....@...@@.....*/
-        0x3f80, /* ..@@@@@@@.......*/
-        0x0400, /* .....@..........*/
-        0x0404, /* .....@.......@..*/
-        0x0404, /* .....@.......@..*/
-        0x0404, /* .....@.......@..*/
-        0x0208, /* ......@.....@...*/
-        0x0110, /* .......@...@....*/
-        0x00e0, /* ........@@@.....*/
-        0x0000, /* ................*/
-    };
-    static uint32_t const font_pu[] = {
-        0x000c,
-        0x0212,
-        0x01d2,
-        0x004c,
-        0x0080,
-        0x0100,
-        0x0100,
-        0x0088,
-        0x1044,
-        0x1042,
-        0x2021,
-        0x2021,
-        0x4020,
-        0x0440,
-        0x0380,
-        0x0000,
-    };
-    static uint32_t const font_ri[] = {
-        0x0020,
-        0x0410,
-        0x0410,
-        0x0410,
-        0x0810,
-        0x0810,
-        0x0810,
-        0x0810,
-        0x0a10,
-        0x0410,
-        0x0020,
-        0x0020,
-        0x0040,
-        0x0080,
-        0x0300,
-        0x0000,
-    };
-    static uint32_t const font_n[] = {
-        0x0080,
-        0x0080,
-        0x0100,
-        0x0100,
-        0x0200,
-        0x0200,
-        0x0200,
-        0x0580,
-        0x0640,
-        0x0c40,
-        0x0840,
-        0x1041,
-        0x1042,
-        0x2024,
-        0x2018,
-        0x0000,
-    };
-    static uint32_t const font_o[] = {
-        0x0000,
-        0x03c0,
-        0x0c30,
-        0x1818,
-        0x1008,
-        0x2004,
-        0x2004,
-        0x2004,
-        0x2004,
-        0x2004,
-        0x1008,
-        0x1818,
-        0x0c30,
-        0x03c0,
-        0x0000,
-        0x0000,
-    };
-    static uint32_t const font_s[] = {
-        0x0000,
-        0x03d0,
-        0x0430,
-        0x0810,
-        0x0800,
-        0x0800,
-        0x0400,
-        0x03c0,
-        0x0030,
-        0x0008,
-        0x1008,
-        0x1808,
-        0x1410,
-        0x03e0,
-        0x0000,
-        0x0000,
-    };
-
-    static const Drawable_multi_bitmap tes = {
-        .height = 16,
-        .width = 16,
-        .size = 6,
-        .color = font_color,
-        .data = {
-            font_mo,
-            font_pu,
-            font_ri,
-            font_n,
-            font_o,
-            font_s,
-        }
-    };
-
-    /* もぷりんOS */
-    int32_t x = (max_x_resolution / 2) - (16 * 3);
-    draw_multi_bitmap(&tes, &make_point2d(x, max_y_resolution / 2 + 8));
-
-    int32_t y = 100;
-    puts_ascii_font(" __  __ ",                      &make_point2d(x, y += 13));
-    puts_ascii_font("|  \\/  |",                     &make_point2d(x, y += 13));
-    puts_ascii_font("| \\  / | ___  _ __  _ __",     &make_point2d(x, y += 13));
-    puts_ascii_font("| |\\/| |/ _ \\| '_ \\| '_ \\", &make_point2d(x, y += 13));
-    puts_ascii_font("| |  | | (_) | |_) | |_) |",    &make_point2d(x, y += 13));
-    puts_ascii_font("|_|  |_|\\___/| .__/| .__/",    &make_point2d(x, y += 13));
-    puts_ascii_font("             | |   | |",        &make_point2d(x, y += 13));
-    puts_ascii_font("             |_|   |_|",        &make_point2d(x, y += 13));
 }
 
 

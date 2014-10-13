@@ -122,7 +122,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     if (AXEL_SUCCESS != init_window()) {
         /* TODO: panic */
-        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0xff);
+        uint32_t* v = (uint32_t*)0xc00A0000;
+        for (; v < (uint32_t*)0xc00B0000; v++) {
+            *v = 0xff0000;
+        }
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0xcc);
     }
 
     Point2d p0, p1;
@@ -187,24 +191,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
             axel_s.mouse->is_pos_update = false;
         }
     }
-#if 0
-    bool flag = true;
-    while (1) {
-        if (flag == true) {
-            io_cli();
-            BOCHS_MAGIC_BREAK();
-            set_cpu_pdt(vir_to_phys_addr((uintptr_t)axel_s.kernel_pdt));
-            void* p = tlsf_malloc_align(axel_s.tman, 0x1000, 0);
-            DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, p);
-            BOCHS_MAGIC_BREAK();
-            io_sti();
-            if (p == NULL) {
-                flag = false;
-            }
-        }
-        io_hlt();
-    }
-#endif
 }
 
 
