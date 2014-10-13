@@ -12,6 +12,8 @@
 #include <interrupt.h>
 #include <utils.h>
 #include <kernel.h>
+#include <macros.h>
+#include <paging.h>
 
 
 union keyboard_controle_status {
@@ -56,6 +58,9 @@ enum keyboard_constants {
     KEYBOARD_DATA_COMMAND_ECHO         = 0xEE, /* return writting data(0xEE) to 0x60 */
     KEYBOARD_DATA_COMMAND_SCANCODE     = 0xF0, /* get or set scan code */
     KEYBOARD_DATA_COMMAND_KEYBOARD_ID  = 0xF2, /* get keyboard id, after writting this command, it takes at least 10ms. */
+    SCANCODE_1 = 0x43,
+    SCANCODE_2 = 0x41,
+    SCANCODE_3 = 0x3f,
 
     KEYBOARD_LED_NUM                   = 0x01,
     KEYBOARD_LED_SCROLL                = 0x02,
@@ -92,7 +97,7 @@ enum keyboard_constants {
     MOUSE_TEST_SUCCESS                 = 0x00,
 
     PS2_ACKNOWLEDGE                    = 0xFA,
-    PS2_RESEND                         = 0xFA,
+    PS2_RESEND                         = 0xFE,
 };
 
 
@@ -117,10 +122,10 @@ static Axel_state_code wait_output_buffer_empty(void);
 
 
 Axel_state_code init_keyboard(void) {
-    keyboard.enable_calps_lock = false;
-    keyboard.enable_num_lock = false;
+    keyboard.enable_calps_lock  = false;
+    keyboard.enable_num_lock    = false;
     keyboard.enable_scroll_lock = false;
-    keyboard.enable_keybord = false;
+    keyboard.enable_keybord     = false;
     aqueue_init(&keyboard.aqueue, sizeof(uint8_t), KEYBOARD_BUFFER_SIZE, NULL);
     axel_s.keyboard = &keyboard;
 
@@ -146,11 +151,35 @@ Axel_state_code init_keyboard(void) {
         return AXEL_FAILED;
     }
     wait_input_buffer_empty();
-    write_data_command(KEYBOARD_COMMAND_BYTE_KIE | KEYBOARD_COMMAND_BYTE_MIE | KEYBOARD_COMMAND_BYTE_SYSF | KEYBOARD_COMMAND_BYTE_XLATE);
+    /* XXX: KEYBOARD_COMMAND_BYTE_SYSF なしのほうがよい? */
+    write_data_command(KEYBOARD_COMMAND_BYTE_KIE | KEYBOARD_COMMAND_BYTE_MIE);
+    wait_acknowledge();
 
     if (update_led() == AXEL_FAILED) {
         return AXEL_FAILED;
     }
+
+    wait_input_buffer_empty();
+    wait_output_buffer_empty();
+
+    /* FIXME */
+    wait_input_buffer_empty();
+    write_data_command(KEYBOARD_DATA_COMMAND_SCANCODE);
+    wait_acknowledge();
+    wait_input_buffer_empty();
+    write_data_command(2);
+    wait_acknowledge();
+
+#if 0
+    wait_input_buffer_empty();
+    write_data_command(KEYBOARD_DATA_COMMAND_SCANCODE);
+    wait_acknowledge();
+    wait_input_buffer_empty();
+    write_data_command(0);
+    wait_acknowledge();
+    uint8_t a = read_data_reg();
+    printf("%x\n", a);
+#endif
 
     enable_interrupt(PIC_IMR_MASK_IRQ01);
 
@@ -160,10 +189,10 @@ Axel_state_code init_keyboard(void) {
 
 
 void interrupt_keybord(uint32_t* esp) {
-    send_done_interrupt_master();
-
     uint8_t keycode = read_data_reg();
     aqueue_insert(&keyboard.aqueue, &keycode);
+
+    send_done_interrupt_master();
 }
 
 
@@ -177,6 +206,7 @@ Axel_state_code init_mouse(void) {
     aqueue_init(&mouse.aqueue, sizeof(uint8_t), MOUSE_BUFFER_SIZE, NULL);
     axel_s.mouse = &mouse;
 
+#if 0
     /* do self test */
     wait_input_buffer_empty();
     if (write_control_command(KEYBOARD_CTRL_COMMAND_MOUSE_TEST) == AXEL_FAILED) {
@@ -186,6 +216,7 @@ Axel_state_code init_mouse(void) {
     if (read_data_reg() != MOUSE_TEST_SUCCESS) {
         return AXEL_FAILED;
     }
+#endif
 
     /*
      * Prepare writting control command byte.
@@ -283,7 +314,7 @@ static inline Axel_state_code write_control_command(uint8_t const cmd) {
 
 
 static inline Axel_state_code write_data_command(uint8_t const cmd) {
-    return write_command(KEYBOARD_OUTPUT_PORT, cmd);
+    return write_command(KEYBOARD_INPUT_PORT, cmd);
 }
 
 

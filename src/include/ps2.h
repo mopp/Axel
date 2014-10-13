@@ -22,6 +22,9 @@ struct keyboard {
     bool enable_calps_lock;
     bool enable_num_lock;
     bool enable_scroll_lock;
+    bool shift_on;
+    bool ctrl_on;
+    bool alt_on;
     Aqueue aqueue;
 };
 typedef struct keyboard Keyboard;
