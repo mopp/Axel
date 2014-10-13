@@ -36,10 +36,6 @@ void init_paging(void) {
 
     /* Set kernel area paging and video area paging. */
     map_page_area(kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, get_kernel_vir_start_addr(), get_kernel_vir_end_addr(), get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    /* FIXME: make fixed map. */
-    /* uintptr_t vram_addr = 0xe0000000; */
-    uintptr_t vram_addr = 0xfd000000;
-    map_page_same_area(kernel_pdt, PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, vram_addr, vram_addr + (600 * 800 * 4));
 
     /* Switch paging directory table. */
     turn_off_pge();
@@ -219,8 +215,6 @@ inline bool is_kernel_pdt(Page_directory_table const pdt) {
 /* synchronize user and kernel pdt */
 Axel_state_code synchronize_pdt(uintptr_t vaddr) {
     Process* p = get_current_pdt_process();
-    DIRECTLY_WRITE(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, p);
-    BOCHS_MAGIC_BREAK();
     if (p->pdt == NULL) {
         return AXEL_PAGE_SYNC_ERROR;
     }

@@ -16,6 +16,7 @@
 #include <kernel.h>
 #include <vbe.h>
 #include <ps2.h>
+#include <paging.h>
 
 
 /* This represents bit size and position infomation from VBE. */
@@ -53,22 +54,29 @@ Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
         return AXEL_FAILED;
     }
 
-    max_x_resolution = m_info->x_resolution;
-    max_y_resolution = m_info->y_resolution;
+    max_x_resolution  = m_info->x_resolution;
+    max_y_resolution  = m_info->y_resolution;
     max_xy_resolution = max_x_resolution * max_y_resolution;
-    byte_per_pixel = (m_info->bits_per_pixel / 8);
-    vram_size = max_xy_resolution * byte_per_pixel;
-    vram = (intptr_t)m_info->phys_base_ptr;
+    byte_per_pixel    = (m_info->bits_per_pixel / 8);
+    vram_size         = max_xy_resolution * byte_per_pixel;
+    vram              = (intptr_t)m_info->phys_base_ptr;
+
+    /*
+     * set vram virtual memory area.
+     * bochs 0xe0000000
+     * qemu 0xfd000000
+     */
+    map_page_same_area(get_kernel_pdt(), PDE_FLAGS_KERNEL, PTE_FLAGS_KERNEL, (uintptr_t)vram, (uintptr_t)vram + (uintptr_t)vram_size);
 
     /* store bit infomation. */
-    bit_info.r_size = m_info->red_mask_size;
-    bit_info.g_size = m_info->green_mask_size;
-    bit_info.b_size = m_info->blue_mask_size;
+    bit_info.r_size    = m_info->red_mask_size;
+    bit_info.g_size    = m_info->green_mask_size;
+    bit_info.b_size    = m_info->blue_mask_size;
     bit_info.rsvd_size = m_info->red_mask_size;
-    bit_info.r_pos = m_info->red_field_position;
-    bit_info.g_pos = m_info->green_field_position;
-    bit_info.b_pos = m_info->blue_field_position;
-    bit_info.rsvd_pos = m_info->rsvd_field_position;
+    bit_info.r_pos     = m_info->red_field_position;
+    bit_info.g_pos     = m_info->green_field_position;
+    bit_info.b_pos     = m_info->blue_field_position;
+    bit_info.rsvd_pos  = m_info->rsvd_field_position;
 
     /* In order to determine function, check display color mode. */
     switch (bit_info.serialised_size) {
