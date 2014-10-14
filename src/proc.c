@@ -80,21 +80,19 @@ void switch_context(Interrupt_frame* current_iframe) {
     }
 
     __asm__ volatile(
-        "pushl %%ebp                        \n\t"
-        "pushfl                             \n\t"   // Store eflags
-        "movl  $next_turn, %[current_ip]    \n\t"   // Store ip
-        "movl  %%esp,      %[current_sp]    \n\t"   // Store sp
-        "movl  %[current_proc], %%ecx       \n\t"   // Set second argument
-        "movl  %[next_proc],    %%edx       \n\t"   // Set first argument
-        "movl  %[next_sp], %%esp            \n\t"   // Restore sp
-        "pushl %[next_ip]                   \n\t"   // Restore ip (set return address)
-        "jmp change_context                 \n\t"   // Change context
+        "pushfl                             \n"   // Store eflags
+        "movl  $next_turn, %[current_ip]    \n"   // Store ip
+        "movl  %%esp,      %[current_sp]    \n"   // Store sp
+        "movl  %[current_proc], %%ecx       \n"   // Set second argument
+        "movl  %[next_proc],    %%edx       \n"   // Set first argument
+        "movl  %[next_sp], %%esp            \n"   // Restore sp
+        "pushl %[next_ip]                   \n"   // Restore ip (set return address)
+        "jmp change_context                 \n"   // Change context
 
-        ".globl next_turn                   \n\t"
-        "next_turn:                         \n\t"
+        ".globl next_turn                   \n"
+        "next_turn:                         \n"
 
-        "popfl                              \n\t"   // Restore eflags
-        "popl  %%ebp                        \n\t"
+        "popfl                              \n"   // Restore eflags
 
         :   [current_ip]  "=m" (current_t->ip),
             [current_sp]  "=m" (current_t->sp)
