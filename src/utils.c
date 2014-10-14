@@ -9,8 +9,8 @@
 
 #include <utils.h>
 #include <stdarg.h>
-#include <graphic.h>
 #include <stdbool.h>
+#include <window.h>
 
 
 void* memchr(const void* s, int c, size_t n) {
@@ -78,7 +78,7 @@ void* memset(void* s, register int c, size_t n) {
 int strcmp(const char* s1, const char* s2) {
     int result = 0;
 
-    while (*s1 != '\0' && *s2 == '\0' && result == 0) {
+    while (*s1 != '\0' && *s2 != '\0' && result == 0) {
         result = *s1++ - *s2++;
     }
 
@@ -151,6 +151,11 @@ int isdigit(int c) {
     return ('0' <= c && c <= '9') ? 1 : 0;
 }
 
+
+int putchar(int c) {
+    w_putchar(c);
+    return 1;
+}
 
 int puts(const char* s) {
     int n = 0;

@@ -35,7 +35,7 @@
 
 extern Axel_state_code init_graphic(Multiboot_info const * const);
 extern void clean_screen(RGB8 const* const);
-extern int putchar(int);
+/* extern int putchar(int); */
 
 
 

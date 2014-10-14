@@ -13,6 +13,7 @@
 #include <state_code.h>
 #include <utils.h>
 #include <font.h>
+#include <macros.h>
 
 
 struct window_manager {
@@ -60,7 +61,7 @@ Axel_state_code init_window(void) {
     mouse_win->pos           = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2);
     mouse_win->size          = make_point2d(mouse_cursor->width, mouse_cursor->height);
     mouse_win->lock          = false;
-    mouse_win->dirty         = true;
+    mouse_win->writable      = false;
     mouse_win->enable        = true;
     mouse_win->has_inv_color = true;
     mouse_win->reserved      = 0;
@@ -87,7 +88,7 @@ Window* get_mouse_window(void) {
 }
 
 
-Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
+Window* alloc_window(Point2d const* pos, Point2d const* size) {
     Window* w = kmalloc_zeroed(sizeof(Window));
     if (w == NULL) {
         return NULL;
@@ -118,7 +119,7 @@ Window* alloc_window(Point2d const* pos, Point2d const* size, uint8_t level) {
 
 
 Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t len) {
-    Window* w = alloc_window(pos, &make_point2d(dw->width, dw->width), 0);
+    Window* w = alloc_window(pos, &make_point2d(dw->width, dw->width));
     if (w == NULL) {
         return NULL;
     }
@@ -129,8 +130,8 @@ Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t
 }
 
 
-Window* alloc_filled_window(Point2d const* pos, Point2d const* size, uint8_t level, RGB8 const* c) {
-    Window* w = alloc_window(pos, size, level);
+Window* alloc_filled_window(Point2d const* pos, Point2d const* size, RGB8 const* c) {
+    Window* w = alloc_window(pos, size);
     if (w == NULL) {
         return NULL;
     }
@@ -220,6 +221,103 @@ void move_window(Window* const w, Point2d const* const p) {
 
 // void updown_window(Window const* const w, bool is_down) {
 // }
+
+
+Window* get_top_writable_window(void) {
+    elist_foreach(w, &win_man->windows, Window, list) {
+        if (w->writable == 1) {
+            return w;
+        }
+    }
+
+    return NULL;
+}
+
+
+static inline void draw_font(Window* w, Point2d* p, int c) {
+    if (w == NULL || p == NULL) {
+        return;
+    }
+    int32_t const height = mplus_fonts.height;
+    int32_t const width= mplus_fonts.width;
+    uint32_t const* data = mplus_fonts.data[c];
+
+    for (int32_t y = 0; y < height; y++) {
+        for (int32_t x = 0; x < width; x++) {
+            /* if bit is 1, draw color */
+            if (1 == (0x01 & (data[y] >> (width - x - 1)))) {
+                w->buf[(p->x + x) + w->size.x * (p->y + y)] = w->fg;
+            }
+        }
+    }
+}
+
+
+void w_putchar(int c) {
+    Window* w = get_top_writable_window();
+    if (w == NULL) {
+        return;
+    }
+
+    /* FIXME: adjuste */
+    Point2d* begin        = &w->wr_begin;
+    Point2d* size         = &w->wr_size;
+    Point2d* pos          = &w->wr_pos;
+    int32_t const fwidth  = mplus_fonts.width;
+    int32_t const fheight = mplus_fonts.height;
+
+    size->x -= (size->x % fwidth);
+    size->y -= (size->y % fheight);
+
+    if ((begin->x + size->x) <= (pos->x + fwidth)) {
+        set_point2d(pos, begin->x, pos->y + fheight);
+    }
+
+    if ((begin->y + size->y) <= (pos->y + fheight)) {
+        *pos = *begin;
+    }
+
+    if (c == '\n' || c == '\r') {
+        set_point2d(pos, begin->x, pos->y + fheight);
+        return;
+    }
+
+    Point2d flush_size = {.x = fwidth, .y = fheight};
+
+    if (c == '\b') {
+        if (pos->x == begin->x && pos->y == begin->y) {
+            return;
+        }
+
+        if (pos->x <= begin->x) {
+            set_point2d(pos, begin->x + size->x - fwidth * 2, pos->y - fheight);
+        } else {
+            subs_point2d(pos, fwidth, 0);
+        }
+
+        window_fill_area(w, pos, &flush_size, &w->bg);
+    } else {
+        Point2d flush_begin = w->pos;
+        add_point2d(&flush_begin, pos->x, pos->y);
+
+        draw_font(w, pos, c);
+        add_point2d(pos, fwidth, 0);
+
+        flush_area(&flush_begin, &flush_size);
+    }
+}
+
+
+Window* window_set_writable(Window* w, RGB8 const* fg, RGB8 const* bg, Point2d const* begin, Point2d const* size) {
+    w->writable = 1;
+    w->fg       = *fg;
+    w->bg       = *bg;
+    w->wr_begin = *begin;
+    w->wr_size  = *size;
+    w->wr_pos   = *begin;
+
+    return w;
+}
 
 
 Window* window_fill_area(Window* const w, Point2d const* const pos, Point2d const* const size, RGB8 const* const c) {
@@ -316,6 +414,7 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
                 b[x] = *c;
             }
         }
+        return;
     } else if (dy == 0) {
         /* horizontal line. */
         abegin.y -= d;
@@ -337,6 +436,7 @@ void window_draw_line(Window* const w, Point2d const* const begin, Point2d const
                 b[x] = *c;
             }
         }
+        return;
     }
 
     for (int i = 0; i < bold; i++) {

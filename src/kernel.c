@@ -119,7 +119,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     if (AXEL_SUCCESS == init_window()) {
         draw_desktop();
     }
-    /* init_process(); */
+    init_process();
     init_pic();
     init_pit();
 
@@ -130,6 +130,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     if (init_mouse() == AXEL_FAILED) {
         puts("Mouse initialize failed\n");
     }
+
     io_sti();
 
     Window* mouse_win = get_mouse_window();
@@ -155,6 +156,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 }
 
 
+static Window* console;
 static inline void draw_desktop(void) {
     Point2d p0, p1;
     RGB8 c;
@@ -172,29 +174,63 @@ static inline void draw_desktop(void) {
     window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0xFFFFFF));    // left edge.
     window_fill_area(status_bar, set_point2d(&p0, 61, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x848484));    // right edge.
     window_fill_area(status_bar, set_point2d(&p0, 62, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge.
-    Window* const console = alloc_filled_window(set_point2d(&p0, 400, 100), set_point2d(&p1, 100, 100), set_rgb_by_color(&c,0xec6d71));
-    window_draw_line(console, set_point2d(&p0, 1, 1), set_point2d(&p1, 10, 1), set_rgb_by_color(&c, 0x19448e), 5);
-    window_draw_line(console, set_point2d(&p0, 10, 10), set_point2d(&p1, 10, 100), set_rgb_by_color(&c, 0x19448e), 10);
+
+    int32_t c_height = 400;
+    int32_t c_width = 500;
+    RGB8 fg = convert_color2RGB8(0x2EFE2E);
+    RGB8 bg = convert_color2RGB8(0x151515);
+    console = alloc_filled_window(&make_point2d(50, 100), &make_point2d(c_width, c_height), &bg);
+    if (console != NULL) {
+        window_draw_line(console, set_point2d(&p0, 0, 0), set_point2d(&p1, 0, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
+        window_draw_line(console, set_point2d(&p0, c_width - 1, 0), set_point2d(&p1, c_width - 1, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
+        window_draw_line(console, set_point2d(&p0, 0, c_height - 1), set_point2d(&p1, c_width, c_height - 1), set_rgb_by_color(&c, 0xFFFFFF), 1);
+        window_fill_area(console, set_point2d(&p0, 0, 0), set_point2d(&p1,  c_width, 10), set_rgb_by_color(&c, 0xC6C6C6));
+        window_set_writable(console, &fg, &bg, set_point2d(&p0, 5, 15), set_point2d(&p1, c_width - 5 - 5, c_height - 15 - 5));
+    }
+
     flush_windows();
 
-    puts("-------------------- Start Axel ! --------------------\n\n");
-
-    printf("kernel size            : %zu KB\n", KB(get_kernel_size()));
-    printf("kernel static size     : %zu KB\n", KB(get_kernel_static_size()));
-    printf("kernel virtual  addr   : 0x%08zx - 0x%08zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-    printf("kernel physical addr   : 0x%08zx - 0x%08zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    printf("Total memory           : %zu KB\n", KB(get_total_memory_size()));
-    printf("BuddySystem Total      : %zu KB\n", KB(buddy_get_total_memory_size(axel_s.bman)));
-    printf("BuddySystem Frame nr   : %zu\n", axel_s.bman->total_frame_nr);
-    printf("BuddySystem Free       : %zu KB\n", KB(buddy_get_free_memory_size(axel_s.bman)));
-    for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
-        printf("  Order: %02zu(%05u) - Buddy %02zu nr\n", i, PO2(i), axel_s.bman->free_frame_nr[i]);
-    }
-    printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
-    printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
+    puts("-------------------- Start Axel ! --------------------\n");
+    puts("> ");
 }
 
 
+static inline void do_cmd(char const * cmd)  {
+    if (strlen(cmd) != 0) {
+        if (strcmp(cmd, "mem") == 0) {
+            printf("Total memory : %zu KB\n", KB(get_total_memory_size()));
+        } else if (strcmp(cmd, "va") == 0) {
+            printf("kernel virtual addr : 0x%08zx - 0x%08zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
+        } else if (strcmp(cmd, "pa") == 0) {
+            printf("kernel physical addr : 0x%08zx - 0x%08zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+        } else if (strcmp(cmd, "size") == 0) {
+            printf("kernel size        : %zu KB\n", KB(get_kernel_size()));
+            printf("kernel static size : %zu KB\n", KB(get_kernel_static_size()));
+        } else if (strcmp(cmd, "buddy") == 0) {
+            printf("BuddySystem Total    : %zu KB\n", KB(buddy_get_total_memory_size(axel_s.bman)));
+            printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
+            printf("BuddySystem Free     : %zu KB\n", KB(buddy_get_free_memory_size(axel_s.bman)));
+            for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
+                printf("  Order: %02zu(%05u) - Buddy %02zu nr\n", i, PO2(i), axel_s.bman->free_frame_nr[i]);
+            }
+        } else if (strcmp(cmd, "tlsf") == 0) {
+            printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
+            printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
+        } else if (strcmp(cmd, "clear") == 0) {
+            window_fill_area(console, &console->wr_begin, &console->wr_size, &console->bg);
+            console->wr_pos = console->wr_begin;
+        } else {
+            puts("invalid command\n");
+        }
+    }
+
+    puts("> ");
+}
+
+
+#define MAX_CMD_LEN 20
+static char cmd[MAX_CMD_LEN + 1];
+static size_t cmd_idx = 0 ;
 static inline void decode_key(void) {
     static uint8_t on_break = false;
     static char const keymap[] = {
@@ -309,14 +345,21 @@ static inline void decode_key(void) {
     switch (kc) {
         case enter:
             putchar('\n');
+            cmd[cmd_idx++] = '\0';
+            do_cmd(cmd);
+            cmd_idx = 0;
             break;
         case esc:
             break;
         case backspace:
             putchar('\b');
+            if (0 < cmd_idx) {
+                cmd_idx--;
+            }
             break;
         case space:
             putchar(' ');
+            cmd[cmd_idx++] = ' ';
             break;
         case tab:
             putchar('    ');
@@ -329,6 +372,10 @@ static inline void decode_key(void) {
                 } else {
                     c = keymap_s[kc];
                 }
+            }
+            cmd[cmd_idx++] = c;
+            if (cmd_idx == MAX_CMD_LEN) {
+                cmd_idx = 0;
             }
             putchar(c);
             break;

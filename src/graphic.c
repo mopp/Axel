@@ -26,6 +26,7 @@ void clean_screen(RGB8 const* const c) {
 }
 
 
+#if 0
 int putchar(int c) {
 #ifdef TEXT_MODE
     return putchar_txt(c);
@@ -33,3 +34,4 @@ int putchar(int c) {
     return putchar_vbe(c);
 #endif
 }
+#endif
