@@ -157,6 +157,7 @@ int putchar(int c) {
     return 1;
 }
 
+
 int puts(const char* s) {
     int n = 0;
 

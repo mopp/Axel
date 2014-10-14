@@ -84,6 +84,11 @@ enum PIT_constants {
 
 
 Axel_struct axel_s;
+static Window* console;
+static char const * prompt = "> ";
+#define MAX_CMD_LEN 20
+static char cmd[MAX_CMD_LEN + 1];
+static size_t cmd_idx = 0 ;
 
 
 static void draw_desktop(void);
@@ -156,7 +161,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 }
 
 
-static Window* console;
 static inline void draw_desktop(void) {
     Point2d p0, p1;
     RGB8 c;
@@ -190,47 +194,52 @@ static inline void draw_desktop(void) {
 
     flush_windows();
 
-    puts("-------------------- Start Axel ! --------------------\n");
-    puts("> ");
+    puts("                    ___                   __\n");
+    puts("                   /   |   _  __  ___    / /\n");
+    puts("                  / /| |  | |/_/ / _ \\  / / \n");
+    puts("                 / ___ | _>  <  /  __/ / /  \n");
+    puts("                /_/  |_|/_/|_|  \\___/ /_/   \n\n");
+
+    puts(prompt);
 }
 
 
 static inline void do_cmd(char const * cmd)  {
-    if (strlen(cmd) != 0) {
-        if (strcmp(cmd, "mem") == 0) {
-            printf("Total memory : %zu KB\n", KB(get_total_memory_size()));
-        } else if (strcmp(cmd, "va") == 0) {
-            printf("kernel virtual addr : 0x%08zx - 0x%08zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-        } else if (strcmp(cmd, "pa") == 0) {
-            printf("kernel physical addr : 0x%08zx - 0x%08zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-        } else if (strcmp(cmd, "size") == 0) {
-            printf("kernel size        : %zu KB\n", KB(get_kernel_size()));
-            printf("kernel static size : %zu KB\n", KB(get_kernel_static_size()));
-        } else if (strcmp(cmd, "buddy") == 0) {
-            printf("BuddySystem Total    : %zu KB\n", KB(buddy_get_total_memory_size(axel_s.bman)));
-            printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
-            printf("BuddySystem Free     : %zu KB\n", KB(buddy_get_free_memory_size(axel_s.bman)));
-            for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
-                printf("  Order: %02zu(%05u) - Buddy %02zu nr\n", i, PO2(i), axel_s.bman->free_frame_nr[i]);
-            }
-        } else if (strcmp(cmd, "tlsf") == 0) {
-            printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
-            printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
-        } else if (strcmp(cmd, "clear") == 0) {
-            window_fill_area(console, &console->wr_begin, &console->wr_size, &console->bg);
-            console->wr_pos = console->wr_begin;
-        } else {
-            puts("invalid command\n");
-        }
+    if (strlen(cmd) == 0) {
+        puts(prompt);
+        return;
     }
 
-    puts("> ");
+    if (strcmp(cmd, "mem") == 0) {
+        printf("Total memory : %zu KB\n", KB(get_total_memory_size()));
+    } else if (strcmp(cmd, "va") == 0) {
+        printf("kernel virtual addr : 0x%08zx - 0x%08zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
+    } else if (strcmp(cmd, "pa") == 0) {
+        printf("kernel physical addr : 0x%08zx - 0x%08zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
+    } else if (strcmp(cmd, "size") == 0) {
+        printf("kernel size        : %zu KB\n", KB(get_kernel_size()));
+        printf("kernel static size : %zu KB\n", KB(get_kernel_static_size()));
+    } else if (strcmp(cmd, "buddy") == 0) {
+        printf("BuddySystem Total    : %zu KB\n", KB(buddy_get_total_memory_size(axel_s.bman)));
+        printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
+        printf("BuddySystem Free     : %zu KB\n", KB(buddy_get_free_memory_size(axel_s.bman)));
+        for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
+            printf("  Order: %02zu(%05u) - Buddy %02zu nr\n", i, PO2(i), axel_s.bman->free_frame_nr[i]);
+        }
+    } else if (strcmp(cmd, "tlsf") == 0) {
+        printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
+        printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
+    } else if (strcmp(cmd, "clear") == 0) {
+        window_fill_area(console, &console->wr_begin, &console->wr_size, &console->bg);
+        console->wr_pos = console->wr_begin;
+    } else {
+        puts("invalid command\n");
+    }
+
+    puts(prompt);
 }
 
 
-#define MAX_CMD_LEN 20
-static char cmd[MAX_CMD_LEN + 1];
-static size_t cmd_idx = 0 ;
 static inline void decode_key(void) {
     static uint8_t on_break = false;
     static char const keymap[] = {
