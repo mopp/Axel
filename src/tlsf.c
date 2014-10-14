@@ -288,12 +288,8 @@ static inline size_t round_up_block(size_t s) {
 
 
 static inline Block* remove_good_block(Tlsf_manager* tman, size_t size) {
-    size += BLOCK_OFFSET;
-
-    size = round_up_block(size);
-
     size_t fl, sl;
-    set_idxs(size, &fl, &sl);
+    set_idxs(round_up_block(size), &fl, &sl);
 
     /* Get sl flags equal or greater than current index. */
     size_t sl_map = tman->sl_bitmaps[fl] & (~0u << sl);
@@ -485,23 +481,13 @@ static inline Tlsf_manager* supply_memory(Tlsf_manager* tman, size_t size) {
 static inline void check_alloc_watermark(Tlsf_manager* tman, size_t s) {
     size_t const w = block_align_up(WATERMARK_BLOCK_SIZE);
     size_t fl, sl;
-    set_idxs(w, &fl, &sl);
 
-    if (tman->free_memory_size < s) {
-        size_t t = round_up_block(s) + BLOCK_OFFSET * 3;
-        void* m = supply_memory(tman, t);
-        if (m == NULL) {
-            /* printf("alloc failed\n"); */
-        }
-    } else {
-        size_t fl_map = tman->fl_bitmap & (~0u << fl);
-        if (fl_map == 0) {
-            /* WATERMARK_BLOCK_SIZE以上のブロックが無いので確保. */
-            void* m = supply_memory(tman, w + BLOCK_OFFSET * 3);
-            if (m == NULL) {
-                /* printf("alloc failed\n"); */
-            }
-        }
+    s = round_up_block(s + BLOCK_OFFSET * 3);
+    s = (s < w) ? w : s;
+    set_idxs(s, &fl, &sl);
+
+    if ((tman->fl_bitmap & (~0u << (fl + 1u))) == 0) {
+        supply_memory(tman, s);
     }
 }
 
