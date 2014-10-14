@@ -75,12 +75,12 @@ void* memset(void* s, register int c, size_t n) {
 }
 
 
-int strcmp(const char* s1, const char* s2) {
+int strcmp(register const char* s1, register const char* s2) {
     int result = 0;
 
-    while (*s1 != '\0' && *s2 != '\0' && result == 0) {
+    do {
         result = *s1++ - *s2++;
-    }
+    } while (*s1 != '\0' && *s2 != '\0' && result == 0);
 
     return result;
 }
