@@ -317,7 +317,7 @@ int printf(const char* format, ...) {
             case 'x':
             case 'X':
             case 'u':
-                r = ((*c == 'x' || *c == 'X') ? 16 : 10);
+                r = ((*c == 'x' || *c == 'X' || *c == 'p') ? 16 : 10);
                 str = utoa(va_arg(args, uint32_t), buf, r);
                 n += print(str, width, is_left_align, is_zero_fill);
                 break;
