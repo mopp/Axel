@@ -27,15 +27,15 @@ void* memchr(const void* s, int c, size_t n) {
 
 
 int memcmp(const void* buf1, const void* buf2, size_t n) {
-    const unsigned char* ucb1, *ucb2, *t;
+    const unsigned char* ucb1, *ucb2;
     int result = 0;
     ucb1 = buf1;
     ucb2 = buf2;
-    t = ucb2 + n;
+    unsigned char const * const limit = (char*)buf1 + n;
 
-    while (t != buf2 && result == 0) {
+    do {
         result = *ucb1++ - *ucb2++;
-    }
+    } while ((ucb1 < limit) && result == 0);
 
     return result;
 }
