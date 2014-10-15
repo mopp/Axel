@@ -159,7 +159,7 @@ inline void map_page_same_area(Page_directory_table pdt,  uint32_t const pde_fla
 }
 
 
-inline void unmap_page(Page_directory_table pdt, uintptr_t vaddr) {
+inline void unmap_page(uintptr_t vaddr) {
     if (KERNEL_VIRTUAL_BASE_ADDR <= vaddr) {
         /* Kernel area unmapping. */
         Page_directory_entry* const pde = get_pde(axel_s.kernel_pdt, vaddr);
@@ -181,9 +181,9 @@ inline void unmap_page(Page_directory_table pdt, uintptr_t vaddr) {
 }
 
 
-inline void unmap_page_area(Page_directory_table pdt, uintptr_t const begin_vaddr, uintptr_t const end_vaddr) {
+inline void unmap_page_area(uintptr_t const begin_vaddr, uintptr_t const end_vaddr) {
     for (uintptr_t vaddr = begin_vaddr; vaddr < end_vaddr; vaddr += PAGE_SIZE) {
-        unmap_page(pdt, vaddr);
+        unmap_page(vaddr);
     }
 }
 
@@ -252,8 +252,9 @@ Axel_state_code synchronize_pdt(uintptr_t vaddr) {
 /*
  * Return head address of free virtual memorys
  * It has frame_nr * FRAME_SIZE size.
+ * FIXME: lock ?
  */
-static inline uintptr_t get_free_vmems(size_t frame_nr) {
+uintptr_t get_free_vmems(size_t frame_nr) {
     size_t pde_idx = get_pde_index(get_kernel_vir_end_addr());
     size_t pde_idx_limit = get_pde_index(0xf0000000);
 
@@ -379,7 +380,7 @@ void* vmalloc(Page* p, size_t size) {
 
 
 void vfree(Page* p) {
-    unmap_page_area(axel_s.kernel_pdt, p->addr, p->addr + (FRAME_SIZE * p->frame_nr));
+    unmap_page_area(p->addr, p->addr + (FRAME_SIZE * p->frame_nr));
 
     free_buddy_frames(&p->mapped_frames);
 }

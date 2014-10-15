@@ -167,8 +167,8 @@ extern void init_paging(void);
 extern void map_page(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t, uintptr_t);
 extern void map_page_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const, uintptr_t const, uintptr_t const);
 extern void map_page_same_area(Page_directory_table pdt, uint32_t const, uint32_t const, uintptr_t const, uintptr_t const);
-extern void unmap_page(Page_directory_table pdt, uintptr_t);
-extern void unmap_page_area(Page_directory_table pdt, uintptr_t const, uintptr_t const);
+extern void unmap_page(uintptr_t);
+extern void unmap_page_area(uintptr_t const, uintptr_t const);
 extern void* vcmalloc(Page*, size_t);
 extern void* vmalloc(Page*, size_t);
 extern void vfree(Page*);
@@ -182,6 +182,7 @@ extern uintptr_t phys_to_vir_addr(uintptr_t);
 extern uintptr_t vir_to_phys_addr(uintptr_t);
 extern void set_phys_to_vir_addr(void*);
 extern size_t round_page_size(size_t);
+extern uintptr_t get_free_vmems(size_t);
 
 
 
