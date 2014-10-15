@@ -252,17 +252,19 @@ int printf(const char* format, ...) {
 
         /* Check minimal number of output characters. */
         size_t num_len = 0;
-        while (isdigit(*c) == 1) {
-            ++c;
+        while (isdigit(c[num_len]) == 1) {
             ++num_len;
         }
-        --c;
+
         size_t width = 0;
-        for (size_t i = num_len, base = 1; 0 < i; --i, base *= 10) {
-            width += ((size_t)*c - (size_t)'0') * base;
-            --c;
+        if (0 < num_len) {
+            size_t base = 1;
+            for (char const* i = &c[num_len - 1]; c <= i; --i, base *= 10) {
+                width += ((size_t)*i - (size_t)'0') * base;
+            }
+        } else {
+            width = 1;
         }
-        c += num_len + 1;
 
         /* TODO: Check length modifier. */
         if (*c == 'h') {
