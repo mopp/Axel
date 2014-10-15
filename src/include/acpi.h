@@ -16,6 +16,7 @@
 
 
 Axel_state_code init_acpi(void);
+Axel_state_code shutdown(void);
 
 
 

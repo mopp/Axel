@@ -16,19 +16,21 @@
 
 
 enum {
-    ACPI_VERSION_1 = 0,
-    ACPI_VERSION_2 = 1,
-    ACPI_VERSION_3 = 2,
-    GEN_ADDR_SPACE_SYS_MEM = 0,
-    GEN_ADDR_SPACE_SYS_IO = 1,
-    GEN_ADDR_SPACE_PIC_CONF = 2,
+    ACPI_VERSION_1           = 0,
+    ACPI_VERSION_2           = 1,
+    ACPI_VERSION_3           = 2,
+    ACPI_SCI_EN              = 0x1,
+    ACPI_SLP_EN              = PO2(13),
+    GEN_ADDR_SPACE_SYS_MEM   = 0,
+    GEN_ADDR_SPACE_SYS_IO    = 1,
+    GEN_ADDR_SPACE_PIC_CONF  = 2,
     GEN_ADDR_SPACE_EMBD_CTRL = 3,
-    GEN_ADDR_SPACE_SMBUS = 4,
-    GEN_ADDR_SPACE_FFH = 0x7f,
-    GEN_ACCESS_SIZE_BYTE = 1,
-    GEN_ACCESS_SIZE_WORD = 2,
-    GEN_ACCESS_SIZE_DWORD = 3,
-    GEN_ACCESS_SIZE_QWORD = 4,
+    GEN_ADDR_SPACE_SMBUS     = 4,
+    GEN_ADDR_SPACE_FFH       = 0x7f,
+    GEN_ACCESS_SIZE_BYTE     = 1,
+    GEN_ACCESS_SIZE_WORD     = 2,
+    GEN_ACCESS_SIZE_DWORD    = 3,
+    GEN_ACCESS_SIZE_QWORD    = 4,
 };
 
 
@@ -141,6 +143,11 @@ typedef struct fadt Fadt;
 
 static char const* rsdp_signature = "RSD PTR ";
 static char const* fadt_signature = "FACP";
+static uintptr_t alloc_vaddr_fadt;
+static size_t alloc_vnr_fadt;
+static Fadt* fadt_g;
+static uint16_t acpi_slp_typa;
+static uint16_t acpi_slp_typb;
 
 
 static inline bool validate_rsdp(Rsdp* rsdp) {
@@ -188,10 +195,151 @@ static inline Rsdp* find_rsdp(uintptr_t begin, uintptr_t end) {
 }
 
 
-static uintptr_t alloc_vmem_addr;
-static size_t alloc_vmem_frame_nr;
+static inline void* find_entry(uintptr_t* candidates, size_t nr, char const* sig, size_t signr) {
+    static size_t const fadt_frame_nr = 2;
+    size_t vaddr_idx = 0;
+
+    /* alloc some pages for sdt */
+    alloc_vnr_fadt = fadt_frame_nr * nr;
+    alloc_vaddr_fadt = get_free_vmems(alloc_vnr_fadt);
+
+    Sdt_header* sdt = NULL;
+
+    for (size_t i = 0; i < nr; i++) {
+        uintptr_t const addr = candidates[i];
+        uintptr_t const paddr = (addr >> PTE_FRAME_ADDR_SHIFT_NUM) << PTE_FRAME_ADDR_SHIFT_NUM;
+        uintptr_t const b = vaddr_idx * FRAME_SIZE;
+        uintptr_t const e = ((vaddr_idx + fadt_frame_nr) * FRAME_SIZE);
+        map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, alloc_vaddr_fadt + b, alloc_vaddr_fadt + e, paddr, paddr + (FRAME_SIZE * fadt_frame_nr));
+
+        uintptr_t sdt_addr = (alloc_vaddr_fadt + b) + (addr - paddr);
+        sdt = (Sdt_header*)sdt_addr;
+        if ((memcmp(sdt->signature, sig, signr) == 0) && validate_sdt(sdt) == true) {
+            /* If detect fadt, copy into buffer. */
+            break;
+        }
+
+        vaddr_idx += fadt_frame_nr;
+    }
+
+    return sdt;
+}
+
+
+static inline Axel_state_code decode_dsdt(Sdt_header* dsdt) {
+    uintptr_t len;
+    uint8_t* addr;
+    uint8_t sz;
+
+    len = dsdt->length - sizeof(Sdt_header);
+    addr = (uint8_t*)((uintptr_t)dsdt + sizeof(Sdt_header));
+
+    /* Search \_S5 package in the DSDT */
+    while (len >= 5) {
+        if (memcmp(addr, "_S5_", 4) == 0) {
+            break;
+        }
+        addr++;
+        len--;
+    }
+
+    if (len >= 5) {
+        /* S5 was found */
+        if ((0x12 != *(addr + 4)) || (0x08 != *(addr - 1) && !(0x08 == *(addr - 2) && '\\' == *(addr - 1)))) {
+            /* Invalid AML (0x12 = PackageOp) */
+            /* Invalid AML (0x08 = NameOp) */
+            return AXEL_FAILED;
+        }
+
+        /* Skip _S5_\x12 */
+        addr += 5;
+        len -= 5;
+
+        /* Calculate the size of the packet length */
+        sz = (*addr & 0xc0) >> 6;
+
+        /* Check the length and skip packet length and the number of elements */
+        if (len < sz + 2) {
+            return AXEL_FAILED;
+        }
+
+        addr += sz + 2;
+        len -= sz + 2;
+
+        /* SLP_TYPa */
+        if (0x0a == *addr) {
+            /* byte prefix */
+            if (len < 1) {
+                return AXEL_FAILED;
+            }
+            addr++;
+            len--;
+        }
+        if (len < 1) {
+            return AXEL_FAILED;
+        }
+        acpi_slp_typa = ((*addr) << 10) & 0xffff;
+        addr++;
+        len--;
+
+        /* SLP_TYPb */
+        if (0x0a == *addr) {
+            /* byte prefix */
+            if (len < 1) {
+                return AXEL_FAILED;
+            }
+            addr++;
+            len--;
+        }
+        if (len < 1) {
+            return AXEL_FAILED;
+        }
+        acpi_slp_typb = ((*addr) << 10) & 0xffff;
+        addr++;
+        len--;
+
+        return AXEL_SUCCESS;
+    }
+
+    return AXEL_FAILED;
+}
+
+
+Axel_state_code enable_acpi(void) {
+    if (fadt_g == NULL) {
+        return AXEL_FAILED;
+    }
+
+    if ((io_in16(ECAST_UINT16(fadt_g->pm1a_ctrl_block)) & ACPI_SCI_EN) == 0) {
+
+        /* send */
+        io_out8(ECAST_UINT16(fadt_g->smi_cmd_port), fadt_g->acpi_enable);
+
+        if ((io_in16(ECAST_UINT16(fadt_g->pm1a_ctrl_block)) & ACPI_SCI_EN) == 0) {
+            printf("cannot enable ACPI.\n");
+            return AXEL_FAILED;
+        }
+    }
+
+    return AXEL_SUCCESS;
+}
+
+
+Axel_state_code shutdown(void) {
+    if (enable_acpi() != AXEL_SUCCESS) {
+        return AXEL_FAILED;
+    }
+
+    io_out16(ECAST_UINT16(fadt_g->pm1a_ctrl_block), acpi_slp_typa | ACPI_SLP_EN);
+    io_out16(ECAST_UINT16(fadt_g->pm1b_ctrl_block), acpi_slp_typb | ACPI_SLP_EN);
+
+    return AXEL_SUCCESS;
+}
+
+
 Axel_state_code init_acpi(void) {
-    Rsdp* rsdp;
+    Rsdp* rsdp = NULL;
+
     /*
      * Search the main BIOS area below 1 MB
      * This signature is always on a 16 byte boundary.
@@ -225,54 +373,38 @@ Axel_state_code init_acpi(void) {
         unmap_page(vaddr_rsdt);
         return AXEL_FAILED;
     }
-    size_t table_nr = (rsdt->h.length - sizeof(Sdt_header)) / sizeof(uintptr_t);
 
     /* Copy table address. */
+    size_t table_nr = (rsdt->h.length - sizeof(Sdt_header)) / sizeof(uintptr_t);
     uintptr_t* table_addrs = kmalloc(sizeof(uintptr_t) * table_nr);
     for (size_t i = 0; i < table_nr; i++) {
         table_addrs[i] = (uintptr_t)rsdt->tables[i];
     }
 
-    /* alloc some pages for sdt */
-    size_t fadt_frame_nr = 2;
-    alloc_vmem_frame_nr  = fadt_frame_nr * table_nr;
-    alloc_vmem_addr      = get_free_vmems(alloc_vmem_frame_nr);
-    size_t vaddr_idx     = 0;
-    Fadt* fadt = NULL;
-    for (size_t i = 0; i < table_nr; i++) {
-        uintptr_t const addr  = table_addrs[i];
-        uintptr_t const paddr = (addr >> PTE_FRAME_ADDR_SHIFT_NUM) << PTE_FRAME_ADDR_SHIFT_NUM;
-        uintptr_t const b     = vaddr_idx * FRAME_SIZE;
-        uintptr_t const e     = ((vaddr_idx + fadt_frame_nr) * FRAME_SIZE);
-        map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, alloc_vmem_addr + b, alloc_vmem_addr + e, paddr, paddr + (FRAME_SIZE * fadt_frame_nr));
-
-        uintptr_t sdt_addr = (alloc_vmem_addr + b) + (addr - paddr);
-        Sdt_header* sdt = (Sdt_header*)sdt_addr;
-        if ((memcmp(sdt->signature, fadt_signature, 4) == 0) && validate_sdt(sdt) == true) {
-            /* If detect fadt, copy into buffer. */
-            fadt = (Fadt*)sdt_addr;
-        }
-
-        vaddr_idx += fadt_frame_nr;
+    fadt_g = find_entry(table_addrs, table_nr, fadt_signature, 4);
+    if (fadt_g == NULL) {
+        return AXEL_FAILED;
     }
+
+    uintptr_t v = get_free_vmems(1);
+    paddr = (fadt_g->dsdt_addr >> PTE_FRAME_ADDR_SHIFT_NUM) << PTE_FRAME_ADDR_SHIFT_NUM;
+    map_page(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, v, paddr);
+    Sdt_header* dsdt = (Sdt_header*)(v + (fadt_g->dsdt_addr - paddr));
+
+    if (memcmp(dsdt->signature, "DSDT", 4) != 0) {
+        return AXEL_FAILED;
+    }
+
+    if (decode_dsdt(dsdt) != AXEL_SUCCESS) {
+        Sdt_header* ssdt = find_entry(table_addrs, table_nr, "SSDT", 4);
+        if (memcmp(ssdt->signature, "SSDT", 4) != 0) {
+            return AXEL_FAILED;
+        }
+    }
+
+    unmap_page(v);
     unmap_page(vaddr_rsdt);
     kfree(table_addrs);
-
-#if 0
-    printf("%p\n", fadt);
-    printf("command port: 0x%x\n", fadt->smi_cmd_port);
-    printf("acpi enable : %d\n", fadt->acpi_enable);
-    printf("acpi disable: %d\n", fadt->acpi_disable);
-    uint16_t u = io_in16(fadt->pm1a_ctrl_block & 0xff);
-    printf("%d\n", u);
-    printf("%d\n", u & 1);
-
-    io_out8(fadt->sci_interrupt & 0xffff, fadt->acpi_disable);
-    u = io_in16(fadt->pm1a_ctrl_block & 0xff);
-    printf("%d\n", u);
-
-    printf("0x%x\n", fadt->sci_interrupt);
-#endif
 
     return AXEL_SUCCESS;
 }

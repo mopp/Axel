@@ -234,6 +234,8 @@ static inline void do_cmd(char const * cmd)  {
     } else if (strcmp(cmd, "clear") == 0) {
         window_fill_area(console, &console->wr_begin, &console->wr_size, &console->bg);
         console->wr_pos = console->wr_begin;
+    } else if (strcmp(cmd, "exit") == 0) {
+        shutdown();
     } else {
         puts("invalid command\n");
     }
