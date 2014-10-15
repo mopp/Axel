@@ -262,6 +262,7 @@ int printf(const char* format, ...) {
             for (char const* i = &c[num_len - 1]; c <= i; --i, base *= 10) {
                 width += ((size_t)*i - (size_t)'0') * base;
             }
+            c += num_len;
         } else {
             width = 1;
         }
