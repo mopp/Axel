@@ -156,9 +156,9 @@ get_cpu_pdt:
 
 ; void flush_tlb(uintptr_t addr);
 flush_tlb:
-    cli
+    ; cli
     invlpg [esp + 4]
-    sti
+    ; sti
     ret
 
 
