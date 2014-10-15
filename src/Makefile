@@ -12,7 +12,7 @@ export LD          := ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
 export NASM        := nasm -g -f elf32
 export AR_R        := ar r --target elf32-i386
 export OBJCOPY     := objcopy
-export QEMU        := qemu-system-i386 -monitor stdio -vga std -m 32 -d int -no-reboot
+export QEMU        := qemu-system-i386 -monitor stdio -vga std -m 32
 export QEMU_D      := qemu-system-i386 -vga std -m 32
 export BOCHS       := bochs
 export GDB         := gdb
@@ -39,7 +39,7 @@ DEPS_DIR    := deps/
 WORK_DIRS	:= $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR)
 SUB_DIRS    := $(BOOT_DIR)
 
-C_SRCS      := rgb8.c elist.c point.c aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c ps2.c tlsf.c utils.c window.c kernel.c
+C_SRCS      := acpi.c rgb8.c elist.c point.c aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c ps2.c tlsf.c utils.c window.c kernel.c
 C_OBJS      := $(addprefix $(OBJS_DIR), $(C_SRCS:%.c=%.o))
 C_DEPS      := $(addprefix $(DEPS_DIR), $(C_SRCS:%.c=%.d))
 A_SRCS      := asm_functions.asm interrupt_asm.asm

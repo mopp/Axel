@@ -24,6 +24,7 @@
 #include <utils.h>
 #include <ps2.h>
 #include <tlsf.h>
+#include <acpi.h>
 
 
 /* Interrupt Gate Descriptor Table */
@@ -117,16 +118,16 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     } else {
         /* TODO: panic */
     }
-
     init_gdt();
     init_idt();
     init_graphic(boot_info);
     if (AXEL_SUCCESS == init_window()) {
         draw_desktop();
     }
-    init_process();
+    init_acpi();
     init_pic();
     init_pit();
+    init_process();
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("Keyboard initialize failed\n");
@@ -140,6 +141,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     Window* mouse_win = get_mouse_window();
     Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
+
 
     aqueue_delete_first(&axel_s.keyboard->aqueue);
     for (;;) {
