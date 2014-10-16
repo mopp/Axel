@@ -30,9 +30,21 @@ struct keyboard {
 typedef struct keyboard Keyboard;
 
 
+union mouse_buttons {
+    struct  {
+        uint8_t press_left_button : 1;
+        uint8_t press_right_button : 1;
+        uint8_t press_middle_button : 1;
+        uint8_t always_1;
+    };
+    uint8_t bit_expr;
+};
+typedef union mouse_buttons Mouse_buttons;
+
+
 struct mouse {
     bool enable_mouse;
-    uint8_t button;
+    Mouse_buttons buttons;
     uint8_t phase;
     uint8_t packets[4];
     bool is_pos_update;

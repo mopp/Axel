@@ -248,7 +248,7 @@ void interrupt_keybord(uint32_t* esp) {
 
 Axel_state_code init_mouse(void) {
     mouse.enable_mouse = false;
-    mouse.button = MOUSE_BUTTON_NONE;
+    mouse.buttons.bit_expr = MOUSE_BUTTON_NONE;
     mouse.phase = 0;
     mouse.is_pos_update = false;
     memset(mouse.packets, 0, 4);

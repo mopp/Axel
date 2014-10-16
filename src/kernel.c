@@ -154,7 +154,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
                 io_hlt();
             } else {
                 Point2d const p = axel_s.mouse->pos;
-                move_window(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
+                Point2d delta = make_point2d(p.x - mouse_p.x, p.y - mouse_p.y);
+                move_window(mouse_win, &delta);
+                if (axel_s.mouse->buttons.press_left_button == 1) {
+                    move_window(console, &delta);
+                }
                 mouse_p = axel_s.mouse->pos;
                 axel_s.mouse->is_pos_update = false;
             }
@@ -477,7 +481,8 @@ static inline void decode_mouse(void) {
 
             axel_s.mouse->pos.x += dx;
             axel_s.mouse->pos.y += (~dy + 1);
-            axel_s.mouse->button = (axel_s.mouse->packets[0] & 0x07);
+
+            axel_s.mouse->buttons.bit_expr = (axel_s.mouse->packets[0] & 0x07);
             axel_s.mouse->is_pos_update = true;
 
             break;
