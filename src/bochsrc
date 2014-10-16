@@ -2,7 +2,7 @@
 plugin_ctrl:          unmapped=1, biosdev=1, speaker=1, extfpuirq=1, parallel=1, serial=1, iodebug=1
 config_interface:     textconfig
 display_library:      x, options="gui_debug"
-memory:               host=512, guest=64
+memory:               host=1024, guest=512
 romimage:             file="/usr/local/share/bochs/BIOS-bochs-latest"
 vgaromimage:          file="/usr/local/share/bochs/VGABIOS-lgpl-latest"
 boot:                 cdrom
@@ -19,7 +19,7 @@ ata2:                 enabled=0
 ata3:                 enabled=0
 pci:                  enabled=1, chipset=i440fx
 vga:                  extension=vbe, update_freq=10
-cpu:                  count=1:1:1, ips=12000000, model=p3_katmai, reset_on_triple_fault=0, cpuid_limit_winnt=0, ignore_bad_msrs=1, mwait_is_nop=0
+cpu:                  count=1:1:1, ips=20000000, model=p3_katmai, reset_on_triple_fault=0, cpuid_limit_winnt=0, ignore_bad_msrs=1, mwait_is_nop=0
 print_timestamps:     enabled=0
 debugger_log:         -
 magic_break:          enabled=1

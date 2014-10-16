@@ -18,6 +18,7 @@
 void exception_page_fault(Interrupt_frame* ic) {
     uintptr_t fault_addr = load_cr2();
     io_cli();
+    BOCHS_MAGIC_BREAK();
 
     if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
         /* TODO: User space fault */
