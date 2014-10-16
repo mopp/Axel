@@ -226,6 +226,12 @@ Axel_state_code init_keyboard(void) {
     FAILED_RETURN(write_ctrl_cmd(KEYBOARD_CTRL_CMD_WRITE));
     FAILED_RETURN(write_data_cmd(kcb.bit_expr));
 
+    /* Scancode set */
+    FAILED_RETURN(write_data_cmd(KEYBOARD_DATA_CMD_SCANCODE));
+    FAILED_RETURN(wait_response(PS2_ACKNOWLEDGE));
+    FAILED_RETURN(write_data_cmd(2));
+    FAILED_RETURN(wait_response(PS2_ACKNOWLEDGE));
+
     /* Reset */
     FAILED_RETURN(write_ctrl_cmd(PS2_RESET_CMD));
 

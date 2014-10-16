@@ -332,26 +332,31 @@ static inline void decode_key(void) {
     uint8_t kc = *t;
     aqueue_delete_first(&axel_s.keyboard->aqueue);
 
+    if (kc == 0xfa) {
+        /* skip */
+        return;
+    }
+
     bool is_mod_key = false;
     switch (kc) {
         case l_shift:
         case r_shift:
             toggle_boolean(axel_s.keyboard->shift_on);
             is_mod_key = true;
-            return;
+            break;
         case l_alt:
             toggle_boolean(axel_s.keyboard->alt_on);
             is_mod_key = true;
-            return;
+            break;
         case l_ctrl:
             toggle_boolean(axel_s.keyboard->ctrl_on);
             is_mod_key = true;
-            return;
+            break;
         case caps:
             toggle_boolean(axel_s.keyboard->enable_caps_lock);
             is_mod_key = true;
             update_keyboard_led();
-            return;
+            break;
     }
 
     if (on_break == true) {
