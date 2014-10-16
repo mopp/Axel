@@ -142,22 +142,22 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     Window* mouse_win = get_mouse_window();
     Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
 
-
-    aqueue_delete_first(&axel_s.keyboard->aqueue);
     for (;;) {
-        if (aqueue_is_empty(&axel_s.keyboard->aqueue) != true) {
+        if ((axel_s.keyboard->enable_keybord == true) && (aqueue_is_empty(&axel_s.keyboard->aqueue) != true)) {
             decode_key();
         }
 
-        if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
-            decode_mouse();
-        } else if (axel_s.mouse->is_pos_update == false) {
-            io_hlt();
-        } else {
-            Point2d const p = axel_s.mouse->pos;
-            move_window(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
-            mouse_p = axel_s.mouse->pos;
-            axel_s.mouse->is_pos_update = false;
+        if (axel_s.mouse->enable_mouse == true) {
+            if (aqueue_is_empty(&axel_s.mouse->aqueue) != true) {
+                decode_mouse();
+            } else if (axel_s.mouse->is_pos_update == false) {
+                io_hlt();
+            } else {
+                Point2d const p = axel_s.mouse->pos;
+                move_window(mouse_win, &make_point2d(p.x - mouse_p.x, p.y - mouse_p.y));
+                mouse_p = axel_s.mouse->pos;
+                axel_s.mouse->is_pos_update = false;
+            }
         }
     }
 }
@@ -237,7 +237,7 @@ static inline void do_cmd(char const * cmd)  {
     } else if (strcmp(cmd, "exit") == 0) {
         shutdown();
     } else {
-        puts("invalid command\n");
+        printf("invalid command - %s\n", cmd);
     }
 
     puts(prompt);
@@ -328,19 +328,25 @@ static inline void decode_key(void) {
     uint8_t kc = *t;
     aqueue_delete_first(&axel_s.keyboard->aqueue);
 
+    bool is_mod_key = false;
     switch (kc) {
         case l_shift:
         case r_shift:
             toggle_boolean(axel_s.keyboard->shift_on);
+            is_mod_key = true;
             return;
         case l_alt:
             toggle_boolean(axel_s.keyboard->alt_on);
+            is_mod_key = true;
             return;
         case l_ctrl:
             toggle_boolean(axel_s.keyboard->ctrl_on);
+            is_mod_key = true;
             return;
         case caps:
-            toggle_boolean(axel_s.keyboard->enable_calps_lock);
+            toggle_boolean(axel_s.keyboard->enable_caps_lock);
+            is_mod_key = true;
+            update_keyboard_led();
             return;
     }
 
@@ -351,6 +357,10 @@ static inline void decode_key(void) {
 
     if (break_code == kc) {
         on_break = true;
+        return;
+    }
+
+    if (is_mod_key == true) {
         return;
     }
 
@@ -375,7 +385,7 @@ static inline void decode_key(void) {
             cmd[cmd_idx++] = ' ';
             break;
         case tab:
-            putchar('    ');
+            putchar('\t');
             break;
         default:
             c = keymap[kc];

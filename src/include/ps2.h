@@ -19,7 +19,7 @@
 
 struct keyboard {
     bool enable_keybord;
-    bool enable_calps_lock;
+    bool enable_caps_lock;
     bool enable_num_lock;
     bool enable_scroll_lock;
     bool shift_on;
@@ -54,6 +54,7 @@ enum mouse_constants {
 
 extern Axel_state_code init_keyboard(void);
 extern Axel_state_code init_mouse(void);
+extern Axel_state_code update_keyboard_led(void);
 
 
 
