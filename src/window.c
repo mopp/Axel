@@ -577,12 +577,14 @@ static inline void update_window_vram(void) {
     int32_t const end_x        = (display_size.x < win_man->check_area.end.x) ? (display_size.x) : (win_man->check_area.end.x);
     int32_t const end_y        = (display_size.y < win_man->check_area.end.y) ? (display_size.y) : (win_man->check_area.end.y);
 
-    for (int32_t y = start_y; y < end_y; y++) {
-        RGB8* const db = &win_man->display_buffer[y * display_size.x];
-        for (int32_t x = start_x; x < end_x; x++) {
-            set_vram(x, y, &db[x]);
-        }
-    }
+    set_vram_area(&make_point2d(start_x, start_y), &make_point2d(end_x, end_y), win_man->display_buffer);
+    // for (int32_t y = start_y; y < end_y; y++) {
+    //     // RGB8* const db = &win_man->display_buffer[y * display_size.x];
+    //     // for (int32_t x = start_x; x < end_x; x++) {
+    //     //     set_vram(x, y, &db[x]);
+    //     // }
+    //     set_vram_line(start_x, end_x, y, &win_man->display_buffer[start_x + y * display_size.x]);
+    // }
 }
 
 

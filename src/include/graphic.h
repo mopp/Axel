@@ -55,6 +55,7 @@ extern void puts_ascii_font(char const*, Point2d const* const);
 extern void test_draw(RGB8 const* const);
 extern void draw_mouse_cursor(void);
 extern void (*set_vram)(int32_t const, int32_t const, RGB8 const* const);
+extern void (*set_vram_area)(Point2d const*, Point2d const*, RGB8 const*);
 
 
 

@@ -12,7 +12,6 @@
 #include <macros.h>
 #include <point.h>
 #include <font.h>
-#include <drawable.h>
 #include <kernel.h>
 #include <vbe.h>
 #include <ps2.h>
@@ -40,10 +39,13 @@ static int32_t max_x_resolution, max_y_resolution, max_xy_resolution;
 static Color_bit_info bit_info;
 static Point2d pos;
 
+
 void (*set_vram)(int32_t const, int32_t const, RGB8 const* const);
-static inline void set_vram8880(int32_t const, int32_t const, RGB8 const* const);
-static inline void set_vram8888(int32_t const, int32_t const, RGB8 const* const);
-static inline void set_vram5650(int32_t const, int32_t const, RGB8 const* const);
+void (*set_vram_area)(Point2d const*, Point2d const*, RGB8 const*);
+static void set_vram8880(int32_t const, int32_t const, RGB8 const* const);
+static void set_vram8888(int32_t const, int32_t const, RGB8 const* const);
+static void set_vram5650(int32_t const, int32_t const, RGB8 const* const);
+static void set_vram_area8888(Point2d const*, Point2d const*, RGB8 const*);
 
 
 
@@ -99,6 +101,7 @@ Axel_state_code init_graphic_vbe(Multiboot_info const * const mb_info) {
         case 0x08080808:
             /* 8:8:8:8 */
             set_vram = set_vram8888;
+            set_vram_area = set_vram_area8888;
             break;
         case 0x05060500:
             /* 5:6:5:0 */
@@ -250,29 +253,18 @@ int putchar_vbe(int c) {
 }
 
 
-static inline intptr_t get_vram_index(int32_t const x, int32_t const y) {
-    return (x + max_x_resolution * y) * byte_per_pixel;
-}
-
-
-static inline uint32_t get_shift_red(uint8_t r) {
-    return (uint32_t)r << bit_info.r_pos;
-}
-
-
-static inline uint32_t get_shift_green(uint8_t g) {
-    return (uint32_t)g << bit_info.g_pos;
-}
-
-
-static inline uint32_t get_shift_blue(uint8_t b) {
-    return (uint32_t)b << bit_info.b_pos;
-}
-
-
-static inline uint32_t get_shift_rsvd(uint8_t rsvd) {
-    return (uint32_t)rsvd << bit_info.rsvd_pos;
-}
+/*
+ * As a result of acceleration, These are defined by macro.
+ * NOTE: You must NOT use argument 'c' with "++"/"--"
+ */
+#define get_vram_index(x, y) (((x)+max_x_resolution * (y)) * byte_per_pixel)
+#define shift_red(r)     ((uint32_t)(r) << bit_info.r_pos)
+#define shift_green(g)   ((uint32_t)(g) << bit_info.g_pos)
+#define shift_blue(b)    ((uint32_t)(b) << bit_info.b_pos)
+#define shift_rsvd(rsvd) ((uint32_t)(rsvd) << bit_info.rsvd_pos)
+#define get_color8888(c) (shift_red((c)->r) | shift_green((c)->g) | shift_blue((c)->b) | shift_rsvd((c)->rsvd))
+#define get_color8880(c) ((shift_red((c)->r) | shift_green((c)->g) | shift_blue((c)->b)) << 8)
+#define get_color5650(c) ((shift_red((c)->r >> 3) | shift_green((c)->g >> 2) | shift_blue((c)->b >> 3)) << 8)
 
 
 static inline void set_vram8880(int32_t const x, int32_t const y, RGB8 const* const c) {
@@ -281,12 +273,12 @@ static inline void set_vram8880(int32_t const x, int32_t const y, RGB8 const* co
     /* clear */
     *target &= 0x000000FF;
 
-    *target |= (get_shift_red(c->r) | get_shift_green(c->g) | get_shift_blue(c->b)) << 8;
+    *target |= get_color8880(c);
 }
 
 
 static inline void set_vram8888(int32_t const x, int32_t const y, RGB8 const* const c) {
-    *(volatile uint32_t*)(vram + get_vram_index(x, y)) = get_shift_red(c->r) | get_shift_green(c->g) | get_shift_blue(c->b) | get_shift_rsvd(c->rsvd);
+    *(volatile uint32_t*)(vram + get_vram_index(x, y)) = get_color8888(c);
 }
 
 
@@ -297,5 +289,25 @@ static inline void set_vram5650(int32_t const x, int32_t const y, RGB8 const* co
     *target &= 0x000000FF;
 
     /* convert 8 bit to 5, 6 and 5 bit */
-    *target |= (get_shift_red(c->r >> 3) | get_shift_green(c->g >> 2) | get_shift_blue(c->b >> 3)) << 8;
+    *target |= get_color5650(c);
+}
+
+
+static inline void set_vram_area8888(Point2d const* begin, Point2d const* end, RGB8 const* colors) {
+    intptr_t const begin_x = begin->x * byte_per_pixel;
+    intptr_t const begin_y = (begin->y * max_x_resolution) * byte_per_pixel;
+    intptr_t const end_x   = end->x * byte_per_pixel;
+    intptr_t const end_y   = (end->y * max_x_resolution) * byte_per_pixel;
+    intptr_t const dy      = max_x_resolution * byte_per_pixel;
+    RGB8 const* base_c     = &colors[begin->x + (begin->y * max_x_resolution)];
+
+    intptr_t vy_e = vram + end_y;
+    for (register intptr_t vy = vram + begin_y; vy < vy_e; vy += dy) {
+        register RGB8 const* c = base_c;
+        intptr_t const ve = (vy + end_x);
+        for (register intptr_t v = (vy + begin_x); v < ve; v += byte_per_pixel, c++) {
+            *((volatile uint32_t*)v) = get_color8888(c);
+        }
+        base_c += max_x_resolution;
+    }
 }
