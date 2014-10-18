@@ -27,10 +27,16 @@ struct thread {
 typedef struct thread Thread;
 
 
+struct frame_chain {
+    Elist l;
+    Frame* f;
+};
+typedef struct frame_chain Frame_chain;
+
+
 struct segment {
     uintptr_t addr;
     size_t size;
-    Elist mapped_frames;
 };
 typedef struct segment Segment;
 

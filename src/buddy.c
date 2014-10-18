@@ -174,6 +174,7 @@ void buddy_free_frames(Buddy_manager* const bman, Frame* ffs) {
     ++bman->free_frame_nr[order];
     ffs->order = order;
     ffs->status = FRAME_STATE_FREE;
+    ffs->mapped_kvaddr = 0;
     elist_insert_next(&bman->frames[order], &ffs->list);
 }
 

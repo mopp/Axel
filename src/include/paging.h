@@ -114,6 +114,7 @@ enum Paging_constants {
     PTE_IDX_SHIFT_NUM        = 12,
     PTE_FRAME_ADDR_SHIFT_NUM = 12,
     ALL_PAGE_STRUCT_SIZE     = (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM + (sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM) * PAGE_DIRECTORY_ENTRY_NUM),
+    PAGE_TABLE_ADDR_MASK     = 0xFFFFF,
 
     /* PTE flags bit */
     PTE_FLAG_PRESENT         = 0x001,
@@ -149,8 +150,8 @@ enum Paging_constants {
 struct page {
     Elist list;
     Elist mapped_frames;
-    uintptr_t addr;
     size_t frame_nr;
+    uintptr_t addr;
     uint8_t state;
 };
 typedef struct page Page;
@@ -176,7 +177,7 @@ extern size_t size_to_frame_nr(size_t);
 extern void* kmalloc(size_t);
 extern void kfree(void*);
 extern void* kmalloc_zeroed(size_t);
-extern uintptr_t get_mapped_paddr(Page const*);
+extern uintptr_t get_page_phys_addr(Page const*);
 extern size_t get_page_size(Page const* const);
 extern uintptr_t phys_to_vir_addr(uintptr_t);
 extern uintptr_t vir_to_phys_addr(uintptr_t);

@@ -74,7 +74,7 @@ void switch_context(Interrupt_frame* current_iframe) {
          * Next Memory space is user space.
          * So, change pdt.
          */
-        set_cpu_pdt(get_mapped_paddr(&next_p->pdt_page));
+        set_cpu_pdt(get_page_phys_addr(&next_p->pdt_page));
         pdt_process = next_p;
         axel_s.tss->esp0 = ECAST_UINT32(next_p->km_stack);
     }
@@ -127,25 +127,31 @@ static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size
     if (f == NULL) {
         return AXEL_FRAME_ALLOC_ERROR;
     }
-    elist_insert_next(&s->mapped_frames, &f->list);
 
     size = PO2(f->order) * FRAME_SIZE;
     uintptr_t p_s = get_frame_addr(axel_s.bman, f);
     uintptr_t p_e = p_s + size;
     uintptr_t v_s = s->addr + s->size;
     uintptr_t v_e = v_s + size;
-    f->mapped_vaddr = v_s;
+    f->mapped_kvaddr = v_s;
     s->size += size;
 
     /* allocate page table */
-    Page_directory_entry* pde = get_pde(p->pdt, v_s);
+    Page_directory_entry* const pde = get_pde(p->pdt, v_s);
     if (pde->present_flag == 0) {
-        Page* pg = kmalloc_zeroed(sizeof(Page));
-        vcmalloc(pg, (sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM));
-        pde->page_table_addr = ((pg->addr & 0xfffff) >> PDE_PT_ADDR_SHIFT_NUM);
-        elist_insert_next(&p->used_pages, &pg->list);
+        /*
+         * We do not save page info.
+         * Because, virtual address is repairable by frame.
+         */
+        Page pg;
+        vcmalloc(&pg, (sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM));
+        pde->page_table_addr = PAGE_TABLE_ADDR_MASK & (get_page_phys_addr(&pg) >> PDE_PT_ADDR_SHIFT_NUM);
     }
 
+    Page_table_entry* const pte = get_pte(get_pt(pde), v_s);
+    if (pte->present_flag == 1) {
+        printf("overwrite area\n");
+    }
     map_page_area(p->pdt, PDE_FLAGS_USER, PTE_FLAGS_USER, v_s, v_e, p_s, p_e);
 
     return AXEL_SUCCESS;
@@ -156,9 +162,6 @@ Axel_state_code init_user_process(void) {
     Process* p        = kmalloc_zeroed(sizeof(Process));
     User_segments* us = &p->u_segs;
     elist_init(&p->used_pages);
-    elist_init(&us->text.mapped_frames);
-    elist_init(&us->data.mapped_frames);
-    elist_init(&us->stack.mapped_frames);
 
     us->text.addr  = DEFAULT_TEXT_ADDR;
     us->stack.addr = DEFAULT_STACK_TOP_ADDR;
@@ -177,7 +180,7 @@ Axel_state_code init_user_process(void) {
     expand_segment(p, &us->stack, DEFAULT_STACK_SIZE);
 
     /* set pdt for setting init user space. */
-    set_cpu_pdt(get_mapped_paddr(&p->pdt_page));
+    set_cpu_pdt(get_page_phys_addr(&p->pdt_page));
 
     p->thread->sp -= sizeof(Interrupt_frame);
     Interrupt_frame* intf = (Interrupt_frame*)p->thread->sp;

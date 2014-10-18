@@ -31,7 +31,7 @@ void init_paging(void) {
     /* XXX: alignment sensitivity */
     uintptr_t pt_base_addr = (vir_to_phys_addr((uintptr_t)kernel_pdt + (sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM))) >> PDE_PT_ADDR_SHIFT_NUM;
     for (size_t i = 0; i < PAGE_DIRECTORY_ENTRY_NUM; i++) {
-        kernel_pdt[i].page_table_addr = (pt_base_addr + i) & 0xFFFFF;
+        kernel_pdt[i].page_table_addr = (pt_base_addr + i) & PAGE_TABLE_ADDR_MASK;
     }
 
     /* Set kernel area paging and video area paging. */
@@ -215,7 +215,7 @@ inline bool is_kernel_pdt(Page_directory_table const pdt) {
 /* synchronize user and kernel pdt */
 Axel_state_code synchronize_pdt(uintptr_t vaddr) {
     Process* p = get_current_pdt_process();
-    if (p->pdt == NULL) {
+    if (p == NULL || p->pdt == NULL) {
         return AXEL_PAGE_SYNC_ERROR;
     }
     Page_directory_table user_pdt = p->pdt;
@@ -292,7 +292,7 @@ void* vcmalloc(Page* p, size_t size) {
     memset(p, 0, sizeof(Page));
     elist_init(&p->mapped_frames);
 
-    /* allocate physical memory from BuddySystem. */
+    /* Allocate physical memory from BuddySystem. */
     uint8_t order = size_to_order(size);
     Frame* f = buddy_alloc_frames(axel_s.bman, order);
     if (f == NULL) {
@@ -301,7 +301,7 @@ void* vcmalloc(Page* p, size_t size) {
     elist_insert_next(&p->mapped_frames, &f->list);
     size_t alloc_nr = p->frame_nr = (1 << f->order);
 
-    /* allocate virtual memory from kernel page directory. */
+    /* Allocate virtual memory from kernel page directory. */
     size = (FRAME_SIZE * alloc_nr);
     uintptr_t bvaddr = get_free_vmems(alloc_nr);
     if (bvaddr == 0) {
@@ -316,8 +316,10 @@ void* vcmalloc(Page* p, size_t size) {
     map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
 
     for (Frame* i = f; i < &f[alloc_nr]; i++, bvaddr += PAGE_SIZE) {
-        i->mapped_vaddr = bvaddr;
+        i->mapped_kvaddr = bvaddr;
     }
+
+    memset((void*)p->addr, 0, size);
 
     return (void*)p->addr;
 }
@@ -371,7 +373,7 @@ void* vmalloc(Page* p, size_t size) {
         map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
 
         for (Frame* j = i; j < &i[f_nr]; j++, bvaddr += PAGE_SIZE) {
-            j->mapped_vaddr = bvaddr;
+            j->mapped_kvaddr = bvaddr;
         }
     }
 
@@ -408,7 +410,7 @@ void kfree(void* p) {
 }
 
 
-uintptr_t get_mapped_paddr(Page const * p) {
+uintptr_t get_page_phys_addr(Page const * p) {
     return get_frame_addr(axel_s.bman, elist_derive(Frame, list, p->mapped_frames.next));
 }
 
@@ -419,12 +421,18 @@ size_t get_page_size(Page const * const p ) {
 
 
 uintptr_t phys_to_vir_addr(uintptr_t addr) {
-    return addr + KERNEL_VIRTUAL_BASE_ADDR;
+    return (addr <= get_kernel_phys_end_addr()) ? (addr + KERNEL_VIRTUAL_BASE_ADDR) : (get_frame_by_addr(axel_s.bman, addr)->mapped_kvaddr);
 }
 
 
 uintptr_t vir_to_phys_addr(uintptr_t addr) {
-    return addr - KERNEL_VIRTUAL_BASE_ADDR;
+    if (addr <= get_kernel_vir_end_addr()) {
+        return addr - KERNEL_VIRTUAL_BASE_ADDR;
+    }
+
+    assert(1);
+
+    return 0;
 }
 
 

@@ -185,7 +185,7 @@ static inline void draw_desktop(void) {
     window_fill_area(status_bar, set_point2d(&p0, 61, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x848484));    // right edge.
     window_fill_area(status_bar, set_point2d(&p0, 62, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge.
 
-    int32_t c_height = 300;
+    int32_t c_height = 400;
     int32_t c_width = 500;
     RGB8 fg = convert_color2RGB8(0x2EFE2E);
     RGB8 bg = convert_color2RGB8(0x151515);
