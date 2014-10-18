@@ -20,6 +20,11 @@ static inline Frame* elist_get_frame(Elist const* const l) {
 }
 
 
+static inline size_t get_order_frame_size(uint8_t o) {
+    return PO2(o) << FRAME_SIZE_LOG2;
+}
+
+
 /**
  * @brief Calculate frame index.
  * @param bman  manager which have frame in argument.
@@ -220,14 +225,14 @@ size_t buddy_get_total_memory_size(Buddy_manager const* const bman) {
  * @param frame frame for calculating address.
  * @return address of frame.
  */
-uintptr_t get_frame_addr(Buddy_manager const* const bman, Frame const* const frame) {
+uintptr_t frame_to_phys_addr(Buddy_manager const* const bman, Frame const* const frame) {
     assert(bman != NULL);
     assert(frame != NULL);
     return bman->base_addr + (get_frame_idx(bman, frame) * FRAME_SIZE);
 }
 
 
-Frame* get_frame_by_addr(Buddy_manager const * const bman, uintptr_t addr) {
+Frame* phys_addr_to_frame(Buddy_manager const * const bman, uintptr_t addr) {
     return &bman->frame_pool[(addr - bman->base_addr) >> FRAME_SIZE_LOG2];
 }
 
@@ -266,8 +271,4 @@ uint8_t size_to_order(size_t s) {
 size_t order_to_size(uint8_t o) {
     assert(o < BUDDY_SYSTEM_MAX_ORDER);
     return order_nr[o];
-}
-
-size_t get_order_frame_size(uint8_t o) {
-    return PO2(o) << FRAME_SIZE_LOG2;
 }

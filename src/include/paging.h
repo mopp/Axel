@@ -182,7 +182,6 @@ extern size_t get_page_size(Page const* const);
 extern uintptr_t phys_to_vir_addr(uintptr_t);
 extern uintptr_t vir_to_phys_addr(uintptr_t);
 extern void set_phys_to_vir_addr(void*);
-extern size_t round_page_size(size_t);
 extern uintptr_t get_free_vmems(size_t);
 
 

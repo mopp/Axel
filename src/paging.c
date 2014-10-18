@@ -57,17 +57,17 @@ static inline size_t get_pte_index(uintptr_t const addr) {
 }
 
 
-inline Page_directory_entry* get_pde(Page_directory_table const pdt, uintptr_t const vaddr) {
+Page_directory_entry* get_pde(Page_directory_table const pdt, uintptr_t const vaddr) {
     return pdt + get_pde_index(vaddr);
 }
 
 
-inline Page_table get_pt(Page_directory_entry const* const pde) {
+Page_table get_pt(Page_directory_entry const* const pde) {
     return (Page_table)(phys_to_vir_addr((uintptr_t)(pde->page_table_addr << PDE_PT_ADDR_SHIFT_NUM)));
 }
 
 
-inline Page_table_entry* get_pte(Page_table const pt, uintptr_t const vaddr) {
+Page_table_entry* get_pte(Page_table const pt, uintptr_t const vaddr) {
     return pt + get_pte_index(vaddr);
 }
 
@@ -87,7 +87,7 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
  * @param vaddr     virtual address.
  * @param paddr     physical address.
  */
-inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
+void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t vaddr, uintptr_t paddr) {
     Page_directory_entry* const pde = get_pde(pdt, vaddr);
 
     assert(pde->present_flag != 0);
@@ -113,7 +113,7 @@ inline void map_page(Page_directory_table pdt, uint32_t const pde_flags, uint32_
  * @param begin_paddr   Begin physical address of mapping area.
  * @param end_paddr     End physical address of mapping area.
  */
-inline void map_page_area(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_vaddr, uintptr_t const end_vaddr, uintptr_t const begin_paddr, uintptr_t const end_paddr) {
+void map_page_area(Page_directory_table pdt, uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_vaddr, uintptr_t const end_vaddr, uintptr_t const begin_paddr, uintptr_t const end_paddr) {
     /* Generally speaking, PAGE_SIZE equals FRAME_SIZE. */
     /* size_t cnt = 0; */
     /* Page_table pt; */
@@ -154,12 +154,12 @@ inline void map_page_area(Page_directory_table pdt, uint32_t const pde_flags, ui
  * @param begin_addr    Begin address of mapping area.
  * @param end_addr      End address of mapping area.
  */
-inline void map_page_same_area(Page_directory_table pdt,  uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_addr, uintptr_t const end_addr) {
+void map_page_same_area(Page_directory_table pdt,  uint32_t const pde_flags, uint32_t const pte_flags, uintptr_t const begin_addr, uintptr_t const end_addr) {
     map_page_area(pdt, pde_flags, pte_flags, begin_addr, end_addr, begin_addr, end_addr);
 }
 
 
-inline void unmap_page(uintptr_t vaddr) {
+void unmap_page(uintptr_t vaddr) {
     if (KERNEL_VIRTUAL_BASE_ADDR <= vaddr) {
         /* Kernel area unmapping. */
         Page_directory_entry* const pde = get_pde(axel_s.kernel_pdt, vaddr);
@@ -181,24 +181,10 @@ inline void unmap_page(uintptr_t vaddr) {
 }
 
 
-inline void unmap_page_area(uintptr_t const begin_vaddr, uintptr_t const end_vaddr) {
+void unmap_page_area(uintptr_t const begin_vaddr, uintptr_t const end_vaddr) {
     for (uintptr_t vaddr = begin_vaddr; vaddr < end_vaddr; vaddr += PAGE_SIZE) {
         unmap_page(vaddr);
     }
-}
-
-
-Page_directory_table init_user_pdt(Page_directory_table pdt) {
-    /* Copy kernel area. */
-    memset(pdt, 0, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
-    size_t s = get_pde_index(get_kernel_vir_start_addr());
-    /* size_t e = get_pde_index(get_kernel_vir_end_addr()); */
-    size_t e = get_pde_index(0xffffffff);
-    do {
-        pdt[s].bit_expr = axel_s.kernel_pdt[s].bit_expr;
-    } while (++s <= e);
-
-    return pdt;
 }
 
 
@@ -207,7 +193,7 @@ Page_directory_table get_kernel_pdt(void) {
 }
 
 
-inline bool is_kernel_pdt(Page_directory_table const pdt) {
+bool is_kernel_pdt(Page_directory_table const pdt) {
     return (axel_s.kernel_pdt == pdt) ? true : false;
 }
 
@@ -246,6 +232,20 @@ Axel_state_code synchronize_pdt(uintptr_t vaddr) {
     // *u_pte = *k_pte;
 
     return AXEL_SUCCESS;
+}
+
+
+Page_directory_table init_user_pdt(Page_directory_table pdt) {
+    /* Copy kernel area. */
+    memset(pdt, 0, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
+    size_t s = get_pde_index(get_kernel_vir_start_addr());
+    /* size_t e = get_pde_index(get_kernel_vir_end_addr()); */
+    size_t e = get_pde_index(0xffffffff);
+    do {
+        pdt[s].bit_expr = axel_s.kernel_pdt[s].bit_expr;
+    } while (++s <= e);
+
+    return pdt;
 }
 
 
@@ -288,6 +288,16 @@ uintptr_t get_free_vmems(size_t frame_nr) {
 }
 
 
+static inline void free_buddy_frames(Elist* head) {
+    elist_foreach(i, head, Frame, list) {
+        Frame* p = elist_derive(Frame, list, i->list.prev);
+        elist_remove(&i->list);
+        buddy_free_frames(axel_s.bman, i);
+        i = p;
+    }
+}
+
+
 void* vcmalloc(Page* p, size_t size) {
     memset(p, 0, sizeof(Page));
     elist_init(&p->mapped_frames);
@@ -311,7 +321,7 @@ void* vcmalloc(Page* p, size_t size) {
     }
     p->addr          = bvaddr;
     uintptr_t evaddr = bvaddr + size;
-    uintptr_t bpaddr = get_frame_addr(axel_s.bman, f);
+    uintptr_t bpaddr = frame_to_phys_addr(axel_s.bman, f);
     uintptr_t epaddr = bpaddr + size;
     map_page_area(axel_s.kernel_pdt, PDE_FLAGS_KERNEL_DYNAMIC, PTE_FLAGS_KERNEL_DYNAMIC, bvaddr, evaddr, bpaddr, epaddr);
 
@@ -322,16 +332,6 @@ void* vcmalloc(Page* p, size_t size) {
     memset((void*)p->addr, 0, size);
 
     return (void*)p->addr;
-}
-
-
-static inline void free_buddy_frames(Elist* head) {
-    elist_foreach(i, head, Frame, list) {
-        Frame* p = elist_derive(Frame, list, i->list.prev);
-        elist_remove(&i->list);
-        buddy_free_frames(axel_s.bman, i);
-        i = p;
-    }
 }
 
 
@@ -366,7 +366,7 @@ void* vmalloc(Page* p, size_t size) {
     elist_foreach(i, head, Frame, list) {
         uintptr_t f_nr   = (1 << i->order);
         uintptr_t s      = (FRAME_SIZE * f_nr);
-        uintptr_t bpaddr = get_frame_addr(axel_s.bman, i);
+        uintptr_t bpaddr = frame_to_phys_addr(axel_s.bman, i);
         uintptr_t epaddr = bpaddr + s;
         uintptr_t evaddr = bvaddr + s;
 
@@ -389,8 +389,7 @@ void vfree(Page* p) {
 
 
 size_t size_to_frame_nr(size_t s) {
-    /* FIXME: */
-    return round_page_size(s) / FRAME_SIZE;
+    return (s >> FRAME_SIZE_LOG2);
 }
 
 
@@ -411,7 +410,7 @@ void kfree(void* p) {
 
 
 uintptr_t get_page_phys_addr(Page const * p) {
-    return get_frame_addr(axel_s.bman, elist_derive(Frame, list, p->mapped_frames.next));
+    return frame_to_phys_addr(axel_s.bman, elist_derive(Frame, list, p->mapped_frames.next));
 }
 
 
@@ -421,7 +420,7 @@ size_t get_page_size(Page const * const p ) {
 
 
 uintptr_t phys_to_vir_addr(uintptr_t addr) {
-    return (addr <= get_kernel_phys_end_addr()) ? (addr + KERNEL_VIRTUAL_BASE_ADDR) : (get_frame_by_addr(axel_s.bman, addr)->mapped_kvaddr);
+    return (addr <= get_kernel_phys_end_addr()) ? (addr + KERNEL_VIRTUAL_BASE_ADDR) : (phys_addr_to_frame(axel_s.bman, addr)->mapped_kvaddr);
 }
 
 
@@ -439,15 +438,4 @@ uintptr_t vir_to_phys_addr(uintptr_t addr) {
 void set_phys_to_vir_addr(void* addr) {
     uintptr_t* p = (uintptr_t*)addr;
     *p = phys_to_vir_addr(*p);
-}
-
-
-size_t round_page_size(size_t size) {
-    /*
-     * Simple expression is below.
-     * ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE
-     * In particular, PAGE_SIZE is power of 2.
-     * We calculate same thing using below code.
-     */
-    return ((size + PAGE_SIZE - 1) & 0xFFFFFF000);
 }

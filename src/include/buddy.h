@@ -56,12 +56,11 @@ extern Frame* buddy_alloc_frames(Buddy_manager* const, uint8_t);
 extern void buddy_free_frames(Buddy_manager* const, Frame*);
 extern size_t buddy_get_free_memory_size(Buddy_manager const* const);
 extern size_t buddy_get_alloc_memory_size(Buddy_manager const* const);
-extern uintptr_t get_frame_addr(Buddy_manager const* const, Frame const* const);
-extern Frame* get_frame_by_addr(Buddy_manager const* const, uintptr_t);
+extern uintptr_t frame_to_phys_addr(Buddy_manager const* const, Frame const* const);
+extern Frame* phys_addr_to_frame(Buddy_manager const* const, uintptr_t);
 extern size_t buddy_get_total_memory_size(Buddy_manager const* const);
 extern uint8_t size_to_order(size_t);
 extern size_t order_to_size(uint8_t);
-extern size_t get_order_frame_size(uint8_t);
 
 
 

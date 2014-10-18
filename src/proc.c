@@ -129,7 +129,7 @@ static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size
     }
 
     size = PO2(f->order) * FRAME_SIZE;
-    uintptr_t p_s = get_frame_addr(axel_s.bman, f);
+    uintptr_t p_s = frame_to_phys_addr(axel_s.bman, f);
     uintptr_t p_e = p_s + size;
     uintptr_t v_s = s->addr + s->size;
     uintptr_t v_e = v_s + size;
@@ -158,14 +158,14 @@ static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size
 }
 
 
-Axel_state_code init_user_process(void) {
+static inline Axel_state_code init_user_process(void) {
     Process* p        = kmalloc_zeroed(sizeof(Process));
     User_segments* us = &p->u_segs;
     elist_init(&p->used_pages);
 
     us->text.addr  = DEFAULT_TEXT_ADDR;
     us->stack.addr = DEFAULT_STACK_TOP_ADDR;
-    p->pid         = 0;
+    p->pid         = proc_id_cnt++;
     p->km_stack    = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
     p->thread      = kmalloc_zeroed(sizeof(Thread));
     p->thread->ip  = (uintptr_t)interrupt_return;
