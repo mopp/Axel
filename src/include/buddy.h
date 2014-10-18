@@ -19,16 +19,17 @@
  * Order in buddy system : 0  1  2  3  4  5  6   7   8   9   10   11   12   13    14
  * The number of frame   : 1  2  4  8 16 32 64 128 256 512 1024 2048 4096 8192 16384
  */
-enum  {
+enum {
     BUDDY_SYSTEM_MAX_ORDER = (14 + 1),
 };
 
 
 struct frame {
-    Elist list;
-    uintptr_t mapped_vaddr;
-    uint8_t status;
-    uint8_t order;
+    Elist list;              /* List Header */
+    uintptr_t mapped_kvaddr; /* This address is ONLY kernel space. */
+    uint8_t status;          /* current frame status. */
+    uint8_t order;           /* order in BuddySystem. */
+    uint8_t ref_count;       /* Hou many user space use this frame. */
 };
 typedef struct frame Frame;
 
@@ -40,7 +41,7 @@ enum frame_constants {
 
 
 struct buddy_manager {
-    Frame* frame_pool;                            /* All managed frames */
+    Frame* frame_pool; /* All managed frames */
     uintptr_t base_addr;
     size_t total_frame_nr;                        /* The number of all frame under the manager. */
     size_t free_frame_nr[BUDDY_SYSTEM_MAX_ORDER]; /* The number of free frames each order. */
@@ -56,7 +57,7 @@ extern void buddy_free_frames(Buddy_manager* const, Frame*);
 extern size_t buddy_get_free_memory_size(Buddy_manager const* const);
 extern size_t buddy_get_alloc_memory_size(Buddy_manager const* const);
 extern uintptr_t get_frame_addr(Buddy_manager const* const, Frame const* const);
-extern Frame* get_frame_by_addr(Buddy_manager const * const, uintptr_t);
+extern Frame* get_frame_by_addr(Buddy_manager const* const, uintptr_t);
 extern size_t buddy_get_total_memory_size(Buddy_manager const* const);
 extern uint8_t size_to_order(size_t);
 extern size_t order_to_size(uint8_t);
