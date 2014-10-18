@@ -37,7 +37,7 @@
         (*((type *)(addr)) = (type)(val));   \
     } while (1)
 
-#define BOCHS_MAGIC_BREAK() __asm__ volatile( "xchgw %%bx, %%bx" : :  : );
+#define BOCHS_MAGIC_BREAK() __asm__ volatile( "xchgw %bx, %bx");
 
 #define BIT(x) (1u << (x))
 #define PO2(x) BIT(x)
@@ -46,7 +46,10 @@
 #define MB(x) (x >> 20)
 #define GB(x) (x >> 30)
 
-#define toggle_boolean(x) ((x) = ((x) == true ? false : true));
+#define TOGGLE_BOOLEAN(x) ((x) = ((x) == true ? false : true));
+
+#define ALIGN_UP(n, align) ((n) + ((align) - 1u) & ~((align) - 1u))
+#define ALIGN_DOWN(n, align) ((n) & ~((align) - 1u))
 
 
 

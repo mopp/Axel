@@ -341,19 +341,19 @@ static inline void decode_key(void) {
     switch (kc) {
         case l_shift:
         case r_shift:
-            toggle_boolean(axel_s.keyboard->shift_on);
+            TOGGLE_BOOLEAN(axel_s.keyboard->shift_on);
             is_mod_key = true;
             break;
         case l_alt:
-            toggle_boolean(axel_s.keyboard->alt_on);
+            TOGGLE_BOOLEAN(axel_s.keyboard->alt_on);
             is_mod_key = true;
             break;
         case l_ctrl:
-            toggle_boolean(axel_s.keyboard->ctrl_on);
+            TOGGLE_BOOLEAN(axel_s.keyboard->ctrl_on);
             is_mod_key = true;
             break;
         case caps:
-            toggle_boolean(axel_s.keyboard->enable_caps_lock);
+            TOGGLE_BOOLEAN(axel_s.keyboard->enable_caps_lock);
             is_mod_key = true;
             update_keyboard_led();
             break;

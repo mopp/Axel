@@ -34,6 +34,7 @@
 #include <stdbool.h>
 #include <tlsf.h>
 #include <utils.h>
+#include <macros.h>
 
 
 struct block {
@@ -81,7 +82,6 @@ static Page page_struct_pool[PAGE_STRUCT_NR];
 
 
 #ifdef NO_OPTIMIZE
-#define BIT_NR(type) (sizeof(type) * 8u)
 static inline size_t find_set_bit_idx_first(size_t n) {
     size_t mask = 1u;
     size_t idx = 0;
@@ -93,6 +93,7 @@ static inline size_t find_set_bit_idx_first(size_t n) {
 }
 
 
+#define BIT_NR(type) (sizeof(type) * 8u)
 static inline size_t find_set_bit_idx_last(size_t n) {
     size_t mask = ((size_t)1u << (BIT_NR(size_t) - 1u));
     size_t idx = BIT_NR(size_t);
@@ -135,18 +136,8 @@ static inline void set_idxs(size_t size, size_t* fl, size_t* sl) {
 }
 
 
-static inline size_t align_up(size_t x, size_t a) {
-    return (x + (a - 1u)) & ~(a - 1u);
-}
-
-
-static inline size_t align_down(size_t x, size_t a) {
-    return x & ~(a - 1u);
-}
-
-
 static inline size_t block_align_up(size_t x) {
-    return align_up(x, ALIGNMENT_SIZE);
+    return ALIGN_UP(x, ALIGNMENT_SIZE);
 }
 
 
@@ -336,7 +327,7 @@ static inline Block* divide_block(Block* b, size_t size, size_t align) {
 
     if (align != 0) {
         /* mallocの戻り値はオフセット分加算されるのでその分を引いておく. */
-        uintptr_t t = (uintptr_t)align_down((size_t)new_next, align) - BLOCK_OFFSET;
+        uintptr_t t = (uintptr_t)ALIGN_DOWN((size_t)new_next, align) - BLOCK_OFFSET;
         uintptr_t diff = (uintptr_t)new_next - t;
 
         assert(get_size(b) >= diff);

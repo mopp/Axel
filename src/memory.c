@@ -36,7 +36,6 @@ static uintptr_t kernel_end_addr = (uintptr_t)&LD_KERNEL_END;
 static size_t total_memory_size;
 
 static void fix_address(Multiboot_info* const);
-static uintptr_t align_address(uintptr_t, size_t);
 static void* smalloc(size_t);
 static void* smalloc_align(size_t, size_t);
 
@@ -114,7 +113,7 @@ Axel_state_code init_memory(Multiboot_info* const mb_info) {
     size_t frame_nr    = addr_len / FRAME_SIZE;
     Frame* frames      = smalloc(sizeof(Frame) * frame_nr);
 
-    kernel_end_addr = align_address(kernel_end_addr, 4096);
+    kernel_end_addr = ALIGN_UP(kernel_end_addr, 4096);
 
     /*
      * Re calculate the number of frame.
@@ -195,12 +194,6 @@ static inline void* smalloc(size_t size) {
 }
 
 
-static inline uintptr_t align_address(uintptr_t addr, size_t align_size) {
-    size_t const a = align_size - 1;
-    return ((addr + a) & ~(a));
-}
-
-
 /**
  * @brief alignment smalloc.
  *        return address is alignment by "align_size"
@@ -209,7 +202,7 @@ static inline uintptr_t align_address(uintptr_t addr, size_t align_size) {
  * @return pointer to allocated memory.
  */
 static inline void* smalloc_align(size_t size, size_t align_size) {
-    kernel_end_addr = align_address(kernel_end_addr, align_size);
+    kernel_end_addr = ALIGN_UP(kernel_end_addr, align_size);
 
     return smalloc(size);
 }
@@ -226,4 +219,3 @@ static inline void fix_address(Multiboot_info* const mb_info) {
     set_phys_to_vir_addr(&mb_info->vbe_control_info);
     set_phys_to_vir_addr(&mb_info->vbe_mode_info);
 }
-
