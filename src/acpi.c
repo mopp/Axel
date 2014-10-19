@@ -229,13 +229,12 @@ static inline void* find_entry(uintptr_t* candidates, size_t nr, char const* sig
 static inline Axel_state_code decode_dsdt(Sdt_header* dsdt) {
     uintptr_t len;
     uint8_t* addr;
-    uint8_t sz;
 
     len = dsdt->length - sizeof(Sdt_header);
     addr = (uint8_t*)((uintptr_t)dsdt + sizeof(Sdt_header));
 
     /* Search \_S5 package in the DSDT */
-    while (len >= 5) {
+    while (5 <= len) {
         if (memcmp(addr, "_S5_", 4) == 0) {
             break;
         }
@@ -243,8 +242,7 @@ static inline Axel_state_code decode_dsdt(Sdt_header* dsdt) {
         len--;
     }
 
-    if (len >= 5) {
-        /* S5 was found */
+    if (5 <= len) {
         if ((0x12 != *(addr + 4)) || (0x08 != *(addr - 1) && !(0x08 == *(addr - 2) && '\\' == *(addr - 1)))) {
             /* Invalid AML (0x12 = PackageOp) */
             /* Invalid AML (0x08 = NameOp) */
@@ -256,15 +254,15 @@ static inline Axel_state_code decode_dsdt(Sdt_header* dsdt) {
         len -= 5;
 
         /* Calculate the size of the packet length */
-        sz = (*addr & 0xc0) >> 6;
+        uint8_t size = (*addr & 0xc0) >> 6;
 
         /* Check the length and skip packet length and the number of elements */
-        if (len < sz + 2) {
+        if (len < (size + 2)) {
             return AXEL_FAILED;
         }
 
-        addr += sz + 2;
-        len -= sz + 2;
+        addr += size + 2;
+        len -= size + 2;
 
         /* SLP_TYPa */
         if (0x0a == *addr) {
@@ -275,9 +273,11 @@ static inline Axel_state_code decode_dsdt(Sdt_header* dsdt) {
             addr++;
             len--;
         }
+
         if (len < 1) {
             return AXEL_FAILED;
         }
+
         acpi_slp_typa = ((*addr) << 10) & 0xffff;
         addr++;
         len--;
@@ -291,9 +291,11 @@ static inline Axel_state_code decode_dsdt(Sdt_header* dsdt) {
             addr++;
             len--;
         }
+
         if (len < 1) {
             return AXEL_FAILED;
         }
+
         acpi_slp_typb = ((*addr) << 10) & 0xffff;
         addr++;
         len--;
