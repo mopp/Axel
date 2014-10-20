@@ -14,7 +14,7 @@
 #include <font.h>
 #include <kernel.h>
 #include <vbe.h>
-#include <ps2.h>
+#include <dev/ps2.h>
 #include <paging.h>
 
 

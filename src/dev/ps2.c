@@ -5,7 +5,7 @@
  * @version 0.1
  * @date 2014-04-11
  */
-#include <ps2.h>
+#include <dev/ps2.h>
 #include <point.h>
 #include <asm_functions.h>
 #include <graphic.h>

@@ -22,9 +22,11 @@
 #include <vbe.h>
 #include <window.h>
 #include <utils.h>
-#include <ps2.h>
+#include <dev/ps2.h>
 #include <tlsf.h>
 #include <acpi.h>
+#include <dev/pci.h>
+#include <dev/ide.h>
 
 
 /* Interrupt Gate Descriptor Table */
@@ -127,7 +129,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_acpi();
     init_pic();
     init_pit();
-    init_process();
+    /* init_process(); */
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("Keyboard initialize failed\n");
@@ -137,6 +139,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         puts("Mouse initialize failed\n");
     }
 
+    if (AXEL_SUCCESS != init_ide()) {
+        printf("Init IDE is failed\n");
+    }
     io_sti();
 
     Window* mouse_win = get_mouse_window();
