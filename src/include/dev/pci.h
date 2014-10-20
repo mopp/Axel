@@ -13,17 +13,19 @@
 
 #include <stdint.h>
 
-enum {
-    PCI_CONFIG_ADDR_PORT = 0xcf8,
-    PCI_CONFIG_DATA_PORT = 0xcfc,
-    PCI_MAX_BUS_NUMBER = 255,
-    PCI_MAX_DEVICE_NUMBER = 31,
+enum pci_constants {
+    PCI_CONFIG_ADDR_PORT    = 0xcf8,
+    PCI_CONFIG_DATA_PORT    = 0xcfc,
+    PCI_MAX_BUS_NUMBER      = 255,
+    PCI_MAX_DEVICE_NUMBER   = 31,
     PCI_MAX_FUNCTION_NUMBER = 7,
-    PCI_INVALID_DATA = 0xffffffff,
+    PCI_INVALID_DATA        = 0xffffffff,
 
-    PCI_CLASS_MASS_STORAGE = 0x01,
-    PCI_SUBCLASS_IDE = 0x01,
+    PCI_CLASS_MASS_STORAGE  = 0x01,
+    PCI_SUBCLASS_IDE        = 0x01,
 };
+typedef enum pci_constants Pci_constants;
+
 
 union pci_conf_reg {
     struct {
@@ -38,6 +40,7 @@ union pci_conf_reg {
 };
 typedef union pci_conf_reg Pci_conf_reg;
 _Static_assert(sizeof(Pci_conf_reg) == 4, "");
+
 
 union pci_data_reg {
     struct {
@@ -97,8 +100,10 @@ typedef union pci_data_reg Pci_data_reg;
 _Static_assert(sizeof(Pci_data_reg) == 4, "");
 
 
-extern Pci_conf_reg find_pci_dev(uint8_t, uint8_t);
 extern Pci_data_reg pci_read_data(Pci_conf_reg const);
+extern Pci_data_reg pci_read_addr_data(Pci_conf_reg* const, uint8_t);
+extern void pci_write_data(uint8_t);
+extern Pci_conf_reg find_pci_dev(Pci_constants, Pci_constants);
 
 
 
