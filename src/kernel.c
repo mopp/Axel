@@ -147,6 +147,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     }
 
     io_sti();
+
     if (AXEL_SUCCESS != init_ide()) {
         printf("Init IDE is failed\n");
     }
