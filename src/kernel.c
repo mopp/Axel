@@ -26,7 +26,7 @@
 #include <tlsf.h>
 #include <acpi.h>
 #include <dev/pci.h>
-#include <dev/ide.h>
+#include <dev/ata.h>
 
 
 /* Interrupt Gate Descriptor Table */
@@ -148,7 +148,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     io_sti();
 
-    if (AXEL_SUCCESS != init_ide()) {
+    if (AXEL_SUCCESS != init_ata()) {
         printf("Init IDE is failed\n");
     }
 
