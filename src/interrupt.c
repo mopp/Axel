@@ -60,9 +60,21 @@ void send_done_interrupt_slave(void) {
 }
 
 
+static uint32_t tick_count = 0;
 void interrupt_timer(Interrupt_frame* ic) {
+    /* 1 tick is 10ms */
+    ++tick_count;
+
     send_done_interrupt_master();
     if (is_enable_process == true) {
         switch_context(ic);
     }
+}
+
+
+void wait(uint32_t ms) {
+    uint32_t end = tick_count + ((ms / 10) + (ms % 10 != 0 ? 1 : 0));
+
+    while (tick_count <= end)
+        ;
 }
