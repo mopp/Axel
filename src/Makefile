@@ -36,7 +36,7 @@ KERNEL_MAP  := kernel.map
 
 OBJS_DIR    := objs/
 DEPS_DIR    := deps/
-WORK_DIRS	:= $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)/dev $(DEPS_DIR)/dev
+WORK_DIRS	:= $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)dev $(DEPS_DIR)dev
 SUB_DIRS    := $(BOOT_DIR)
 
 C_SRCS      := dev/ata.c dev/pci.c acpi.c rgb8.c elist.c point.c aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c dev/ps2.c tlsf.c utils.c window.c kernel.c
