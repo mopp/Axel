@@ -21,6 +21,7 @@ export MKDIR       := mkdir -p
 export ROOT_DIR    := $(PWD)/
 export INCLUDE_DIR := $(ROOT_DIR)include/
 
+DISK_IMG    := disk.img
 AXEL_BIN    := axel.bin
 AXEL_SYM    := axel.sym
 
@@ -36,7 +37,7 @@ KERNEL_MAP  := kernel.map
 
 OBJS_DIR    := objs/
 DEPS_DIR    := deps/
-WORK_DIRS	:= $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)dev $(DEPS_DIR)dev
+WORK_DIRS   := $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)dev $(DEPS_DIR)dev
 SUB_DIRS    := $(BOOT_DIR)
 
 C_SRCS      := dev/ata.c dev/pci.c acpi.c rgb8.c elist.c point.c aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c dev/ps2.c tlsf.c utils.c window.c kernel.c
@@ -120,7 +121,11 @@ clean:
 
 .PHONY: run_qemu_cdrom
 run_qemu_cdrom: $(MAKEFILE) $(ISO_NAME)
-	$(QEMU) -cdrom $(ISO_NAME) -hda ./disk.raw
+ifeq ($(shell ls | grep $(DISK_IMG)), $(DISK_IMG))
+	$(QEMU) -cdrom $(ISO_NAME) -hda $(DISK_IMG)
+else
+	$(QEMU) -cdrom $(ISO_NAME)
+endif
 
 
 .PHONY: debug_run_qemu
