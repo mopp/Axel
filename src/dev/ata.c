@@ -69,7 +69,7 @@ enum {
     TYPE_ATA                 = 0x00,
     TYPE_ATAPI               = 0x01,
     TYPE_UNKNOWN             = 0x02,
-    ATA_ERROR                = 0x20,
+    ATA_ERROR                = 0xFF,
 
     /* These are offset of command block register. */
     ATA_REG_DATA             = 0x00,
@@ -486,10 +486,11 @@ Axel_state_code init_ata(void) {
     for (uint8_t ch = 0; ch < 2; ch++) {
         Ata* ata = &atas[ch];
         if (ata->enable == 0) {
+            ata->dev[ATA_MASTER].type = TYPE_UNKNOWN;
+            ata->dev[ATA_SLAVE].type = TYPE_UNKNOWN;
             continue;
         }
         for (uint8_t dev = 0; dev < 2; dev++) {
-            printf("ch: %d, dev: %d\n", ch, dev);
             Dev* d = &ata->dev[dev];
 
             /* Select drive.  */
@@ -586,25 +587,38 @@ Axel_state_code init_ata(void) {
     }
 
 #if 0
-    /* for qemu */
-    uint8_t* buf = kmalloc_zeroed(512 * 2);
+    uint8_t ch = UINT8_MAX;
+    uint8_t dev = UINT8_MAX;
+    for (uint8_t i = 0; i < 2; i++) {
+        for (uint8_t j = 0; j < 2; j++) {
+            if (atas[i].dev[j].type == TYPE_ATA) {
+                ch = i;
+                dev = j;
+            }
+        }
+    }
+
+    if (ch == UINT8_MAX || dev == UINT8_MAX) {
+        return AXEL_SUCCESS;
+    }
+    printf("Try ch: %d, dev: %d\n", ch, dev);
+
+    size_t s = 512 * 2;
+    uint8_t* buf = kmalloc_zeroed(s);
     memset(buf, 0xCB, 512 * 2);
-    if (ata_access(ATA_WRITE, 0, 0, 0, 2, buf) != 0) {
-        printf("error\n");
+    uint8_t r = ata_access(ATA_WRITE, ch, dev, 0, 2, buf);
+    if (r != 0) {
+        printf("error: 0x%x\n", r);
     } else {
         printf("write\n");
     }
 
-    memset(buf, 0, 512 * 2);
-    if (ata_access(ATA_READ, 0, 0, 0, 2, buf) != 0) {
-        printf("error\n");
+    memset(buf, 0, s);
+    r = ata_access(ATA_READ, ch, dev, 0, 2, buf);
+    if (r != 0) {
+        printf("error: 0x%x\n", r);
     } else {
         printf("read\n");
-        for (int i = 0; i < 512 * 2; i++) {
-            if (buf[i] != 0) {
-                printf("change\n");
-            }
-        }
     }
 #endif
 
