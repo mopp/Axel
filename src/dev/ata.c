@@ -15,22 +15,9 @@
 #include <dev/ata.h>
 #include <utils.h>
 #include <asm_functions.h>
-#include <macros.h>
 #include <interrupt.h>
 #include <stdbool.h>
-#include <paging.h>
-
-
-struct dev {
-    uint8_t is_exists;     /* 0 (Empty) or 1 (This Drive really exists). */
-    uint8_t type;          /* ATA, ATAPI or Unknown. */
-    uint16_t gen_conf;     /* General configuration bit-significant information: */
-    uint16_t capabilities; /* Features. */
-    uint32_t command_sets; /* Command Sets Supported. */
-    uint32_t sector_nr;    /* How many sectors. */
-    uint32_t sector_size;  /* Byte size per 1 sector. */
-};
-typedef struct dev Dev;
+#include <macros.h>
 
 
 struct ata {
@@ -38,8 +25,8 @@ struct ata {
     uint16_t control_base; /* Base port number (which is used for read/write "ATA control block register"). */
     uint16_t bus_master;   /* Bus Master IDE */
     uint8_t n_ien;         /* nIEN (No Interrupt) */
-    uint8_t enable;        /* This indicates this channel is enable. */
-    Dev dev[2];            /* Master and slave */
+    uint8_t enable;        /* This indicates this available. */
+    Ata_dev dev[2];        /* Master and slave */
 };
 typedef struct ata Ata;
 
@@ -61,14 +48,6 @@ _Static_assert(sizeof(Status_register) == 1, "Status_register is NOT 1 byte");
 
 
 enum {
-    ATA_PRIMARY              = 0x00,
-    ATA_SECONDARY            = 0x01,
-    ATA_MASTER               = 0x00,
-    ATA_SLAVE                = 0x01,
-
-    TYPE_ATA                 = 0x00,
-    TYPE_ATAPI               = 0x01,
-    TYPE_UNKNOWN             = 0x02,
     ATA_ERROR                = 0xFF,
 
     /* These are offset of command block register. */
@@ -121,9 +100,6 @@ enum {
     ATA_CMD_IDENTIFY_PACKET  = 0xA1,
     ATA_CMD_IDENTIFY         = 0xEC,
 
-    ATA_READ                 = 0x00,
-    ATA_WRITE                = 0x01,
-
     /* ATA identification space offsets. */
     ATA_IDSP_GEN_CONF        = 0,
     ATA_IDSP_CAPABILITIES    = 49,
@@ -145,7 +121,6 @@ enum {
     ATA_CMD_SET_LBA48        = 0x04000000,
     ATA_CAPABILITIES_LBA     = 0x0020,
 };
-typedef enum ata_enum Ata_enum;
 
 
 static Ata atas[2]; /* primary and secondary. */
@@ -154,46 +129,46 @@ static uint16_t id_buffer[ATA_IDSP_DATA_WORD_SIZE];
 /* static uint8_t atapi_packet[12] = {0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; */
 
 
-static inline uint16_t get_port_number(uint8_t channel, uint8_t reg) {
+static inline uint16_t get_port_number(uint8_t ch, uint8_t reg) {
     uint16_t port;
 
     if ((reg & 0xff) == ATA_REG_CTRL_MARK) {
         /* Register that is written is control block register.  */
-        port = atas[channel].control_base + ECAST_UINT16(reg >> 8);
+        port = atas[ch].control_base + ECAST_UINT16(reg >> 8);
     } else {
-        port = atas[channel].command_base + ECAST_UINT16(reg);
+        port = atas[ch].command_base + ECAST_UINT16(reg);
     }
 
     return port;
 }
 
 
-static inline void ata_write(uint8_t channel, uint8_t reg, uint8_t data) {
-    io_out8(get_port_number(channel, reg), data);
+static inline void ata_write(uint8_t ch, uint8_t reg, uint8_t data) {
+    io_out8(get_port_number(ch, reg), data);
 }
 
 
-static inline uint8_t ata_read(uint8_t channel, uint8_t reg) {
-    return io_in8(get_port_number(channel, reg));
+static inline uint8_t ata_read(uint8_t ch, uint8_t reg) {
+    return io_in8(get_port_number(ch, reg));
 }
 
 
 #if 0
-static inline void ata_write_data_reg(uint8_t channel, uint16_t data) {
-    io_out16(get_port_number(channel, ATA_REG_DATA), data);
+static inline void ata_write_data_reg(uint8_t ch, uint16_t data) {
+    io_out16(get_port_number(ch, ATA_REG_DATA), data);
 }
 
 
-static inline uint16_t ata_read_data_reg(uint8_t channel) {
-    return io_in16(get_port_number(channel, ATA_REG_DATA));
+static inline uint16_t ata_read_data_reg(uint8_t ch) {
+    return io_in16(get_port_number(ch, ATA_REG_DATA));
 }
 #endif
 
 
-static inline void ata_wait_status(uint8_t channel, uint8_t mask, uint8_t value) {
+static inline void ata_wait_status(uint8_t ch, uint8_t mask, uint8_t value) {
     Status_register sr;
     do {
-        sr.bit_expr = ata_read(channel, ATA_REG_ALT_STATUS);
+        sr.bit_expr = ata_read(ch, ATA_REG_ALT_STATUS);
     } while ((sr.bit_expr & mask) != value);
 }
 
@@ -287,16 +262,15 @@ static inline void ata_select_device(uint8_t ch,  uint8_t dev, uint8_t bits) {
 }
 
 
-static inline uint8_t ata_access(uint8_t const direction, uint8_t const ch, uint8_t const dev, uint32_t const lba, uint8_t const sector_cnt, uint8_t* buffer) {
-    uint8_t addr_mode;
-    uint8_t lba_io[6];
-    uint8_t head, sector;
-    uint16_t cylinder;
+Axel_state_code ata_access(uint8_t const direction, Ata_dev* d, uint32_t lba, uint8_t sector_cnt, uint8_t* buffer) {
+    uint8_t lba_bytes[6];
+    uint8_t addr_mode, head;
+    uint8_t ch = d->channel;
+    uint8_t ms = d->ms;
 
-    Dev const* d = &atas[ch].dev[dev];
     if (d->is_exists == 0 || d->type == TYPE_UNKNOWN || d->sector_nr <= (lba + sector_cnt)) {
         /* error */
-        return ATA_ERROR;
+        return AXEL_FAILED;
     }
 
     /* Select addressing LBA28, LBA48 or CHS */
@@ -306,34 +280,34 @@ static inline uint8_t ata_access(uint8_t const direction, uint8_t const ch, uint
          * But, max is 32 bit
          */
         addr_mode = 2;
-        lba_io[0] = (lba & 0x000000FFu) >> 0u;
-        lba_io[1] = (lba & 0x0000FF00u) >> 8u;
-        lba_io[2] = (lba & 0x00FF0000u) >> 16u;
-        lba_io[3] = (lba & 0xFF000000u) >> 24u;
-        lba_io[4] = 0;
-        lba_io[5] = 0;
+        lba_bytes[0] = (lba & 0x000000FFu) >> 0u;
+        lba_bytes[1] = (lba & 0x0000FF00u) >> 8u;
+        lba_bytes[2] = (lba & 0x00FF0000u) >> 16u;
+        lba_bytes[3] = (lba & 0xFF000000u) >> 24u;
+        lba_bytes[4] = 0;
+        lba_bytes[5] = 0;
         head = 0;
-    } else if (atas[ch].dev[dev].capabilities & ATA_CAPABILITIES_LBA) {
+    } else if (d->capabilities & ATA_CAPABILITIES_LBA) {
         /* LBA28 */
         addr_mode = 1;
-        lba_io[0] = (lba & 0x00000FF) >> 0;
-        lba_io[1] = (lba & 0x000FF00) >> 8;
-        lba_io[2] = (lba & 0x0FF0000) >> 16;
-        lba_io[3] = 0;
-        lba_io[4] = 0;
-        lba_io[5] = 0;
+        lba_bytes[0] = (lba & 0x00000FF) >> 0;
+        lba_bytes[1] = (lba & 0x000FF00) >> 8;
+        lba_bytes[2] = (lba & 0x0FF0000) >> 16;
+        lba_bytes[3] = 0;
+        lba_bytes[4] = 0;
+        lba_bytes[5] = 0;
         head = (lba & 0xF000000) >> 24;
     } else {
         /* CHS */
         addr_mode = 0;
-        sector = (lba % 63) + 1;
-        cylinder = ECAST_UINT16((lba + 1 - sector) / (16 * 63));
-        lba_io[0] = sector;
-        lba_io[1] = (cylinder >> 0) & 0xFF;
-        lba_io[2] = (cylinder >> 8) & 0xFF;
-        lba_io[3] = 0;
-        lba_io[4] = 0;
-        lba_io[5] = 0;
+        uint8_t sector = (lba % 63) + 1;
+        uint16_t cylinder = ECAST_UINT16((lba + 1 - sector) / (16 * 63));
+        lba_bytes[0] = sector;
+        lba_bytes[1] = (cylinder >> 0) & 0xFF;
+        lba_bytes[2] = (cylinder >> 8) & 0xFF;
+        lba_bytes[3] = 0;
+        lba_bytes[4] = 0;
+        lba_bytes[5] = 0;
         head = (lba + 1 - sector) % (16 * 63) / (63);
         /* Head number is written to ATA_REG_DEV_CTRL lower 4-bits. */
     }
@@ -342,7 +316,7 @@ static inline uint8_t ata_access(uint8_t const direction, uint8_t const ch, uint
     uint8_t dma = 0;
 
     /* Select Drive and set LBA or CHS */
-    ata_select_device(ch, dev, head | (addr_mode == 0 ? 0 : 0x40));
+    ata_select_device(ch, ms, head | (addr_mode == 0 ? 0 : 0x40));
 
     /* Write adress. */
     if (addr_mode == 2) {
@@ -351,14 +325,14 @@ static inline uint8_t ata_access(uint8_t const direction, uint8_t const ch, uint
          * the LBA Low register, the LBA Mid register, and the LBA High register are each a two byte deep FIFO.
          */
         ata_write(ch, ATA_REG_SECTOR_COUNT, 0);
-        ata_write(ch, ATA_REG_LBA0, lba_io[3]);
-        ata_write(ch, ATA_REG_LBA1, lba_io[4]);
-        ata_write(ch, ATA_REG_LBA2, lba_io[5]);
+        ata_write(ch, ATA_REG_LBA0, lba_bytes[3]);
+        ata_write(ch, ATA_REG_LBA1, lba_bytes[4]);
+        ata_write(ch, ATA_REG_LBA2, lba_bytes[5]);
     }
     ata_write(ch, ATA_REG_SECTOR_COUNT, sector_cnt);
-    ata_write(ch, ATA_REG_LBA0, lba_io[0]);
-    ata_write(ch, ATA_REG_LBA1, lba_io[1]);
-    ata_write(ch, ATA_REG_LBA2, lba_io[2]);
+    ata_write(ch, ATA_REG_LBA0, lba_bytes[0]);
+    ata_write(ch, ATA_REG_LBA1, lba_bytes[1]);
+    ata_write(ch, ATA_REG_LBA2, lba_bytes[2]);
 
     uint8_t cmd;
     if (addr_mode == 0 && dma == 0 && direction == ATA_READ) { cmd = ATA_CMD_READ_PIO; }
@@ -384,21 +358,21 @@ static inline uint8_t ata_access(uint8_t const direction, uint8_t const ch, uint
             /* Write. */
         }
 
-        return 0;
+        return AXEL_FAILED;
     }
 
     /* PIO operation. */
-    uint32_t sec_size = d->sector_size;
+    uint32_t sec_size      = d->sector_size;
     uint32_t sec_word_size = d->sector_size / 2;
-    uint8_t error = 0;
-    uint16_t port = get_port_number(ch, ATA_REG_DATA);
+    uint16_t port          = get_port_number(ch, ATA_REG_DATA);
+    uint8_t error          = 0;
     if (direction == ATA_READ) {
         /* Read. */
         for (uint8_t i = 0; i < sector_cnt; i++) {
             /* Polling */
             error = ata_polling(ch, true);
             if (error != 0) {
-                return error;
+                return AXEL_FAILED;
             }
 
             /* Read 1 sector. */
@@ -417,7 +391,7 @@ static inline uint8_t ata_access(uint8_t const direction, uint8_t const ch, uint
         for (uint8_t i = 0; i < sector_cnt; i++) {
             error = ata_polling(ch, true);
             if (error != 0) {
-                return error;
+                return AXEL_FAILED;
             }
 
             /* Read 1 sector. */
@@ -434,11 +408,25 @@ static inline uint8_t ata_access(uint8_t const direction, uint8_t const ch, uint
         ata_write(ch, ATA_REG_COMMAND, (uint8_t[]) { ATA_CMD_CACHE_FLUSH, ATA_CMD_CACHE_FLUSH, ATA_CMD_CACHE_FLUSH_EXT }[addr_mode]);
         error = ata_polling(ch, false);
         if (error != 0) {
-            return error;
+            return AXEL_FAILED;
         }
     }
 
-    return 0;
+    return AXEL_SUCCESS;
+}
+
+
+Ata_dev* get_ata_device(uint8_t dnr) {
+    switch (dnr) {
+        case 0:
+        case 1:
+            return &atas[ATA_PRIMARY].dev[dnr];
+        case 2:
+        case 3:
+            return &atas[ATA_PRIMARY].dev[dnr - 2];
+    }
+
+    return NULL;
 }
 
 
@@ -483,24 +471,30 @@ Axel_state_code init_ata(void) {
     ata_dev_reset(ATA_PRIMARY);
     ata_dev_reset(ATA_SECONDARY);
 
-    for (uint8_t ch = 0; ch < 2; ch++) {
+    for (uint8_t ch = ATA_PRIMARY; ch <= ATA_SECONDARY; ch++) {
         Ata* ata = &atas[ch];
+        ata->dev[ATA_MASTER].channel = ch;
+        ata->dev[ATA_SLAVE].channel  = ch;
+        ata->dev[ATA_MASTER].ms      = ATA_MASTER;
+        ata->dev[ATA_SLAVE].ms       = ATA_SLAVE;
         if (ata->enable == 0) {
-            ata->dev[ATA_MASTER].type = TYPE_UNKNOWN;
-            ata->dev[ATA_SLAVE].type = TYPE_UNKNOWN;
+            ata->dev[ATA_MASTER].is_exists = 0;
+            ata->dev[ATA_SLAVE].is_exists  = 0;
+            ata->dev[ATA_MASTER].type      = TYPE_UNKNOWN;
+            ata->dev[ATA_SLAVE].type       = TYPE_UNKNOWN;
             continue;
         }
-        for (uint8_t dev = 0; dev < 2; dev++) {
-            Dev* d = &ata->dev[dev];
+
+        for (uint8_t ms = ATA_MASTER; ms <= ATA_SLAVE; ms++) {
+            Ata_dev* d = &ata->dev[ms];
 
             /* Select drive.  */
-            ata_select_device(ch, dev, 0);
+            ata_select_device(ch, ms, 0);
 
             /* Do identify command and check device */
             if (ata_do_cmd(ch, ATA_CMD_IDENTIFY) == 0) {
                 /* device NOT found. */
                 d->is_exists = 0;
-                printf("NOT exists\n");
                 continue;
             }
             d->is_exists = 1;
@@ -587,35 +581,34 @@ Axel_state_code init_ata(void) {
     }
 
 #if 0
-    uint8_t ch = UINT8_MAX;
-    uint8_t dev = UINT8_MAX;
+#include <paging.h>
+    Ata_dev* d = NULL;
     for (uint8_t i = 0; i < 2; i++) {
         for (uint8_t j = 0; j < 2; j++) {
-            if (atas[i].dev[j].type == TYPE_ATA) {
-                ch = i;
-                dev = j;
+            Ata_dev* ad = &atas[i].dev[j];
+            if (ad->type == TYPE_ATA && ad->is_exists == 1) {
+                d = ad;
             }
         }
     }
 
-    if (ch == UINT8_MAX || dev == UINT8_MAX) {
+    if (d == NULL) {
         return AXEL_SUCCESS;
     }
-    printf("Try ch: %d, dev: %d\n", ch, dev);
 
     size_t s = 512 * 2;
     uint8_t* buf = kmalloc_zeroed(s);
-    memset(buf, 0xCB, 512 * 2);
-    uint8_t r = ata_access(ATA_WRITE, ch, dev, 0, 2, buf);
-    if (r != 0) {
+    memset(buf, 0xFA, 512 * 2);
+    uint8_t r = ata_access(ATA_WRITE, d, 0, 2, buf);
+    if (r != AXEL_SUCCESS) {
         printf("error: 0x%x\n", r);
     } else {
         printf("write\n");
     }
 
     memset(buf, 0, s);
-    r = ata_access(ATA_READ, ch, dev, 0, 2, buf);
-    if (r != 0) {
+    r = ata_access(ATA_READ, d, 0, 2, buf);
+    if (r != AXEL_SUCCESS) {
         printf("error: 0x%x\n", r);
     } else {
         printf("read\n");
