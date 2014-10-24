@@ -136,7 +136,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_acpi();
     init_pic();
     init_pit();
-    /* init_process(); */
+    init_process();
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("Keyboard initialize failed\n");
