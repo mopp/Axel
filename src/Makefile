@@ -12,8 +12,8 @@ export LD          := ld -m elf_i386 --format elf32-i386 --oformat elf32-i386
 export NASM        := nasm -g -f elf32
 export AR_R        := ar r --target elf32-i386
 export OBJCOPY     := objcopy
-export QEMU        := qemu-system-i386 -monitor stdio -vga std -m 32 -d int -no-reboot
-export QEMU_D      := qemu-system-i386 -vga std -m 32
+export QEMU        := qemu-system-i386 -monitor stdio -vga std -m 32 -boot order=dc -d int -no-reboot
+export QEMU_D      := qemu-system-i386 -vga std -m 32 -boot order=dc
 export BOCHS       := bochs -q
 export GDB         := gdb
 export MAKEFILE    := Makefile
@@ -21,6 +21,7 @@ export MKDIR       := mkdir -p
 export ROOT_DIR    := $(PWD)/
 export INCLUDE_DIR := $(ROOT_DIR)include/
 
+OS 			:= $(shell uname -s)
 DISK_IMG    := disk.img
 AXEL_BIN    := axel.bin
 AXEL_SYM    := axel.sym
@@ -110,6 +111,8 @@ $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	cp $(GRUB_CONFIG) $(ISO_DIR)boot/grub/grub.cfg
 	grub-mkimage -O i386-pc -o $(ISO_DIR)efi.img multiboot biosdisk iso9660
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
+ifeq ($(OS), Linux)
+endif
 
 
 .PHONY: clean
