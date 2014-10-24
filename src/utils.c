@@ -41,17 +41,50 @@ int memcmp(const void* buf1, const void* buf2, size_t n) {
 }
 
 
-void* memcpy(void* buf1, const void* buf2, size_t n) {
-    char* p1 = (char*)buf1;
-    char const* p2 = (char const*)buf2;
+void* memcpy(void* restrict b1, const void* restrict b2, size_t n) {
+    uint8_t* restrict p1 = b1;
+    uint8_t const* restrict p2 = b2;
+    size_t nr, t;
 
-    while (0 < n--) {
-        *p1 = *p2;
-        ++p1;
-        ++p2;
+    __asm__ volatile("cld");
+
+    nr = n / 4;
+    if (nr != 0) {
+        __asm__ volatile(
+                "rep movsd  \n"
+                :
+                : "S"(p2), "D"(p1), "c"(nr)
+                : "memory", "%esi", "%edi", "%ecx"
+        );
+        t = nr * 4;
+        n -= t;
+        p1 += t;
+        p2 += t;
     }
 
-    return buf1;
+
+    nr = n / 2;
+    if (nr != 0) {
+        __asm__ volatile(
+                "rep movsw   \n"
+                :
+                : "S"(p2), "D"(p1), "c"(nr)
+                : "memory", "%esi", "%edi", "%ecx"
+        );
+        t = nr * 2;
+        n -= t;
+        p1 += t;
+        p2 += t;
+    }
+
+    __asm__ volatile(
+            "rep movsb   \n"
+            :
+            : "S"(p2), "D"(p1), "c"(n)
+            : "memory", "%esi", "%edi", "%ecx"
+    );
+
+    return b1;
 }
 
 
