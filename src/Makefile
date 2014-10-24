@@ -23,6 +23,7 @@ export INCLUDE_DIR := $(ROOT_DIR)include/
 
 OS 			:= $(shell uname -s)
 DISK_IMG    := disk.img
+D_CYLINDER	:=100
 AXEL_BIN    := axel.bin
 AXEL_SYM    := axel.sym
 
@@ -103,6 +104,7 @@ $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS)
 	$(LD) $(OBJS) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
 	$(OBJCOPY) --only-keep-debug $(AXEL_BIN) $(AXEL_SYM)
 	$(OBJCOPY) --strip-debug $(AXEL_BIN)
+	$(MAKE) $(DISK_IMG)
 
 
 $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
@@ -111,7 +113,34 @@ $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	cp $(GRUB_CONFIG) $(ISO_DIR)boot/grub/grub.cfg
 	grub-mkimage -O i386-pc -o $(ISO_DIR)efi.img multiboot biosdisk iso9660
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
+
+
+define FDISK
+fdisk -u -C$(D_CYLINDER) -S63 -H16 $(DISK_IMG) <<\__EOF__
+o
+n
+p
+1
+
+
+t
+b
+w
+__EOF__
+endef
+export FDISK
+
+$(DISK_IMG) :
 ifeq ($(OS), Linux)
+	@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder contains 516096 bytes (16 * 63 * 512)
+	@# cylinder * 516096 = size
+	@# cylinder = size / 516096
+	dd if=/dev/zero of=$(DISK_IMG) bs=516096c count=$(D_CYLINDER)
+	@echo "$$FDISK" | $(SHELL)
+	@# 63 * 512 = 32256
+	sudo losetup -o32256 /dev/loop0 $(DISK_IMG)
+	sudo mkfs.msdos -F 32 /dev/loop0
+	sudo losetup -d /dev/loop0
 endif
 
 
