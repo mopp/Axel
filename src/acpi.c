@@ -385,6 +385,7 @@ Axel_state_code init_acpi(void) {
 
     fadt_g = find_entry(table_addrs, table_nr, fadt_signature, 4);
     if (fadt_g == NULL) {
+        kfree(table_addrs);
         return AXEL_FAILED;
     }
 
@@ -394,12 +395,14 @@ Axel_state_code init_acpi(void) {
     Sdt_header* dsdt = (Sdt_header*)(v + (fadt_g->dsdt_addr - paddr));
 
     if (memcmp(dsdt->signature, "DSDT", 4) != 0) {
+        kfree(table_addrs);
         return AXEL_FAILED;
     }
 
     if (decode_dsdt(dsdt) != AXEL_SUCCESS) {
         Sdt_header* ssdt = find_entry(table_addrs, table_nr, "SSDT", 4);
         if (memcmp(ssdt->signature, "SSDT", 4) != 0) {
+            kfree(table_addrs);
             return AXEL_FAILED;
         }
     }
