@@ -72,12 +72,12 @@ export PP := $(CLANG) $(CPPFLAGS) -x c -E -P
 
 
 $(OBJS_DIR)%.o : %.c
-	@test -d $(OBJDIR) || $(MKDIR) $(WORK_DIRS)
+	@test -d $(OBJS_DIR) || $(MKDIR) $(WORK_DIRS)
 	@$(CC) -MMD -MQ $@ -MF ./$(DEPS_DIR)$*.d -c $< -o $@
 	@echo $(patsubst -W%,,$(CC) -c $< -o $@)
 
 $(OBJS_DIR)%.o : %.asm
-	@test -d $(OBJDIR) || $(MKDIR) $(WORK_DIRS)
+	test -d $(OBJS_DIR) || $(MKDIR) $(WORK_DIRS)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $< > $(TMP_FILE)
 	$(NASM) -l $(OBJS_DIR)$*.lst -o $@ $(TMP_FILE)
