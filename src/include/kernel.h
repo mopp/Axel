@@ -23,6 +23,7 @@ struct buddy_manager;
 struct tlsf_manager;
 struct page_directory_entry;
 typedef struct page_directory_entry* Page_directory_table;
+struct ata_dev;
 
 
 /*
@@ -37,6 +38,7 @@ struct axel_struct {
     struct buddy_manager* bman;
     struct tlsf_manager* tman;
     Page_directory_table kernel_pdt;
+    struct ata_dev* main_disk;
 };
 typedef struct axel_struct Axel_struct;
 

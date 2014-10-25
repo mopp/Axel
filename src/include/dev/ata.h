@@ -13,21 +13,24 @@
 
 #include <state_code.h>
 #include <stdint.h>
+#include <stddef.h>
 
 
 enum ata_constants {
-    TYPE_ATA      = 0x00,
-    TYPE_ATAPI    = 0x01,
-    TYPE_UNKNOWN  = 0x02,
+    TYPE_ATA         = 0x00,
+    TYPE_ATAPI       = 0x01,
+    TYPE_UNKNOWN     = 0x02,
 
-    ATA_PRIMARY   = 0x00,
-    ATA_SECONDARY = 0x01,
+    ATA_PRIMARY      = 0x00,
+    ATA_SECONDARY    = 0x01,
 
-    ATA_MASTER    = 0x00,
-    ATA_SLAVE     = 0x01,
+    ATA_MASTER       = 0x00,
+    ATA_SLAVE        = 0x01,
 
-    ATA_READ      = 0x00,
-    ATA_WRITE     = 0x01,
+    ATA_READ         = 0x00,
+    ATA_WRITE        = 0x01,
+
+    ATA_MAX_DRIVE_NR = 4,
 };
 
 
@@ -49,6 +52,7 @@ typedef struct ata_dev Ata_dev;
 extern Axel_state_code init_ata(void);
 extern Ata_dev* get_ata_device(uint8_t);
 extern Axel_state_code ata_access(uint8_t const, Ata_dev*, uint32_t, uint8_t, uint8_t*);
+extern size_t get_ata_device_size(Ata_dev const*);
 
 
 

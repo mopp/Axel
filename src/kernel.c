@@ -253,6 +253,20 @@ static inline void do_cmd(char const * cmd)  {
         console->wr_pos = console->wr_begin;
     } else if (strcmp(cmd, "exit") == 0) {
         shutdown();
+    } else if (strcmp(cmd, "ata") == 0) {
+        char const* const ch[] = {"Primary", "Secondary"};
+        char const* const ms[] = {"Master", "Slave"};
+        puts("ATA/ATAPI Drive Info\n");
+        for (uint8_t i = 0; i < ATA_MAX_DRIVE_NR; i++) {
+            printf("  %s - %s\n", ch[i & 0x1], ms[i & 0x1]);
+            Ata_dev* d = get_ata_device(i);
+            if (d == NULL) {
+                puts("    NOT exists\n");
+                continue;
+            }
+            printf("    Type : %s\n", (d->type == TYPE_ATA ? "ATA" : "ATAPI"));
+            printf("    size : %zd MB\n", MB(get_ata_device_size(d)));
+        }
     } else {
         printf("invalid command - %s\n", cmd);
     }

@@ -18,6 +18,7 @@
 #include <interrupt.h>
 #include <stdbool.h>
 #include <macros.h>
+#include <kernel.h>
 
 
 struct ata {
@@ -268,7 +269,7 @@ Axel_state_code ata_access(uint8_t const direction, Ata_dev* d, uint32_t lba, ui
     uint8_t ch = d->channel;
     uint8_t ms = d->ms;
 
-    if (d->is_exists == 0 || d->type == TYPE_UNKNOWN || d->sector_nr <= (lba + sector_cnt)) {
+    if (d == NULL || d->is_exists == 0 || d->type == TYPE_UNKNOWN || d->sector_nr <= (lba + sector_cnt)) {
         /* error */
         return AXEL_FAILED;
     }
@@ -421,16 +422,30 @@ Axel_state_code ata_access(uint8_t const direction, Ata_dev* d, uint32_t lba, ui
 
 
 Ata_dev* get_ata_device(uint8_t dnr) {
+    Ata_dev* d = NULL;
     switch (dnr) {
         case 0:
         case 1:
-            return &atas[ATA_PRIMARY].dev[dnr];
+            d = &atas[ATA_PRIMARY].dev[dnr];
+            break;
         case 2:
         case 3:
-            return &atas[ATA_PRIMARY].dev[dnr - 2];
+            d = &atas[ATA_SECONDARY].dev[dnr - 2];
+            break;
+        default:
+            return NULL;
     }
 
-    return NULL;
+    return (d->is_exists == 0) ? NULL : d;
+}
+
+
+size_t get_ata_device_size(Ata_dev const* d) {
+    if (d == NULL) {
+        return 0;
+    }
+
+    return d->sector_nr * d->sector_size;
 }
 
 
@@ -588,18 +603,17 @@ Axel_state_code init_ata(void) {
         }
     }
 
-#if 0
-#include <paging.h>
     Ata_dev* d = NULL;
-    for (uint8_t i = 0; i < 2; i++) {
-        for (uint8_t j = 0; j < 2; j++) {
-            Ata_dev* ad = &atas[i].dev[j];
-            if (ad->type == TYPE_ATA && ad->is_exists == 1) {
-                d = ad;
-            }
+    for (uint8_t i = 0; i < ATA_MAX_DRIVE_NR; i++) {
+        d = get_ata_device(i);
+        if (d != NULL && d->type == TYPE_ATA) {
+            break;
         }
     }
+    axel_s.main_disk = d;
 
+#if 0
+#include <paging.h>
     if (d == NULL) {
         return AXEL_SUCCESS;
     }
