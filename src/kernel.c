@@ -27,6 +27,7 @@
 #include <acpi.h>
 #include <dev/pci.h>
 #include <dev/ata.h>
+#include <fs.h>
 
 
 /* Interrupt Gate Descriptor Table */
@@ -150,6 +151,11 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 
     if (AXEL_SUCCESS != init_ata()) {
         printf("Init IDE is failed\n");
+    }
+
+    File_system* fs = init_fs(axel_s.main_disk);
+    if (fs == NULL) {
+        printf("Init FileSystem is failed\n");
     }
 
     Window* mouse_win = get_mouse_window();

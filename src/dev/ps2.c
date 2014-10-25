@@ -16,12 +16,6 @@
 #include <paging.h>
 
 
-#define FAILED_RETURN(exp)    \
-    if (exp == AXEL_FAILED) { \
-        return AXEL_FAILED;   \
-    }
-
-
 union keyboard_status_flags {
     struct {
         /*

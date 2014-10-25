@@ -51,6 +51,13 @@
 #define ALIGN_UP(n, align) ((n) + ((align) - 1u) & ~((align) - 1u))
 #define ALIGN_DOWN(n, align) ((n) & ~((align) - 1u))
 
+#define EXP_RETURN(exp, ret_val) \
+    if (exp) {                   \
+        return ret_val;          \
+    }
+
+#define FAILED_RETURN(exp) EXP_RETURN(exp == AXEL_FAILED, AXEL_FAILED)
+
 
 
 #endif
