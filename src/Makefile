@@ -21,25 +21,26 @@ export MKDIR       := mkdir -p
 export ROOT_DIR    := $(PWD)/
 export INCLUDE_DIR := $(ROOT_DIR)include/
 
-OS 			:= $(shell uname -s)
+OS_NAME     := $(shell uname -s)
 DISK_IMG    := disk.img
-D_CYLINDER	:=100
+D_CYLINDER  := 100
+
 AXEL_BIN    := axel.bin
 AXEL_SYM    := axel.sym
-
-ISO_NAME    := axel.iso
-ISO_DIR     := $(ROOT_DIR)iso/
-
-BOOT_DIR    := $(ROOT_DIR)boot/
-BOOT_OBJ    := $(BOOT_DIR)multiboot.o
-GRUB_CONFIG := $(BOOT_DIR)grub.cfg
-
 KERNEL_LNK  := kernel.ld
 KERNEL_MAP  := kernel.map
 
-OBJS_DIR    := objs/
-DEPS_DIR    := deps/
-WORK_DIRS   := $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)dev $(DEPS_DIR)dev
+ISO_NAME    := axel.iso
+
+BOOT_DIR    := boot/
+BOOT_OBJ    := $(BOOT_DIR)multiboot.o
+GRUB_CONFIG := $(BOOT_DIR)grub.cfg
+
+WORK_DIR    := work/
+ISO_DIR     := $(WORK_DIR)iso/
+OBJS_DIR    := $(WORK_DIR)objs/
+DEPS_DIR    := $(WORK_DIR)deps/
+WORK_DIRS   := $(WORK_DIR) $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)dev $(DEPS_DIR)dev
 SUB_DIRS    := $(BOOT_DIR)
 
 C_SRCS      := dev/ata.c dev/pci.c acpi.c rgb8.c elist.c point.c aqueue.c buddy.c exception.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c dev/ps2.c tlsf.c utils.c window.c kernel.c
@@ -72,11 +73,11 @@ export PP := $(CLANG) $(CPPFLAGS) -x c -E -P
 
 $(OBJS_DIR)%.o : %.c
 	@test -d $(OBJDIR) || $(MKDIR) $(WORK_DIRS)
-	$(CC) -MMD -MQ $@ -MF ./$(DEPS_DIR)$*.d -c $< -o $@
-
+	@$(CC) -MMD -MQ $@ -MF ./$(DEPS_DIR)$*.d -c $< -o $@
+	@echo $(patsubst -W%,,$(CC) -c $< -o $@)
 
 $(OBJS_DIR)%.o : %.asm
-	$(MKDIR) $(WORK_DIRS)
+	@test -d $(OBJDIR) || $(MKDIR) $(WORK_DIRS)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $< > $(TMP_FILE)
 	$(NASM) -l $(OBJS_DIR)$*.lst -o $@ $(TMP_FILE)
@@ -101,7 +102,8 @@ $(BOOT_OBJ) : $(MAKEFILE)
 $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $(KERNEL_LNK) > $(TMP_FILE)
-	$(LD) $(OBJS) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
+	@$(LD) $(OBJS) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
+	@echo $(LD) $(notdir $(OBJS)) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
 	$(OBJCOPY) --only-keep-debug $(AXEL_BIN) $(AXEL_SYM)
 	$(OBJCOPY) --strip-debug $(AXEL_BIN)
 	$(MAKE) $(DISK_IMG)
@@ -131,7 +133,7 @@ endef
 export FDISK
 
 $(DISK_IMG) :
-ifeq ($(OS), Linux)
+ifeq ($(OS_NAME), Linux)
 	@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder contains 516096 bytes (16 * 63 * 512)
 	@# cylinder * 516096 = size
 	@# cylinder = size / 516096
