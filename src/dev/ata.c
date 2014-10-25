@@ -334,7 +334,7 @@ Axel_state_code ata_access(uint8_t const direction, Ata_dev* d, uint32_t lba, ui
     ata_write(ch, ATA_REG_LBA1, lba_bytes[1]);
     ata_write(ch, ATA_REG_LBA2, lba_bytes[2]);
 
-    uint8_t cmd;
+    uint8_t cmd = UINT8_MAX;
     if (addr_mode == 0 && dma == 0 && direction == ATA_READ) { cmd = ATA_CMD_READ_PIO; }
     if (addr_mode == 1 && dma == 0 && direction == ATA_READ) { cmd = ATA_CMD_READ_PIO; }
     if (addr_mode == 2 && dma == 0 && direction == ATA_READ) { cmd = ATA_CMD_READ_PIO_EXT; }
@@ -347,6 +347,10 @@ Axel_state_code ata_access(uint8_t const direction, Ata_dev* d, uint32_t lba, ui
     if (addr_mode == 0 && dma == 1 && direction == ATA_WRITE) { cmd = ATA_CMD_WRITE_DMA; }
     if (addr_mode == 1 && dma == 1 && direction == ATA_WRITE) { cmd = ATA_CMD_WRITE_DMA; }
     if (addr_mode == 2 && dma == 1 && direction == ATA_WRITE) { cmd = ATA_CMD_WRITE_DMA_EXT; }
+    if (cmd == UINT8_MAX) {
+        return AXEL_FAILED;
+    }
+
     /* Wait and some error check is in for loop below. */
     ata_write(ch, ATA_REG_COMMAND, cmd);
 
@@ -432,9 +436,13 @@ Ata_dev* get_ata_device(uint8_t dnr) {
 
 Axel_state_code init_ata(void) {
     Pci_conf_reg pcr = find_pci_dev(PCI_CLASS_MASS_STORAGE, PCI_SUBCLASS_IDE);
+    if (pcr.bit_expr == 0) {
+        return AXEL_FAILED;
+    }
 
     /* Read IRQ line. */
-    Pci_data_reg pdr = pci_read_addr_data(&pcr, 0x3c);
+    Pci_data_reg pdr;
+    pci_read_addr_data(&pcr, 0x3c);
     pci_write_data(0xfe);
     pdr = pci_read_data(pcr);
 
