@@ -16,7 +16,7 @@
 #include <fs.h>
 
 
-Axel_state_code init_fat(File_system const*);
+File_system* init_fat(Ata_dev* dev, Partition_entry* pe);
 
 
 

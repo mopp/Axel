@@ -56,7 +56,15 @@ typedef struct master_boot_record Master_boot_record;
 _Static_assert(sizeof(Master_boot_record) == 512, "Master_boot_record is NOT 512 byte.");
 
 
-enum {
+struct file_system {
+    Ata_dev* dev;
+    Partition_entry pe;
+    /* TODO: control functions. */
+};
+typedef struct file_system File_system;
+
+
+enum fs_constants {
     BOOT_SIGNATURE      = 0xAA55,
     PART_TYPE_EMPTY     = 0x00,
     PART_TYPE_FAT12     = 0x01,
@@ -67,13 +75,6 @@ enum {
     PART_TYPE_FAT32     = 0x0B,
     PART_TYPE_FAT32_LBA = 0x1B,
 };
-
-
-struct file_system {
-    Ata_dev* dev;
-    Partition_entry* pe;
-};
-typedef struct file_system File_system;
 
 
 File_system* init_fs(Ata_dev*);
