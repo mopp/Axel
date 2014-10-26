@@ -47,12 +47,10 @@ Process* get_current_pdt_process(void) {
  * @param next pointer to next process.
  */
 void __fastcall change_context(Process* current, Process* next) {
-    io_sti();
 }
 
 
 void switch_context(Interrupt_frame* current_iframe) {
-    io_cli();
     Process* current_p = processes[current_p_idx];
     Thread* current_t  = current_p->thread;
     Process* next_p    = processes[next_p_idx];
