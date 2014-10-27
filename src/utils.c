@@ -121,21 +121,73 @@ int strcmp(register const char* s1, register const char* s2) {
 
 char* strcpy(char* s1, const char* s2) {
     char* p = s1;
-    while (*s2 == '\0') {
+    while (*s2 != '\0') {
         *s1++ = *s2++;
     }
+    *s1 = *s2;
+
     return p;
 }
 
 
-size_t strlen(const char* str) {
-    size_t i = 0;
-
-    while (*str++ != '\0') {
-        ++i;
+size_t strlen(const char* s) {
+    if (s == NULL) {
+        return 0;
     }
 
-    return i;
+    size_t i = 0;
+    do {
+        ++i;
+    } while (*s++ != '\0');
+
+    return i - 1;
+}
+
+
+char* strchr(char const* s, int c) {
+    if (s == NULL) {
+        return NULL;
+    }
+
+    while (*s != c && *s != '\0') {
+        s++;
+    }
+
+    return (*s == '\0') ? NULL : (char*)s;
+}
+
+
+char* strrchr(const char* s, int c) {
+    if (s == NULL) {
+        return NULL;
+    }
+
+    char* found = NULL;
+    while (*s != '\0') {
+        if (*s == c) {
+            found = (char*)s;
+        }
+        ++s;
+    }
+
+    return found;
+}
+
+
+size_t trim_tail(char* s) {
+    if (s == NULL) {
+        return 0;
+    }
+
+    size_t i, len = strlen(s);
+    i = len;
+    do {
+        i--;
+    } while (0 != i && s[i] == ' ');
+
+    s[i + 1] = '\0';
+
+    return len - i;
 }
 
 
