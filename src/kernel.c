@@ -97,7 +97,7 @@ enum PIT_constants {
 Axel_struct axel_s;
 static Window* console;
 static char const * prompt = "> ";
-#define MAX_CMD_LEN 20
+#define MAX_CMD_LEN 256
 static char cmd[MAX_CMD_LEN + 1];
 static size_t cmd_idx = 0 ;
 
@@ -153,8 +153,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         printf("Init IDE is failed\n");
     }
 
-    File_system* fs = init_fs(axel_s.main_disk);
-    if (fs == NULL) {
+    axel_s.fs = init_fs(axel_s.main_disk);
+    if (axel_s.fs== NULL) {
         printf("Init FileSystem is failed\n");
     }
 
@@ -229,11 +229,14 @@ static inline void draw_desktop(void) {
 }
 
 
-static inline void do_cmd(char const * cmd)  {
+static inline void do_cmd(char* cmd)  {
+    cmd_idx = 0;
     if (strlen(cmd) == 0) {
         puts(prompt);
         return;
     }
+
+    trim_tail(cmd);
 
     if (strcmp(cmd, "mem") == 0) {
         printf("Total memory : %zu KB\n", KB(get_total_memory_size()));
@@ -272,6 +275,57 @@ static inline void do_cmd(char const * cmd)  {
             }
             printf("    Type : %s\n", (d->type == TYPE_ATA ? "ATA" : "ATAPI"));
             printf("    size : %zd MB\n", MB(get_ata_device_size(d)));
+        }
+    } else if (strcmp(cmd, "pwd") == 0) {
+        if (axel_s.fs == NULL) {
+            puts("FileSystem is NOT available.\n");
+        }
+
+        char* pwd = kmalloc(sizeof(char) * (512));
+        pwd[511] = '\0';
+        char* tail = &pwd[511];
+        File* f = axel_s.fs->current_dir;
+        do {
+            size_t len = strlen(f->name);
+            tail -= len;
+            memcpy(tail, f->name, len);
+            f = f->parent_dir;
+        } while (f != NULL);
+        printf("%s\n", tail);
+        kfree(pwd);
+    } else if (strcmp(cmd, "ls") == 0) {
+        if (axel_s.fs == NULL) {
+            puts("FileSystem is NOT available.\n");
+        }
+
+        size_t cnr = axel_s.fs->current_dir->child_nr;
+        File** limit = axel_s.fs->current_dir->children;
+        for (size_t i = 0; i < cnr; i++) {
+            File* c = limit[i];
+            if (c->type_dir == 0) {
+                size_t s = c->size;
+                if (s < 1024) {
+                    printf("%4zd", s);
+                } else {
+                    printf("%3zdK", KB(s));
+                }
+            } else {
+                puts("D   ");
+            }
+            printf(" %s", c->name);
+            if (c->type) {
+                putchar('/');
+            }
+            putchar('\n');
+        }
+    } else if (strcmp(cmd, "cd") == 0) {
+        if (axel_s.fs == NULL) {
+            puts("FileSystem is NOT available.\n");
+        }
+
+        char const* const path = (cmd[2] == '\0') ? "/" : &cmd[3];
+        if (axel_s.fs->change_dir(axel_s.fs, path) != AXEL_SUCCESS) {
+            printf("no such directory - %s\n", path);
         }
     } else {
         printf("invalid command - %s\n", cmd);
@@ -412,7 +466,6 @@ static inline void decode_key(void) {
             putchar('\n');
             cmd[cmd_idx++] = '\0';
             do_cmd(cmd);
-            cmd_idx = 0;
             break;
         case esc:
             break;
