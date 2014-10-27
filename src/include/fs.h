@@ -57,13 +57,37 @@ _Static_assert(sizeof(Master_boot_record) == 512, "Master_boot_record is NOT 512
 
 
 struct file_system;
+typedef struct file_system File_system;
+
+
+/* Filesystem access interfaces. */
+typedef Axel_state_code (*Fs_change_dir_func)(File_system* ft, char const* path);
+
+
 struct file {
-    uint8_t type;
-    uint8_t state;
+    union {
+        uint8_t type;
+        struct {
+            uint8_t type_root : 1;
+            uint8_t type_dir : 1;
+            uint8_t type_file : 1;
+            uint8_t type_dev : 1;
+        };
+    };
+    union {
+        uint8_t state;
+        struct {
+            uint8_t state_load;
+        };
+    };
     uint8_t lock;
-    uint8_t right;
+    uint8_t permission;
+    uint8_t* name;
+    size_t size;
+    size_t create_time;
+    size_t write_time;
     struct file* parent_dir;
-    struct file** childs;
+    struct file** children;
     size_t child_nr;
     struct file_system* belong_fs;
 };
@@ -74,7 +98,8 @@ struct file_system {
     Ata_dev* dev;
     Partition_entry pe;
     File* current_dir;
-    /* TODO: control functions. */
+    File* root_dir;
+    Fs_change_dir_func change_dir;
 };
 typedef struct file_system File_system;
 
@@ -89,9 +114,11 @@ enum fs_constants {
     PART_TYPE_EX_FAT    = 0x07,
     PART_TYPE_FAT32     = 0x0B,
     PART_TYPE_FAT32_LBA = 0x1B,
-    FILE_TYPE_DIR,
-    FILE_TYPE_FILE,
-    FILE_TYPE_DEV,
+    FILE_TYPE_ROOT      = 0x01,
+    FILE_TYPE_DIR       = 0x02,
+    FILE_TYPE_FILE      = 0x04,
+    FILE_TYPE_DEV       = 0x08,
+    FILE_STATE_LOAD     = 0x01,
 };
 
 

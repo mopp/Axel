@@ -121,10 +121,8 @@ _Static_assert(sizeof(Long_dir_entry) == 32, "Long_dir_entry is NOT 32 byte.");
 
 
 struct fat_file {
-    File f;
+    File super;
     uint32_t clus_num;
-    uint8_t* name;
-    size_t name_len;
 };
 typedef struct fat_file Fat_file;
 
@@ -197,6 +195,7 @@ static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager* ft, uint
     return *b;
 }
 
+
 static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager* ft, uint32_t clus_num) {
     uint8_t spc = ft->bpb.sec_per_clus;
     uint32_t sec = ft->data_area_first_sec + (clus_num - 2) * spc;
@@ -233,10 +232,10 @@ static inline bool is_lfn(Dir_entry const* de) {
 }
 
 
-static inline uint8_t* ucs2_to_ascii(uint8_t* ucs2, uint8_t* ascii, size_t ucs2_len) {
+static inline size_t ucs2_to_ascii(uint8_t* ucs2, uint8_t* ascii, size_t ucs2_len) {
     if ((ucs2_len & 0x1) == 1) {
         /* invalid. */
-        return NULL;
+        return 0;
     }
 
     size_t cnt = 0;
@@ -248,84 +247,195 @@ static inline uint8_t* ucs2_to_ascii(uint8_t* ucs2, uint8_t* ascii, size_t ucs2_
     }
     ascii[cnt] = '\0';
 
-    return ascii;
+    return cnt;
+}
+
+
+static inline uint8_t calc_checksum(Dir_entry const* de) {
+    uint8_t sum = 0;
+
+    for (uint8_t i = 0; i < 11; i++) {
+        sum = (sum >> 1u) + (uint8_t)(sum << 7u) + de->name[i];
+    }
+
+    return sum;
 }
 
 
 static inline Fat_file* read_directory(Fat_file* ff) {
-    Fat_manager* const fm = (Fat_manager*)ff->f.belong_fs;
-    Bios_param_block* const bpb = &fm->bpb;
-    uint32_t clus = ff->clus_num;
+    if (ff->super.state_load == 1) {
+        /* Already loaded. */
+        return ff;
+    }
 
-    if (ff->f.type != FILE_TYPE_DIR) {
+    Fat_manager* const fm = (Fat_manager*)ff->super.belong_fs;
+    Bios_param_block* const bpb = &fm->bpb;
+
+    if (ff->super.type_dir == 0) {
         return NULL;
     }
 
-    uint32_t fe;
-    Fat_file* ffiles = kmalloc(512 * sizeof(Fat_file));
+    Fat_file* ffiles = kmalloc(128 * sizeof(Fat_file));
     size_t file_cnt = 0;
     uint32_t limit = (bpb->sec_per_clus * bpb->bytes_per_sec) / sizeof(Dir_entry);
+    uint32_t fe;
+    uint32_t next_clus = ff->clus_num;
+    uint32_t clus;
     do {
+        clus = next_clus;
         fe = fat_enrty_access(FAT_READ, fm, clus, 0);
-        if (is_unused_fat_entry(fm, fe) == true || is_unused_fat_entry(fm, fe) == true || is_bad_clus_fat_entry(fm, fe) == true) {
-            /* invalid */
+        if (is_unused_fat_entry(fm, fe) == true || is_rsvd_fat_entry(fm, fe) == true || is_bad_clus_fat_entry(fm, fe) == true) {
+            /* Invalid */
             kfree(ffiles);
             return NULL;
         }
-        fat_data_cluster_access(FAT_READ, fm, clus);
 
-        Dir_entry* const de = (Dir_entry*)(uintptr_t)fm->buffer;
+        /* FAT entry indicates last entry or next entry cluster. */
+        next_clus = fe;
+
+        /* Read data. */
+        fat_data_cluster_access(FAT_READ, fm, clus);
+        Dir_entry* const de       = (Dir_entry*)(uintptr_t)fm->buffer;
         Long_dir_entry* const lde = (Long_dir_entry*)(uintptr_t)fm->buffer;
 
-        char name[13 + 1];
+        /* Find children */
         for (uint32_t i = 0; i < limit; i++) {
-            Dir_entry* sfn = &de[i];
-            if (sfn->name[0] == DIR_LAST_FREE) {
+            Dir_entry* entry = &de[i];
+
+            if (entry->name[0] == DIR_LAST_FREE) {
                 break;
             }
-            if (sfn->name[0] != DIR_FREE) {
-                /* File exist. */
-                if (is_lfn(sfn) == false) {
-                    /* SFN entry. */
-                    Fat_file* f = &ffiles[file_cnt];
 
-                    /* Load name */
-                    if (is_lfn(&de[i - 1]) == true) {
-                        /* There are LFN before SFN. */
-                        uint32_t j = i - 1;
-                        do {
-                            ucs2_to_ascii(lde[j].name0, name, 10);
-                            ucs2_to_ascii(lde[j].name1, name + 5, 12);
-                            ucs2_to_ascii(lde[j].name2, name + 6, 4);
-                        } while ((lde[j--].order & LFN_LAST_ENTRY_FLAG) == 0);
-                    } else {
-                        /* SFN stand alone. */
-                        memcpy(name, de->name, 11);
-                        name[11] = '\0';
-                    }
-                    f->name_len = strlen(name);
-                    f->name = kmalloc(sizeof(uint8_t) * f->name_len);
-                    strcpy(f->name, name);
-
-                    /* Load cluster number. */
-                    f->clus_num = (uint16_t)((sfn->first_clus_num_hi << 16) | sfn->first_clus_num_lo);
-                    file_cnt++;
-                }
+            if (entry->name[0] == DIR_FREE || is_lfn(entry) == true) {
+                /* Free and LFN entry is skiped. */
+                continue;
             }
+
+            /* This Entry is SFN entry. */
+            Fat_file* f = &ffiles[file_cnt];
+            uint8_t checksum = calc_checksum(entry);
+            bool is_error = false;
+
+            /* Set name */
+            char name[128];
+            if (is_lfn(&de[i - 1]) == true) {
+                /* There are LFN before SFN. */
+                uint32_t j = i - 1;
+                size_t char_num = 0;
+                do {
+                    if (checksum != lde[j].checksum) {
+                        is_error = true;
+                        break;
+                    }
+                    char_num += ucs2_to_ascii(lde[j].name0, name + char_num, 10);
+                    char_num += ucs2_to_ascii(lde[j].name1, name + char_num, 12);
+                    char_num += ucs2_to_ascii(lde[j].name2, name + char_num,  4);
+                } while (j != 0 && (lde[j--].order & LFN_LAST_ENTRY_FLAG) == 0);
+            } else {
+                /* SFN stand alone. */
+                memcpy(name, entry->name, 11);
+                name[11] = '\0';
+            }
+            if (is_error == true) {
+                is_error = false;
+                continue;
+            }
+
+            trim_tail(name);
+            size_t len = strlen(name);
+            f->super.name = kmalloc_zeroed(sizeof(uint8_t) * (len + 1));
+            strcpy(f->super.name, name);
+
+            /* Set the others. */
+            f->clus_num         = (uint16_t)((entry->first_clus_num_hi << 16) | entry->first_clus_num_lo);
+            f->super.type       = ((entry->attr & DIR_ATTR_DIRECTORY) != 0) ? FILE_TYPE_DIR : FILE_TYPE_FILE;
+            f->super.size       = entry->file_size;
+            f->super.belong_fs  = &fm->fs;
+            f->super.parent_dir = &ff->super;
+            f->super.state_load = 0;
+
+            file_cnt++;
         }
     } while (is_last_fat_entry(fm, fe) == false);
 
-    /* Store file infomation */
-    ff->f.childs = kmalloc(sizeof(File*) * file_cnt);
-    Fat_file* exist_ffiles = kmalloc(sizeof(Fat_file) * file_cnt);
+    /* Copy into memory area which has appropriate size. */
+    Fat_file* exist_ffiles = kmalloc_zeroed(sizeof(Fat_file) * file_cnt);
     memcpy(exist_ffiles, ffiles, sizeof(Fat_file) * file_cnt);
-    for (size_t i = 0; i < file_cnt; i++) {
-        ff->f.childs[i] = &exist_ffiles[i].f;
-    }
-    ff->f.child_nr = file_cnt;
     kfree(ffiles);
 
+    /* Store file infomation */
+    ff->super.children = kmalloc_zeroed(sizeof(File*) * file_cnt);
+    ff->super.child_nr = file_cnt;
+    ff->super.state_load = 1;
+    for (size_t i = 0; i < file_cnt; i++) {
+        ff->super.children[i] = &exist_ffiles[i].super;
+    }
+
     return ff;
+}
+
+
+static inline Axel_state_code fat_change_dir(File_system* ft, char const* path) {
+    if (ft == NULL || path == NULL || ft->current_dir == NULL) {
+        return AXEL_FAILED;
+    }
+
+    File_system const stored_ft = *ft;
+
+    /* Absolute path. */
+    while (*path == '/') {
+        path++;
+        ft->current_dir = ft->root_dir;
+        if (*path == '\0') {
+            return AXEL_SUCCESS;
+        }
+    }
+
+    bool is_change = false;
+    char const* c;
+    do {
+        Fat_file const* ff = (Fat_file*)ft->current_dir;
+        if ((path[0] == '.') && (path[1] == '.')) {
+            /* Go to parent dir. */
+            if (ft->current_dir == ft->root_dir) {
+                goto failed;
+            }
+            ft->current_dir = ff->super.parent_dir;
+            path += 2;
+            is_change = true;
+        } else {
+            /* Search sub directory. */
+            c = strchr(path, '/');
+            size_t len = ((c == NULL) ? strlen(path) : ((uintptr_t)c - (uintptr_t)path));
+            size_t cnr = ff->super.child_nr;
+            for (size_t i = 0; i < cnr; i++) {
+                Fat_file* ffi = (Fat_file*)ff->super.children[i];
+                /* Checking directory && Not current directory && match name. */
+                if ((ffi->super.type_dir == 1) && (&ffi->super != ft->current_dir) && (memcmp(path, ffi->super.name, len) == 0)) {
+                    ft->current_dir = &ffi->super;
+                    is_change = true;
+
+                    /* Read sub directory contents. */
+                    if (ft->current_dir->state_load == 0 && read_directory(ffi) == NULL) {
+                        goto failed;
+                    }
+                    break;
+                }
+            }
+            path += len;
+        }
+
+        if (*path == '/') {
+            path++;
+        }
+    } while (*path != '\0');
+
+
+    return (is_change == true) ? AXEL_SUCCESS : AXEL_FAILED;
+
+failed:
+    *ft = stored_ft;
+    return AXEL_FAILED;
 }
 
 
@@ -335,109 +445,80 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
         return NULL;
     }
 
-    Fat_manager* ft    = kmalloc(sizeof(Fat_manager));
-    ft->fs.dev         = dev;
-    ft->fs.pe          = *pe;
-    ft->buffer_size    = dev->sector_size * 4;
-    ft->buffer         = kmalloc(ft->buffer_size);
-    Fat_file* root     = kmalloc_zeroed(sizeof(Fat_file));
-    root->f.belong_fs  = &ft->fs;
-    root->f.type       = FILE_TYPE_DIR;
-    ft->fs.current_dir = &root->f;
+    /* Temporary buffer. */
+    size_t const bytes_per_sec = dev->sector_size;
+    uint8_t* const b = kmalloc(bytes_per_sec);
+
+    Fat_manager* const fman = kmalloc(sizeof(Fat_manager));
+    fman->fs.dev = dev;
+    fman->fs.pe = *pe;
+    fman->fs.change_dir = fat_change_dir;
+
+    Fat_file* const root  = kmalloc_zeroed(sizeof(Fat_file));
+    root->super.name      = kmalloc(1 + 1);
+    root->super.belong_fs = &fman->fs;
+    root->super.type      = FILE_TYPE_DIR | FILE_TYPE_ROOT;
+    fman->fs.current_dir  = &root->super;
+    fman->fs.root_dir     = &root->super;
+    strcpy(root->super.name, "/");
 
     /* Load Bios parameter block. */
-    if (fat_access(FAT_READ, ft, 0, 1, ft->buffer) != AXEL_SUCCESS) {
-        kfree(ft);
-        return NULL;
+    if ((fat_access(FAT_READ, fman, 0, 1, b) != AXEL_SUCCESS) || (*((uint16_t*)(uintptr_t)(&b[510])) == 0x55aa)) {
+        goto failed;
     }
+    memcpy(&fman->bpb, b, sizeof(Bios_param_block));
+    Bios_param_block* const bpb = &fman->bpb;
 
-    if (*((uint16_t*)(uintptr_t)(&ft->buffer[510])) == 0x55aa) {
-        /* Invalid BPB. */
-        kfree(ft);
-        return NULL;
-    }
-    memcpy(&ft->bpb, ft->buffer, sizeof(Bios_param_block));
-    /* FIXME: bpb->sec_per_clus; */
-
-    Bios_param_block* bpb = &ft->bpb;
-    printf("%s\n", bpb->oem_name);
-    printf("Boot signature      : 0x%x\n", bpb->fat32.boot_sig);
-    printf("Total size          : %d MB\n", MB(bpb->total_sec32 * bpb->bytes_per_sec));
+    /* Free temporary buffer and allocate buffer of one cluster. */
+    kfree(b);
+    fman->buffer = kmalloc(bpb->sec_per_clus * bytes_per_sec);
 
     /* These are logical sector number. */
     uint32_t fat_size           = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
     uint32_t total_sec          = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
-    uint32_t rsvd_first_sec     = 0;
+    /* uint32_t rsvd_first_sec     = 0; */
     uint32_t rsvd_sec_num       = bpb->rsvd_area_sec_num;
     uint32_t fat_first_sec      = rsvd_sec_num;
     uint32_t fat_sec_size       = fat_size * bpb->num_fats;
     uint32_t root_dir_first_sec = fat_first_sec + fat_sec_size;
     uint32_t root_dir_sec_num   = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
-
     uint32_t data_first_sec     = root_dir_first_sec + root_dir_sec_num;
     uint32_t data_sec_num       = total_sec - data_first_sec;
-    ft->data_area_first_sec     = data_first_sec;
-    ft->data_area_sec_nr        = data_sec_num;
+    fman->data_area_first_sec     = data_first_sec;
+    fman->data_area_sec_nr        = data_sec_num;
 
     /* FAT type detection. */
     uint32_t cluster_num = data_sec_num / bpb->sec_per_clus;
-    uint8_t fat_type;
     if (cluster_num < 4085) {
-        fat_type = FAT_TYPE12;
+        fman->fat_type = FAT_TYPE12;
     } else if (cluster_num < 65525) {
-        fat_type = FAT_TYPE16;
+        fman->fat_type = FAT_TYPE16;
     } else {
-        fat_type = FAT_TYPE32;
-    }
-    ft->fat_type = fat_type;
+        fman->fat_type = FAT_TYPE32;
+        /* Load FSINFO struct. */
+        if (fat_access(FAT_READ, fman, bpb->fat32.fsinfo_sec_num, 1, fman->buffer) == AXEL_FAILED) {
+            goto failed;
+        }
+        memcpy(&fman->fsinfo, fman->buffer, sizeof(Fsinfo));
 
-    /*
-     * NOTE: that the CountofClusters value is exactly that the count of data clusters starting at cluster 2.
-     * The maximum valid cluster number for the volume is CountofClusters + 1,
-     * And the "count of clusters including the two reserved clusters" is CountofClusters + 2.
-     */
-    printf("Cluster num : %d -> FAT%d\n", cluster_num, fat_type);
+        Fsinfo* fsinfo = &fman->fsinfo;
+        if ((fsinfo->lead_signature != FSINFO_LEAD_SIG) || (fsinfo->struct_signature != FSINFO_STRUCT_SIG) || (fsinfo->trail_signature != FSINFO_TRAIL_SIG)) {
+            /* invalid. */
+            goto failed;
+        }
 
-    /* Load FSINFO struct. */
-    if (fat_access(FAT_READ, ft, bpb->fat32.fsinfo_sec_num, 1, ft->buffer) == AXEL_FAILED) {
-        kfree(ft);
-        return NULL;
-    }
-    memcpy(&ft->fsinfo, ft->buffer, sizeof(Fsinfo));
-
-    Fsinfo* fsinfo = &ft->fsinfo;
-    if ((fsinfo->lead_signature != FSINFO_LEAD_SIG) || (fsinfo->struct_signature != FSINFO_STRUCT_SIG) || (fsinfo->trail_signature != FSINFO_TRAIL_SIG)) {
-        /* invalid. */
-        kfree(ft);
-        return NULL;
-    }
-    printf("%d\n", fsinfo->free_cnt);
-
-    printf("FAT num     : %d\n", bpb->num_fats);
-    printf("FAT sec num : %d\n", fat_size);
-    if (fat_type == FAT_TYPE32) {
         /* Load root directory entry. */
         root->clus_num = bpb->fat32.rde_clus_num;
         if (read_directory(root) == NULL) {
-            return NULL;
-        }
-        for (size_t i = 0; i < root->f.child_nr; i++) {
-            Fat_file* f = (Fat_file*)(root->f.childs[i]);
-            printf("%zd - %s\n", i, f->name);
+            goto failed;
         }
     }
 
-    return &ft->fs;
-}
+    return &fman->fs;
 
-
-uint8_t calc_checksum(Dir_entry const* de) {
-    int i;
-    uint8_t sum;
-
-    for (i = sum = 0; i < 11; i++) {
-        sum = (sum >> 1u) + (uint8_t)(sum << 7u) + de->name[i];
-    }
-
-    return sum;
+failed:
+    kfree(fman);
+    kfree(fman->buffer);
+    kfree(root);
+    return NULL;
 }
