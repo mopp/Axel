@@ -82,3 +82,4 @@ gcc
 
 ## ScreenShot
 ![ss](./ss.png)
+![ss2](./ss2.png)
