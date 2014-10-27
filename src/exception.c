@@ -24,7 +24,7 @@ void exception_page_fault(Interrupt_frame* ic) {
     if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
         /* TODO: User space fault */
         io_cli();
-        printf("fault_addr: 0x%zx\n", fault_addr);
+        printf("\nfault_addr: 0x%zx\n", fault_addr);
         puts("User space fault or Kernel space fault");
         DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x1);
     }
@@ -34,7 +34,7 @@ void exception_page_fault(Interrupt_frame* ic) {
         /* Maybe kernel error */
         /* TODO: panic */
         io_cli();
-        printf("fault_addr: 0x%zx\n", fault_addr);
+        printf("\nfault_addr: 0x%zx\n", fault_addr);
         puts("Kernel space fault");
         DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x2);
     }
@@ -43,7 +43,7 @@ void exception_page_fault(Interrupt_frame* ic) {
     if (result != AXEL_SUCCESS) {
         /* TODO: panic */
         io_cli();
-        printf("fault_addr: 0x%zx\n", fault_addr);
+        printf("\nfault_addr: 0x%zx\n", fault_addr);
         puts("Synchronize fault");
         DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x3);
     }
