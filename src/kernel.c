@@ -313,7 +313,7 @@ static inline void do_cmd(char* cmd)  {
                 puts("D   ");
             }
             printf(" %s", c->name);
-            if (c->type) {
+            if (c->type_dir) {
                 putchar('/');
             }
             putchar('\n');
@@ -376,12 +376,16 @@ static inline void decode_key(void) {
         [0x3E] = '8',
         [0x46] = '9',
 
+        [0x49] = '.',
+        [0x4A] = '/',
         [0x0E] = '`',
         [0x4E] = '-',
         [0x55] = '=',
         [0x5D] = '\\',
     };
     static char const keymap_s[] = {
+        [0x49] = '>',
+        [0x4A] = '?',
         [0x45] = ')',
         [0x16] = '!',
         [0x1E] = '@',
