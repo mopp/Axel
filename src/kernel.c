@@ -137,7 +137,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_acpi();
     init_pic();
     init_pit();
-    init_process();
+    /* init_process(); */
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("Keyboard initialize failed\n");
@@ -208,7 +208,7 @@ static inline void draw_desktop(void) {
     int32_t c_width = 500;
     RGB8 fg = convert_color2RGB8(0x2EFE2E);
     RGB8 bg = convert_color2RGB8(0x151515);
-    console = alloc_filled_window(&make_point2d(50, 100), &make_point2d(c_width, c_height), &bg);
+    console = alloc_filled_window(&make_point2d(30, 30), &make_point2d(c_width, c_height), &bg);
     if (console != NULL) {
         window_draw_line(console, set_point2d(&p0, 0, 0), set_point2d(&p1, 0, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
         window_draw_line(console, set_point2d(&p0, c_width - 1, 0), set_point2d(&p1, c_width - 1, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
@@ -230,7 +230,6 @@ static inline void draw_desktop(void) {
 
 
 static inline void do_cmd(char* cmd)  {
-    cmd_idx = 0;
     if (strlen(cmd) == 0) {
         puts(prompt);
         return;
@@ -238,31 +237,31 @@ static inline void do_cmd(char* cmd)  {
 
     trim_tail(cmd);
 
-    if (strcmp(cmd, "mem") == 0) {
+    if (memcmp(cmd, "mem", 3) == 0) {
         printf("Total memory : %zu KB\n", KB(get_total_memory_size()));
-    } else if (strcmp(cmd, "va") == 0) {
+    } else if (memcmp(cmd, "va", 2) == 0) {
         printf("kernel virtual addr : 0x%08zx - 0x%08zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-    } else if (strcmp(cmd, "pa") == 0) {
+    } else if (memcmp(cmd, "pa", 2) == 0) {
         printf("kernel physical addr : 0x%08zx - 0x%08zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    } else if (strcmp(cmd, "size") == 0) {
+    } else if (memcmp(cmd, "size", 4) == 0) {
         printf("kernel size        : %zu KB\n", KB(get_kernel_size()));
         printf("kernel static size : %zu KB\n", KB(get_kernel_static_size()));
-    } else if (strcmp(cmd, "buddy") == 0) {
+    } else if (memcmp(cmd, "buddy", 5) == 0) {
         printf("BuddySystem Total    : %zu KB\n", KB(buddy_get_total_memory_size(axel_s.bman)));
         printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
         printf("BuddySystem Free     : %zu KB\n", KB(buddy_get_free_memory_size(axel_s.bman)));
         for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
             printf("  Order: %02zu(%05u) - Buddy %02zu nr\n", i, PO2(i), axel_s.bman->free_frame_nr[i]);
         }
-    } else if (strcmp(cmd, "tlsf") == 0) {
+    } else if (memcmp(cmd, "tlsf", 4) == 0) {
         printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
         printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
-    } else if (strcmp(cmd, "clear") == 0) {
+    } else if (memcmp(cmd, "clear", 5) == 0) {
         window_fill_area(console, &console->wr_begin, &console->wr_size, &console->bg);
         console->wr_pos = console->wr_begin;
-    } else if (strcmp(cmd, "exit") == 0) {
+    } else if (memcmp(cmd, "exit", 4) == 0) {
         shutdown();
-    } else if (strcmp(cmd, "ata") == 0) {
+    } else if (memcmp(cmd, "ata", 3) == 0) {
         char const* const ch[] = {"Primary", "Secondary"};
         char const* const ms[] = {"Master", "Slave"};
         puts("ATA/ATAPI Drive Info\n");
@@ -276,7 +275,7 @@ static inline void do_cmd(char* cmd)  {
             printf("    Type : %s\n", (d->type == TYPE_ATA ? "ATA" : "ATAPI"));
             printf("    size : %zd MB\n", MB(get_ata_device_size(d)));
         }
-    } else if (strcmp(cmd, "pwd") == 0) {
+    } else if (memcmp(cmd, "pwd", 3) == 0) {
         if (axel_s.fs == NULL) {
             puts("FileSystem is NOT available.\n");
         }
@@ -293,7 +292,7 @@ static inline void do_cmd(char* cmd)  {
         } while (f != NULL);
         printf("%s\n", tail);
         kfree(pwd);
-    } else if (strcmp(cmd, "ls") == 0) {
+    } else if (memcmp(cmd, "ls", 2) == 0) {
         if (axel_s.fs == NULL) {
             puts("FileSystem is NOT available.\n");
         }
@@ -301,7 +300,11 @@ static inline void do_cmd(char* cmd)  {
         size_t cnr = axel_s.fs->current_dir->child_nr;
         File** limit = axel_s.fs->current_dir->children;
         for (size_t i = 0; i < cnr; i++) {
-            File* c = limit[i];
+            File const* c = limit[i];
+            if (c == NULL) {
+                puts("null\n");
+                break;
+            }
             if (c->type_dir == 0) {
                 size_t s = c->size;
                 if (s < 1024) {
@@ -318,7 +321,7 @@ static inline void do_cmd(char* cmd)  {
             }
             putchar('\n');
         }
-    } else if (strcmp(cmd, "cd") == 0) {
+    } else if (memcmp(cmd, "cd", 2) == 0) {
         if (axel_s.fs == NULL) {
             puts("FileSystem is NOT available.\n");
         }
@@ -326,6 +329,46 @@ static inline void do_cmd(char* cmd)  {
         char const* const path = (cmd[2] == '\0') ? "/" : &cmd[3];
         if (axel_s.fs->change_dir(axel_s.fs, path) != AXEL_SUCCESS) {
             printf("no such directory - %s\n", path);
+        }
+    } else if (memcmp(cmd, "cat", 3) == 0) {
+        if (axel_s.fs == NULL) {
+            puts("FileSystem is NOT available.\n");
+        }
+
+        if (cmd[3] == '\0') {
+            puts("invalid argument\n");
+        } else {
+            /* Skip command string. */
+            cmd += 4;
+
+            bool f = false;
+            File_system* fs = axel_s.fs;
+            size_t cnr = fs->current_dir->child_nr;
+            File** limit = fs->current_dir->children;
+            for (size_t i = 0; i < cnr; i++) {
+                File const* c = limit[i];
+                if (c->type_file == 1 && strcmp(c->name, cmd) == 0) {
+                    uint8_t* b = kmalloc(c->size + 1);
+                    b[c->size] = '\0';
+
+                    if (fs->access_file(FILE_READ, c, b) == AXEL_SUCCESS) {
+                        puts(b);
+                        if (b[c->size - 1] != '\n') {
+                            putchar('\n');
+                        }
+                    } else {
+                        puts("File Access Error\n");
+                    }
+
+                    kfree(b);
+                    f = true;
+                    break;
+                }
+            }
+
+            if (f == false) {
+                printf("%s is NOT found.\n", cmd);
+            }
         }
     } else {
         printf("invalid command - %s\n", cmd);
@@ -470,6 +513,7 @@ static inline void decode_key(void) {
             putchar('\n');
             cmd[cmd_idx++] = '\0';
             do_cmd(cmd);
+            cmd_idx = 0;
             break;
         case esc:
             break;
