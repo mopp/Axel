@@ -128,7 +128,7 @@ typedef struct fat_file Fat_file;
 
 
 struct fat_manager {
-    File_system fs;
+    File_system super;
     Bios_param_block bpb;
     Fsinfo fsinfo;
     uint8_t* buffer;
@@ -165,7 +165,7 @@ enum {
 
 
 static inline Axel_state_code fat_access(uint8_t direction, Fat_manager const* ft, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
-    return ata_access(direction, ft->fs.dev, ft->fs.pe.lba_first + lba, sec_cnt, buf);
+    return ata_access(direction, ft->super.dev, ft->super.pe.lba_first + lba, sec_cnt, buf);
 }
 
 
@@ -203,7 +203,7 @@ static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager co
         return NULL;
     }
 
-    return ft->buffer;
+    return buffer;
 }
 
 
@@ -233,7 +233,7 @@ static inline bool is_data_exist_fat_entry(uint32_t fe) {
 }
 
 
-static inline bool is_last_fat_entry(Fat_manager const* ft, uint32_t fe) {
+static inline bool is_last_fat_entry(uint32_t fe) {
     return (0x0FFFFFF8 <= fe && fe <= 0x0FFFFFFF) ? true : false;
 }
 
@@ -324,7 +324,6 @@ static inline Fat_file* read_directory(Fat_file* ff) {
             }
 
             /* This Entry is SFN entry. */
-            Fat_file* f = &ffiles[file_cnt];
             uint8_t checksum = calc_checksum(entry);
             bool is_error = false;
 
@@ -342,67 +341,68 @@ static inline Fat_file* read_directory(Fat_file* ff) {
                     char_num += ucs2_to_ascii(lde[j].name0, name + char_num, 10);
                     char_num += ucs2_to_ascii(lde[j].name1, name + char_num, 12);
                     char_num += ucs2_to_ascii(lde[j].name2, name + char_num,  4);
-                } while (j != 0 && (lde[j--].order & LFN_LAST_ENTRY_FLAG) == 0);
+                } while (j != 0 && (lde[j--].order & LFN_LAST_ENTRY_FLAG) == 0 && char_num < 102);
             } else {
                 /* SFN stand alone. */
                 memcpy(name, entry->name, 11);
                 name[11] = '\0';
             }
             if (is_error == true) {
-                is_error = false;
                 continue;
             }
 
             trim_tail(name);
             size_t len = strlen(name);
+
+            Fat_file* f = &ffiles[file_cnt];
             f->super.name = kmalloc_zeroed(sizeof(uint8_t) * (len + 1));
+
             strcpy(f->super.name, name);
 
             /* Set the others. */
             f->clus_num         = (uint16_t)((entry->first_clus_num_hi << 16) | entry->first_clus_num_lo);
             f->super.type       = ((entry->attr & DIR_ATTR_DIRECTORY) != 0) ? FILE_TYPE_DIR : FILE_TYPE_FILE;
             f->super.size       = entry->file_size;
-            f->super.belong_fs  = &fm->fs;
+            f->super.belong_fs  = &fm->super;
             f->super.parent_dir = &ff->super;
             f->super.state_load = 0;
 
             file_cnt++;
         }
-    } while (is_last_fat_entry(fm, fe) == false);
+    } while (is_last_fat_entry(fe) == false);
 
-    /* FIXME: copy and alloc each area. */
-    /* Copy into memory area which has appropriate size. */
-    Fat_file* exist_ffiles = kmalloc_zeroed(sizeof(Fat_file) * file_cnt);
-    memcpy(exist_ffiles, ffiles, sizeof(Fat_file) * file_cnt);
-    kfree(ffiles);
-
-    /* Store file infomation */
-    ff->super.children = kmalloc_zeroed(sizeof(File*) * file_cnt);
-    ff->super.child_nr = file_cnt;
-    ff->super.state_load = 1;
-    for (size_t i = 0; i < file_cnt; i++) {
-        ff->super.children[i] = &exist_ffiles[i].super;
+    if (file_cnt != 0) {
+        /* Store file infomation */
+        ff->super.children = kmalloc_zeroed(sizeof(File*) * file_cnt);
+        ff->super.child_nr = file_cnt;
+        ff->super.state_load = 1;
+        for (size_t i = 0; i < file_cnt; i++) {
+            ff->super.children[i] = kmalloc_zeroed(sizeof(Fat_file));
+            memcpy(ff->super.children[i], &ffiles[i], sizeof(Fat_file));
+        }
     }
+    kfree(ffiles);
 
     return ff;
 }
 
 
-static inline Axel_state_code fat_access_file(uint8_t direction, File const* f, uint8_t* buffer) {
-    if (f == NULL || buffer == NULL || f->type_file == 0) {
+static inline Axel_state_code fat_access_file(uint8_t direction, File const* const f, uint8_t* const buffer) {
+    if (f == NULL || buffer == NULL || f->type_file == 0 || f->size == 0) {
         return AXEL_FAILED;
     }
 
     Fat_file const * const ff = (Fat_file*)f;
     Fat_manager const* const fm = (Fat_manager*)f->belong_fs;
-    uint32_t fe, clus, next_clus;
-    next_clus = ff->clus_num;
 
     /* Allocate buffer that have enough size for reading/writing per cluster unit. */
     uint32_t const bpc = (fm->bpb.sec_per_clus * fm->bpb.bytes_per_sec);
     uint32_t const rounded_size = (uint32_t)((f->size + bpc - 1) / bpc) * bpc;
-    uint8_t* const ebuffer = kmalloc(rounded_size);
-    uint8_t* eb = ebuffer ;
+    uint8_t* const ebuffer = kmalloc(sizeof(uint8_t) * rounded_size);
+    if (ebuffer == NULL) {
+        return AXEL_FAILED;
+    }
+    uint8_t* eb = ebuffer;
 
     uint8_t rw;
     if (direction == FILE_WRITE) {
@@ -412,6 +412,8 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* f, 
         rw = FAT_READ;
     }
 
+    uint32_t fe, clus, next_clus;
+    next_clus = ff->clus_num;
     do {
         clus = next_clus;
         fe = fat_enrty_access(FAT_READ, fm, clus, 0);
@@ -426,14 +428,14 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* f, 
         next_clus = fe;
 
         /* Read data. */
-        if (fat_data_cluster_access(rw, fm, clus, eb) == NULL) {
+        if (fat_data_cluster_access(FAT_READ, fm, clus, eb) != eb) {
             kfree(ebuffer);
             return AXEL_FAILED;
         }
 
         /* Shift Next cluster. */
         eb += bpc;
-    } while (is_last_fat_entry(fm, fe) == false);
+    } while (is_last_fat_entry(fe) == false);
 
     if (direction == FILE_READ) {
         memcpy(buffer, ebuffer, f->size);
@@ -520,17 +522,17 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     uint8_t* const b = kmalloc(bytes_per_sec);
 
     Fat_manager* const fman = kmalloc(sizeof(Fat_manager));
-    fman->fs.dev = dev;
-    fman->fs.pe = *pe;
-    fman->fs.change_dir = fat_change_dir;
-    fman->fs.access_file = fat_access_file;
+    fman->super.dev = dev;
+    fman->super.pe = *pe;
+    fman->super.change_dir = fat_change_dir;
+    fman->super.access_file = fat_access_file;
 
     Fat_file* const root  = kmalloc_zeroed(sizeof(Fat_file));
     root->super.name      = kmalloc(1 + 1);
-    root->super.belong_fs = &fman->fs;
+    root->super.belong_fs = &fman->super;
     root->super.type      = FILE_TYPE_DIR | FILE_TYPE_ROOT;
-    fman->fs.current_dir  = &root->super;
-    fman->fs.root_dir     = &root->super;
+    fman->super.current_dir  = &root->super;
+    fman->super.root_dir     = &root->super;
     strcpy(root->super.name, "/");
 
     /* Load Bios parameter block. */
@@ -542,7 +544,8 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
 
     /* Free temporary buffer and allocate buffer of one cluster. */
     kfree(b);
-    fman->buffer = kmalloc(bpb->sec_per_clus * bytes_per_sec);
+    fman->buffer_size = bpb->sec_per_clus * bytes_per_sec;
+    fman->buffer = kmalloc(fman->buffer_size);
 
     /* These are logical sector number. */
     uint32_t fat_size           = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
@@ -585,7 +588,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
         }
     }
 
-    return &fman->fs;
+    return &fman->super;
 
 failed:
     kfree(fman);
