@@ -58,10 +58,12 @@ _Static_assert(sizeof(Master_boot_record) == 512, "Master_boot_record is NOT 512
 
 struct file_system;
 typedef struct file_system File_system;
-
+struct file;
+typedef struct file File;
 
 /* Filesystem access interfaces. */
-typedef Axel_state_code (*Fs_change_dir_func)(File_system* ft, char const* path);
+typedef Axel_state_code (*Fs_change_dir_func)(File_system*, char const*);
+typedef Axel_state_code (*Fs_access_file)(uint8_t, File const*, uint8_t*);
 
 
 struct file {
@@ -100,6 +102,7 @@ struct file_system {
     File* current_dir;
     File* root_dir;
     Fs_change_dir_func change_dir;
+    Fs_access_file access_file;
 };
 typedef struct file_system File_system;
 
@@ -119,6 +122,8 @@ enum fs_constants {
     FILE_TYPE_FILE      = 0x04,
     FILE_TYPE_DEV       = 0x08,
     FILE_STATE_LOAD     = 0x01,
+    FILE_READ,
+    FILE_WRITE,
 };
 
 

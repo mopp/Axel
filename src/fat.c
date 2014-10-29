@@ -169,7 +169,7 @@ static inline Axel_state_code fat_access(uint8_t direction, Fat_manager const* f
 }
 
 
-static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager* ft, uint32_t n, uint32_t write_entry) {
+static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft, uint32_t n, uint32_t write_entry) {
     uint32_t offset       = n * ((ft->fat_type == FAT_TYPE32) ? 4 : 2);
     uint32_t bps          = ft->bpb.bytes_per_sec;
     uint32_t sec_num      = ft->bpb.rsvd_area_sec_num + (offset / bps);
@@ -185,7 +185,7 @@ static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager* ft, uint
         return read_entry;
     }
 
-    /* change FAT entry. */
+    /* Change FAT entry. */
     *b = (read_entry & 0xF0000000) | (write_entry & 0x0FFFFFFF);
 
     if (fat_access(FAT_WRITE, ft, sec_num, 1, ft->buffer) == AXEL_FAILED) {
@@ -196,10 +196,10 @@ static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager* ft, uint
 }
 
 
-static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager* ft, uint32_t clus_num) {
+static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager const * ft, uint32_t clus_num, uint8_t* buffer) {
     uint8_t spc = ft->bpb.sec_per_clus;
     uint32_t sec = ft->data_area_first_sec + (clus_num - 2) * spc;
-    if (fat_access(FAT_READ, ft, sec, spc, ft->buffer) == AXEL_FAILED) {
+    if (fat_access(FAT_READ, ft, sec, spc, buffer) == AXEL_FAILED) {
         return NULL;
     }
 
@@ -207,18 +207,29 @@ static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager* f
 }
 
 
-static inline bool is_unused_fat_entry(Fat_manager const* ft, uint32_t fe) {
+static inline bool is_unused_fat_entry(uint32_t fe) {
     return (fe == 0) ? true : false;
 }
 
 
-static inline bool is_rsvd_fat_entry(Fat_manager const* ft, uint32_t fe) {
+static inline bool is_rsvd_fat_entry(uint32_t fe) {
     return (fe == 1) ? true : false;
 }
 
 
-static inline bool is_bad_clus_fat_entry(Fat_manager const* ft, uint32_t fe) {
+static inline bool is_bad_clus_fat_entry(uint32_t fe) {
     return (fe == 0x0FFFFFF7) ? true : false;
+}
+
+
+static inline bool is_valid_data_fat_entry(uint32_t fe) {
+    /* NOT bad cluster and reserved. */
+    return (is_bad_clus_fat_entry(fe) == false && is_rsvd_fat_entry(fe) == false) ? true : false;
+}
+
+
+static inline bool is_data_exist_fat_entry(uint32_t fe) {
+    return (is_unused_fat_entry(fe) == false && is_valid_data_fat_entry(fe) == true) ? true : false;
 }
 
 
@@ -275,6 +286,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
         return NULL;
     }
 
+    /* Traverse all chain FAT data cluster and read its structure. */
     Fat_file* ffiles = kmalloc(128 * sizeof(Fat_file));
     size_t file_cnt = 0;
     uint32_t limit = (bpb->sec_per_clus * bpb->bytes_per_sec) / sizeof(Dir_entry);
@@ -284,7 +296,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
     do {
         clus = next_clus;
         fe = fat_enrty_access(FAT_READ, fm, clus, 0);
-        if (is_unused_fat_entry(fm, fe) == true || is_rsvd_fat_entry(fm, fe) == true || is_bad_clus_fat_entry(fm, fe) == true) {
+        if (is_data_exist_fat_entry(fe) == false) {
             /* Invalid */
             kfree(ffiles);
             return NULL;
@@ -294,7 +306,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
         next_clus = fe;
 
         /* Read data. */
-        fat_data_cluster_access(FAT_READ, fm, clus);
+        fat_data_cluster_access(FAT_READ, fm, clus, fm->buffer);
         Dir_entry* const de       = (Dir_entry*)(uintptr_t)fm->buffer;
         Long_dir_entry* const lde = (Long_dir_entry*)(uintptr_t)fm->buffer;
 
@@ -358,6 +370,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
         }
     } while (is_last_fat_entry(fm, fe) == false);
 
+    /* FIXME: copy and alloc each area. */
     /* Copy into memory area which has appropriate size. */
     Fat_file* exist_ffiles = kmalloc_zeroed(sizeof(Fat_file) * file_cnt);
     memcpy(exist_ffiles, ffiles, sizeof(Fat_file) * file_cnt);
@@ -372,6 +385,63 @@ static inline Fat_file* read_directory(Fat_file* ff) {
     }
 
     return ff;
+}
+
+
+static inline Axel_state_code fat_access_file(uint8_t direction, File const* f, uint8_t* buffer) {
+    if (f == NULL || buffer == NULL || f->type_file == 0) {
+        return AXEL_FAILED;
+    }
+
+    Fat_file const * const ff = (Fat_file*)f;
+    Fat_manager const* const fm = (Fat_manager*)f->belong_fs;
+    uint32_t fe, clus, next_clus;
+    next_clus = ff->clus_num;
+
+    /* Allocate buffer that have enough size for reading/writing per cluster unit. */
+    uint32_t const bpc = (fm->bpb.sec_per_clus * fm->bpb.bytes_per_sec);
+    uint32_t const rounded_size = (uint32_t)((f->size + bpc - 1) / bpc) * bpc;
+    uint8_t* const ebuffer = kmalloc(rounded_size);
+    uint8_t* eb = ebuffer ;
+
+    uint8_t rw;
+    if (direction == FILE_WRITE) {
+        rw = FAT_WRITE;
+        memcpy(eb, buffer, f->size);
+    } else {
+        rw = FAT_READ;
+    }
+
+    do {
+        clus = next_clus;
+        fe = fat_enrty_access(FAT_READ, fm, clus, 0);
+
+        if (is_data_exist_fat_entry(fe) == false) {
+            /* Invalid. */
+            kfree(ebuffer);
+            return AXEL_FAILED;
+        }
+
+        /* FAT entry indicates last entry or next entry cluster. */
+        next_clus = fe;
+
+        /* Read data. */
+        if (fat_data_cluster_access(rw, fm, clus, eb) == NULL) {
+            kfree(ebuffer);
+            return AXEL_FAILED;
+        }
+
+        /* Shift Next cluster. */
+        eb += bpc;
+    } while (is_last_fat_entry(fm, fe) == false);
+
+    if (direction == FILE_READ) {
+        memcpy(buffer, ebuffer, f->size);
+    }
+
+    kfree(ebuffer);
+
+    return AXEL_SUCCESS;
 }
 
 
@@ -453,6 +523,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     fman->fs.dev = dev;
     fman->fs.pe = *pe;
     fman->fs.change_dir = fat_change_dir;
+    fman->fs.access_file = fat_access_file;
 
     Fat_file* const root  = kmalloc_zeroed(sizeof(Fat_file));
     root->super.name      = kmalloc(1 + 1);
