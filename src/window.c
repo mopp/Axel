@@ -240,11 +240,11 @@ static inline void draw_font(Window* w, Point2d* p, int c) {
     }
     int32_t const height = mplus_fonts.height;
     int32_t const width= mplus_fonts.width;
-    uint32_t const* data = mplus_fonts.data[c];
+    uint32_t const* data = mplus_fonts.data[c & 0xff];
 
     for (int32_t y = 0; y < height; y++) {
         for (int32_t x = 0; x < width; x++) {
-            /* if bit is 1, draw color */
+            /* If bit is 1, draw color */
             if (1 == (0x01 & (data[y] >> (width - x - 1)))) {
                 w->buf[(p->x + x) + w->size.x * (p->y + y)] = w->fg;
             }
