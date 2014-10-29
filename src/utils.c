@@ -109,13 +109,10 @@ void* memset(void* s, register int c, size_t n) {
 
 
 int strcmp(register const char* s1, register const char* s2) {
-    int result = 0;
-
-    do {
-        result = *s1++ - *s2++;
-    } while (*s1 != '\0' && *s2 != '\0' && result == 0);
-
-    return result;
+    register const unsigned char *ss1, *ss2;
+    for (ss1 = (const unsigned char*)s1, ss2 = (const unsigned char*)s2; *ss1 == *ss2 && *ss1 != '\0'; ss1++, ss2++) {
+    }
+    return *ss1 - *ss2;
 }
 
 
