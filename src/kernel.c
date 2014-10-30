@@ -53,7 +53,7 @@ _Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor siz
 
 
 enum Gate_descriptor_constants {
-    IDT_NUM                = 19 + 12 + 16, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector */
+    IDT_NUM                = 19 + 12 + 16 + 82, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector + software interrupt */
     IDT_LIMIT              = IDT_NUM * 8 - 1,
     GD_FLAG_TYPE_TASK      = 0x00000500,
     GD_FLAG_TYPE_INTERRUPT = 0x00000600,
@@ -137,7 +137,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     init_acpi();
     init_pic();
     init_pit();
-    /* init_process(); */
+    init_process();
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("Keyboard initialize failed\n");
@@ -695,9 +695,10 @@ static inline void init_idt(void) {
     set_gate_descriptor(idt + 0x08, hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x0D, hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x0E, asm_exception_page_fault, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT_TRAP);
+    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x21, asm_interrupt_keybord,    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
     set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
+    set_gate_descriptor(idt + 0x80, asm_syscall_enter,        KERNEL_CODE_SEGMENT_INDEX, GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING3 | GD_FLAG_PRESENT);
 
     load_idtr(IDT_LIMIT, (uint32_t)idt);
 }

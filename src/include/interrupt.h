@@ -96,6 +96,7 @@ extern void send_done_interrupt_slave(void);
 extern void asm_interrupt_timer(void);
 extern void asm_interrupt_keybord(void);
 extern void asm_interrupt_mouse(void);
+extern void asm_syscall_enter(void);
 extern void interrupt_return(void);
 extern void wait(uint32_t);
 

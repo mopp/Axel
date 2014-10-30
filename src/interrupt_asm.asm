@@ -69,3 +69,4 @@ make_interrupt_handler 0, interrupt_keybord
 make_interrupt_handler 0, interrupt_mouse
 make_interrupt_handler 0, interrupt_timer
 make_interrupt_handler 1, exception_page_fault
+make_interrupt_handler 0, syscall_enter
