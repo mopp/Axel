@@ -63,8 +63,6 @@ extern void disable_pic_port(uint16_t);
 extern void send_done_pic_master(void);
 extern void send_done_pic_slave(void);
 extern void interrupt_return(void);
-extern void init_pit(void);
-extern void wait(uint32_t);
 
 
 

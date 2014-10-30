@@ -26,6 +26,7 @@
 #include <utils.h>
 #include <vbe.h>
 #include <window.h>
+#include <time.h>
 
 
 Axel_struct axel_s;

@@ -15,7 +15,7 @@
 #include <dev/ata.h>
 #include <utils.h>
 #include <asm_functions.h>
-#include <interrupt.h>
+#include <time.h>
 #include <stdbool.h>
 #include <macros.h>
 #include <kernel.h>
