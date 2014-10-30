@@ -229,7 +229,7 @@ Axel_state_code init_keyboard(void) {
     /* Reset */
     FAILED_RETURN(write_ctrl_cmd(PS2_RESET_CMD));
 
-    enable_interrupt(PIC_IMR_MASK_IRQ01);
+    enable_pic_port(PIC_IMR_MASK_IRQ01);
 
     keyboard.enable_keybord = true;
 
@@ -242,7 +242,7 @@ void interrupt_keybord(uint32_t* esp) {
     if (AXEL_SUCCESS == read_data(&keycode)) {
         aqueue_insert(&keyboard.aqueue, &keycode);
     }
-    send_done_interrupt_master();
+    send_done_pic_master();
 }
 
 
@@ -276,7 +276,7 @@ Axel_state_code init_mouse(void) {
     FAILED_RETURN(write_data_cmd(MOUSE_COMMAND_BYTE_ENABLE_STREAM));
     FAILED_RETURN(wait_response(PS2_ACKNOWLEDGE));
 
-    enable_interrupt(PIC_IMR_MASK_IRQ12);
+    enable_pic_port(PIC_IMR_MASK_IRQ12);
 
     mouse.enable_mouse = true;
 
@@ -285,8 +285,8 @@ Axel_state_code init_mouse(void) {
 
 
 void interrupt_mouse(void) {
-    send_done_interrupt_slave();
-    send_done_interrupt_master();
+    send_done_pic_slave();
+    send_done_pic_master();
 
     uint8_t mdata;
     if (AXEL_SUCCESS == read_data(&mdata)) {

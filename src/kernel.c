@@ -7,8 +7,12 @@
  */
 
 
+#include <acpi.h>
 #include <asm_functions.h>
-#include <exception.h>
+#include <dev/ata.h>
+#include <dev/pci.h>
+#include <dev/ps2.h>
+#include <fs.h>
 #include <graphic.h>
 #include <interrupt.h>
 #include <kernel.h>
@@ -16,82 +20,12 @@
 #include <memory.h>
 #include <multiboot.h>
 #include <paging.h>
-#include <point.h>
 #include <proc.h>
 #include <segment.h>
+#include <tlsf.h>
+#include <utils.h>
 #include <vbe.h>
 #include <window.h>
-#include <utils.h>
-#include <dev/ps2.h>
-#include <tlsf.h>
-#include <acpi.h>
-#include <dev/pci.h>
-#include <dev/ata.h>
-#include <fs.h>
-
-
-/* Interrupt Gate Descriptor Table */
-union gate_descriptor {
-    struct {
-        uint16_t offset_low;              /* address offset low of interrupt handler.*/
-        uint16_t segment_selector;        /* segment selector register(CS, DS, SS and etc) value. */
-        uint8_t unused_zero;              /* unused area. */
-        unsigned int type : 3;            /* gate type. */
-        unsigned int size : 1;            /* If this is 1, gate size is 32 bit. otherwise it is 16 bit */
-        unsigned int zero_reserved : 1;   /* reserved area. */
-        unsigned int plivilege_level : 2; /* This controles accesse level. */
-        unsigned int present_flag : 1;    /* Is it exist on memory */
-        uint16_t offset_high;             /* address offset high of interrupt handler.*/
-    };
-    struct {
-        uint32_t bit_expr_low;
-        uint32_t bit_expr_high;
-    };
-};
-typedef union gate_descriptor Gate_descriptor;
-_Static_assert(sizeof(Gate_descriptor) == 8, "Static ERROR : Gate_descriptor size is NOT 8 byte.(64 bit)");
-
-
-enum Gate_descriptor_constants {
-    IDT_NUM                = 19 + 12 + 16 + 82, /* default interrupt vector + reserved interrupt vector + PIC interrupt vector + software interrupt */
-    IDT_LIMIT              = IDT_NUM * 8 - 1,
-    GD_FLAG_TYPE_TASK      = 0x00000500,
-    GD_FLAG_TYPE_INTERRUPT = 0x00000600,
-    GD_FLAG_TYPE_TRAP      = 0x00000700,
-    GD_FLAG_SIZE_32        = 0x00000800,
-    GD_FLAG_RING0          = 0x00000000,
-    GD_FLAG_RING1          = 0x00002000,
-    GD_FLAG_RING2          = 0x00004000,
-    GD_FLAG_RING3          = 0x00006000,
-    GD_FLAG_PRESENT        = 0x00008000,
-    GD_FLAGS_IDT           = GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
-    GD_FLAGS_IDT_TRAP      = GD_FLAG_TYPE_TRAP | GD_FLAG_SIZE_32 | GD_FLAG_RING0 | GD_FLAG_PRESENT,
-};
-
-
-/*
- * Programmable Interval Timer
- * PIT Clock is 1193181.666...Hz
- * When counter value in PIT, IC fire interruption to IRQ0.
- * Interrupt frequency = PIT Clock frequency / Counter value.
- * "Counter value" = "PIT Clock frequency" / "Interrupt frequency".
- * "Interrupt frequency" is 100 Hz.
- * Then, "Counter value" = 1193182 / 100 = 11932(0x2E9C)
- * 1193182 / 0x2E9C(11932) = 100 Hz
- * 1 / frequency = sec
- * 1 / 100 = 10 ms
- * 1 sec / 10 ms = 100 interruption.
- */
-enum PIT_constants {
-    PIT_PORT_COUNTER0      = 0x40,
-    PIT_PORT_COUNTER1      = 0x41,
-    PIT_PORT_COUNTER2      = 0x42,
-    PIT_PORT_CONTROL       = 0x43,
-    PIT_ICW                = 0x34, /* Control word. */
-    PIT_TIMER_1SEC_COUNT   = 100,
-    PIT_COUNTER_VALUE_HIGH = 0x2E,
-    PIT_COUNTER_VALUE_LOW  = 0x9C,
-};
 
 
 Axel_struct axel_s;
@@ -106,10 +40,7 @@ static void draw_desktop(void);
 static void decode_key(void);
 static void decode_mouse(void);
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint32_t);
-static Gate_descriptor* set_gate_descriptor(Gate_descriptor*, void*, uint16_t, uint32_t);
 static void init_gdt(void);
-static void init_idt(void);
-static void init_pit(void);
 static void clear_bss(void);
 
 
@@ -135,7 +66,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         draw_desktop();
     }
     init_acpi();
-    init_pic();
     init_pit();
     init_process();
 
@@ -666,50 +596,6 @@ static inline void init_gdt(void) {
 
     load_gdtr(GDT_LIMIT, (uint32_t)axel_s.gdt);
     set_task_register(KERNEL_TSS_SEGMENT_SELECTOR);
-}
-
-
-static inline Gate_descriptor* set_gate_descriptor(Gate_descriptor* g, void* offset, uint16_t selector_index, uint32_t flags) {
-    g->bit_expr_high    = flags;
-    g->offset_low       = ECAST_UINT16((uintptr_t)offset);
-    g->offset_high      = ECAST_UINT16((uintptr_t)offset >> 16);
-    g->segment_selector = ECAST_UINT16(selector_index * sizeof(Gate_descriptor));
-
-    return g;
-}
-
-
-static void hlt(Interrupt_frame* ic) {
-    /* BOCHS_MAGIC_BREAK(); */
-    io_cli();
-    DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, ic);
-}
-
-
-static inline void init_idt(void) {
-    Gate_descriptor* const idt = (Gate_descriptor*)kmalloc(sizeof(Gate_descriptor) * IDT_NUM);
-
-    /* zero clear Gate_descriptor. */
-    memset(idt, 0, sizeof(Gate_descriptor) * IDT_NUM);
-
-    set_gate_descriptor(idt + 0x08, hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x0D, hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x0E, asm_exception_page_fault, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x20, asm_interrupt_timer,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x21, asm_interrupt_keybord,    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x2C, asm_interrupt_mouse,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_IDT);
-    set_gate_descriptor(idt + 0x80, asm_syscall_enter,        KERNEL_CODE_SEGMENT_INDEX, GD_FLAG_TYPE_INTERRUPT | GD_FLAG_SIZE_32 | GD_FLAG_RING3 | GD_FLAG_PRESENT);
-
-    load_idtr(IDT_LIMIT, (uint32_t)idt);
-}
-
-
-static inline void init_pit(void) {
-    io_out8(PIT_PORT_CONTROL, PIT_ICW);
-    io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_LOW);
-    io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
-
-    enable_interrupt(PIC_IMR_MASK_IRQ00);
 }
 
 
