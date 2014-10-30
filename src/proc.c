@@ -20,10 +20,10 @@
 static Process pa, pb, pk;
 static Process** processes;
 static Process* init_user_p;
-static uint8_t process_num   = 2;
+static uint8_t process_num = 2;
 static uint8_t current_p_idx = 0;
-static uint8_t next_p_idx    = 1;
-static uint16_t proc_id_cnt  = 0;
+static uint8_t next_p_idx = 1;
+static uint16_t proc_id_cnt = 0;
 
 bool is_enable_process = false;
 
@@ -52,10 +52,10 @@ void __fastcall change_context(Process* current, Process* next) {
 
 void switch_context(Interrupt_frame* current_iframe) {
     Process* current_p = processes[current_p_idx];
-    Thread* current_t  = current_p->thread;
-    Process* next_p    = processes[next_p_idx];
-    Thread* next_t     = next_p->thread;
-    current_t->iframe  = current_iframe;
+    Thread* current_t = current_p->thread;
+    Process* next_p = processes[next_p_idx];
+    Thread* next_t = next_p->thread;
+    current_t->iframe = current_iframe;
 
     current_p_idx++;
     if (process_num <= current_p_idx) {
@@ -78,28 +78,23 @@ void switch_context(Interrupt_frame* current_iframe) {
     }
 
     __asm__ volatile(
-        "pushfl                             \n"   // Store eflags
-        "movl  $next_turn, %[current_ip]    \n"   // Store ip
-        "movl  %%esp,      %[current_sp]    \n"   // Store sp
-        "movl  %[current_proc], %%ecx       \n"   // Set second argument
-        "movl  %[next_proc],    %%edx       \n"   // Set first argument
-        "movl  %[next_sp], %%esp            \n"   // Restore sp
-        "pushl %[next_ip]                   \n"   // Restore ip (set return address)
-        "jmp change_context                 \n"   // Change context
+        "pushfl                             \n"  // Store eflags
+        "movl  $next_turn, %[current_ip]    \n"  // Store ip
+        "movl  %%esp,      %[current_sp]    \n"  // Store sp
+        "movl  %[current_proc], %%ecx       \n"  // Set second argument
+        "movl  %[next_proc],    %%edx       \n"  // Set first argument
+        "movl  %[next_sp], %%esp            \n"  // Restore sp
+        "pushl %[next_ip]                   \n"  // Restore ip (set return address)
+        "jmp change_context                 \n"  // Change context
 
         ".globl next_turn                   \n"
         "next_turn:                         \n"
 
-        "popfl                              \n"   // Restore eflags
+        "popfl                              \n"  // Restore eflags
 
-        :   [current_ip]  "=m" (current_t->ip),
-            [current_sp]  "=m" (current_t->sp)
-        :   [next_ip]      "r" (next_t->ip),
-            [next_sp]      "r" (next_t->sp),
-            [current_proc] "m" (current_p),
-            [next_proc]    "m" (next_p)
-        : "memory", "%ecx", "%edx"
-    );
+        : [current_ip] "=m"(current_t->ip), [current_sp] "=m"(current_t->sp)
+        : [next_ip] "r"(next_t->ip), [next_sp] "r"(next_t->sp), [current_proc] "m"(current_p), [next_proc] "m"(next_p)
+        : "memory", "%ecx", "%edx");
 }
 
 
@@ -157,17 +152,17 @@ static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size
 
 
 static inline Axel_state_code init_user_process(void) {
-    Process* p        = kmalloc_zeroed(sizeof(Process));
+    Process* p = kmalloc_zeroed(sizeof(Process));
     User_segments* us = &p->u_segs;
     elist_init(&p->used_pages);
 
-    us->text.addr  = DEFAULT_TEXT_ADDR;
+    us->text.addr = DEFAULT_TEXT_ADDR;
     us->stack.addr = DEFAULT_STACK_TOP_ADDR;
-    p->pid         = proc_id_cnt++;
-    p->km_stack    = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
-    p->thread      = kmalloc_zeroed(sizeof(Thread));
-    p->thread->ip  = (uintptr_t)interrupt_return;
-    p->thread->sp  = p->km_stack;
+    p->pid = proc_id_cnt++;
+    p->km_stack = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
+    p->thread = kmalloc_zeroed(sizeof(Thread));
+    p->thread->ip = (uintptr_t)interrupt_return;
+    p->thread->sp = p->km_stack;
 
     /* alloc pdt */
     Page_directory_table pdt = vcmalloc(&p->pdt_page, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
@@ -185,19 +180,22 @@ static inline Axel_state_code init_user_process(void) {
     p->thread->iframe = intf;
     memset(intf, 0, sizeof(Interrupt_frame));
 
-    intf->ds       = USER_DATA_SEGMENT_SELECTOR;
-    intf->es       = USER_DATA_SEGMENT_SELECTOR;
-    intf->fs       = USER_DATA_SEGMENT_SELECTOR;
-    intf->gs       = USER_DATA_SEGMENT_SELECTOR;
-    intf->eip      = ECAST_UINT32(us->text.addr);
-    intf->cs       = USER_CODE_SEGMENT_SELECTOR;
-    intf->eflags   = 0x00000200;
+    intf->ds = USER_DATA_SEGMENT_SELECTOR;
+    intf->es = USER_DATA_SEGMENT_SELECTOR;
+    intf->fs = USER_DATA_SEGMENT_SELECTOR;
+    intf->gs = USER_DATA_SEGMENT_SELECTOR;
+    intf->eip = ECAST_UINT32(us->text.addr);
+    intf->cs = USER_CODE_SEGMENT_SELECTOR;
+    intf->eflags = 0x00000200;
     intf->prev_esp = ECAST_UINT32(us->stack.addr + DEFAULT_STACK_SIZE);
-    intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
+    intf->prev_ss = USER_DATA_SEGMENT_SELECTOR;
 
     /* dirty initialize. */
     /* static uint8_t inst[] = { 0xe8, 0x05, 0x00, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff, 0x35, 0xac, 0xac, 0x00, 0x00, 0xc3, }; */
-    static uint8_t inst[] = {0xe8,  0x07 , 0x00 , 0x00 , 0x00 , 0xcd , 0x80 , 0xe9 , 0xf4 , 0xff , 0xff , 0xff , 0x35 , 0xac , 0xac , 0x00 , 0x00 , 0xc3};
+    /* static uint8_t inst[] = {0xe8,  0x07 , 0x00 , 0x00 , 0x00 , 0xcd , 0x80 , 0xe9 , 0xf4 , 0xff , 0xff , 0xff , 0x35 , 0xac , 0xac , 0x00 , 0x00 , 0xc3}; */
+    static uint8_t inst[] = {
+        0xe8,0x14,0x00,0x00,0x00,0xb8,0x00,0x00,0x00,0x00,0x68,0x1f,0x10,0x00,0x00,0xcd,0x80,0x83,0xc4,0x04,0xe9,0xe7,0xff,0xff,0xff,0x35,0xac,0xac,0x00,0x00,0xc3,0x4d,0x4f,0x50,0x50,0x00
+    };
     for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
         *((uint8_t*)us->text.addr + i) = inst[i];
     }

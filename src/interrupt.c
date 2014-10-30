@@ -130,7 +130,6 @@ extern void asm_interrupt_timer(void);
 extern void asm_interrupt_keybord(void);
 extern void asm_interrupt_mouse(void);
 extern void asm_syscall_enter(void);
-static void hlt(Interrupt_frame*);
 
 
 static void hlt(Interrupt_frame* ic) {
