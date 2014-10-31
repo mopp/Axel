@@ -283,7 +283,9 @@ static inline void do_cmd(char* cmd)  {
                     b[c->size] = '\0';
 
                     if (fs->access_file(FILE_READ, c, b) == AXEL_SUCCESS) {
-                        puts(b);
+                        for (int i = 0; i < c->size; i++) {
+                            putchar(b[i]);
+                        }
                         if (b[c->size - 1] != '\n') {
                             putchar('\n');
                         }
