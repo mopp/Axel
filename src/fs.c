@@ -43,7 +43,7 @@ File_system* init_fs(Ata_dev* dev) {
     File_system* fs = NULL;
     for (uint8_t i = 0; i < 4; i++) {
         pe = &mbr->p_entry[i];
-        if (pe->type == PART_TYPE_FAT32 || pe->type == PART_TYPE_FAT32_LBA) {
+        if (pe->type == PART_TYPE_FAT32 || pe->type == PART_TYPE_FAT32_LBA || pe->type == PART_TYPE_FAT16) {
             fs = init_fat(dev, pe);
             break;
         }

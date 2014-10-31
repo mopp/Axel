@@ -43,7 +43,7 @@ struct bios_param_block {
             uint8_t fs_type[8];
         } fat16;
         struct {
-            uint16_t fat_size32; /* the number of sector of one FAT. */
+            uint16_t fat_size32; /* The number of sector of one FAT. */
             union {
                 uint16_t ext_flags;
                 struct {
@@ -60,9 +60,9 @@ struct bios_param_block {
             uint8_t reserved[12];     /* Reserved. */
             uint8_t drive_num;        /* BIOS drive number. */
             uint8_t reserved1;        /* Reserved. */
-            uint8_t boot_sig;         /* extend boot signature. */
-            uint32_t volume_id;       /* volume serial number. */
-            uint8_t volume_label[11]; /* partition volume label */
+            uint8_t boot_sig;         /* Extend boot signature. */
+            uint32_t volume_id;       /* Volume serial number. */
+            uint8_t volume_label[11]; /* Partition volume label */
             uint8_t fs_type[8];
         } fat32;
     };
@@ -126,6 +126,11 @@ struct fat_file {
 };
 typedef struct fat_file Fat_file;
 
+struct fat_area {
+    uint32_t begin_sec;
+    uint32_t sec_nr;
+};
+typedef struct fat_area Fat_area;
 
 struct fat_manager {
     File_system super;
@@ -133,8 +138,11 @@ struct fat_manager {
     Fsinfo fsinfo;
     uint8_t* buffer;
     size_t buffer_size;
-    uint32_t data_area_first_sec;
-    uint32_t data_area_sec_nr;
+    Fat_area rsvd;
+    Fat_area fat;
+    Fat_area rdentry;
+    Fat_area data;
+    uint32_t cluster_nr;
     uint8_t fat_type;
 };
 typedef struct fat_manager Fat_manager;
@@ -196,34 +204,34 @@ static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft
 }
 
 
-static inline Fsinfo* fsinfo_access(uint8_t direction, Fat_manager* fman) {
+static inline Fsinfo* fsinfo_access(uint8_t direction, Fat_manager* fm) {
     if (direction == FAT_WRITE) {
-        memcpy(fman->buffer, &fman->fsinfo, sizeof(Fsinfo));
+        memcpy(fm->buffer, &fm->fsinfo, sizeof(Fsinfo));
     }
 
     /* Access FSINFO structure. */
-    if (fat_access(direction, fman, fman->bpb.fat32.fsinfo_sec_num, 1, fman->buffer) == AXEL_FAILED) {
+    if (fat_access(direction, fm, fm->bpb.fat32.fsinfo_sec_num, 1, fm->buffer) == AXEL_FAILED) {
         return NULL;
     }
 
     if (direction == FAT_READ) {
-        memcpy(&fman->fsinfo, fman->buffer, sizeof(Fsinfo));
+        memcpy(&fm->fsinfo, fm->buffer, sizeof(Fsinfo));
 
-        Fsinfo* fsinfo = &fman->fsinfo;
+        Fsinfo* fsinfo = &fm->fsinfo;
         if ((fsinfo->lead_signature != FSINFO_LEAD_SIG) || (fsinfo->struct_signature != FSINFO_STRUCT_SIG) || (fsinfo->trail_signature != FSINFO_TRAIL_SIG)) {
             /* Invalid. */
             return NULL;
         }
     }
 
-    return &fman->fsinfo;
+    return &fm->fsinfo;
 }
 
 
 static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager const * ft, uint32_t clus_num, uint8_t* buffer) {
     uint8_t spc = ft->bpb.sec_per_clus;
-    uint32_t sec = ft->data_area_first_sec + (clus_num - 2) * spc;
-    if (fat_access(FAT_READ, ft, sec, spc, buffer) == AXEL_FAILED) {
+    uint32_t sec = ft->data.begin_sec + (clus_num - 2) * spc;
+    if (fat_access(direction, ft, sec, spc, buffer) == AXEL_FAILED) {
         return NULL;
     }
 
@@ -241,39 +249,60 @@ static inline bool is_rsvd_fat_entry(uint32_t fe) {
 }
 
 
-static inline bool is_bad_clus_fat_entry(uint32_t fe) {
-    return (fe == 0x0FFFFFF7) ? true : false;
+static inline bool is_bad_clus_fat_entry(Fat_manager const* fm, uint32_t fe) {
+    switch (fm->fat_type) {
+        case FAT_TYPE12:
+            return (fe == 0xFF7) ? true : false;
+        case FAT_TYPE16:
+            return (fe == 0xFFF7) ? true : false;
+        case FAT_TYPE32:
+            return (fe == 0x0FFFFFF7) ? true : false;
+    }
+
+    return false;
 }
 
 
-static inline bool is_valid_data_fat_entry(uint32_t fe) {
+static inline bool is_valid_data_fat_entry(Fat_manager const* fm, uint32_t fe) {
     /* NOT bad cluster and reserved. */
-    return (is_bad_clus_fat_entry(fe) == false && is_rsvd_fat_entry(fe) == false) ? true : false;
+    return (is_bad_clus_fat_entry(fm, fe) == false && is_rsvd_fat_entry(fe) == false) ? true : false;
 }
 
 
-static inline bool is_data_exist_fat_entry(uint32_t fe) {
-    return (is_unused_fat_entry(fe) == false && is_valid_data_fat_entry(fe) == true) ? true : false;
+static inline bool is_data_exist_fat_entry(Fat_manager const* fm, uint32_t fe) {
+    return (is_unused_fat_entry(fe) == false && is_valid_data_fat_entry(fm, fe) == true) ? true : false;
 }
 
 
-static inline bool is_last_fat_entry(uint32_t fe) {
-    return (0x0FFFFFF8 <= fe && fe <= 0x0FFFFFFF) ? true : false;
+static inline bool is_last_fat_entry(Fat_manager const* fm, uint32_t fe) {
+    switch (fm->fat_type) {
+        case FAT_TYPE12:
+            fe &= 0xFFF;
+            return (0xFF8 <= fe && fe <= 0xFFF) ? true : false;
+        case FAT_TYPE16:
+            fe &= 0xFFFF;
+            return (0xFFF8 <= fe && fe <= 0xFFFF) ? true : false;
+        case FAT_TYPE32:
+            return (0x0FFFFFF8 <= fe && fe <= 0x0FFFFFFF) ? true : false;
+    }
+
+    /* ERROR. */
+    return false;
 }
 
 
-static inline uint32_t alloc_unused_cluster(Fat_manager* fman){
-    uint32_t end = fman->fsinfo.free_cnt;
-    if (end == 0) {
+static inline uint32_t alloc_unused_cluster(Fat_manager* fm){
+    if (fm->fsinfo.free_cnt == 0) {
         /* No free cluster. */
         return 0;
     }
 
-    uint32_t begin = fman->fsinfo.next_free + 1;
+    uint32_t begin = fm->fsinfo.next_free + 1;
+    uint32_t end = fm->cluster_nr;
     uint32_t i, select_clus = 0;
 
     for (i = begin; i < end; i++) {
-        uint32_t fe = fat_enrty_access(FAT_READ, fman, i, 0);
+        uint32_t fe = fat_enrty_access(FAT_READ, fm, i, 0);
         if (is_unused_fat_entry(fe) == true) {
             /* Found unused cluster. */
             select_clus = i;
@@ -287,9 +316,9 @@ static inline uint32_t alloc_unused_cluster(Fat_manager* fman){
     }
 
     /* Update FSINFO. */
-    fman->fsinfo.next_free = select_clus;
-    fman->fsinfo.free_cnt -= 1;
-    fsinfo_access(FAT_WRITE, fman);
+    fm->fsinfo.next_free = select_clus;
+    fm->fsinfo.free_cnt -= 1;
+    fsinfo_access(FAT_WRITE, fm);
 
     return select_clus;
 }
@@ -344,7 +373,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
     }
 
     /* Traverse all chain FAT data cluster and read its structure. */
-    Fat_file* ffiles = kmalloc(128 * sizeof(Fat_file));
+    Fat_file* ffiles = kmalloc(512 * sizeof(Fat_file));
     size_t file_cnt = 0;
     uint32_t limit = (bpb->sec_per_clus * bpb->bytes_per_sec) / sizeof(Dir_entry);
     uint32_t fe;
@@ -352,19 +381,40 @@ static inline Fat_file* read_directory(Fat_file* ff) {
     uint32_t clus;
     do {
         clus = next_clus;
-        fe = fat_enrty_access(FAT_READ, fm, clus, 0);
-        if (is_data_exist_fat_entry(fe) == false) {
-            /* Invalid */
-            kfree(ffiles);
-            return NULL;
+        if ((fm->fat_type == FAT_TYPE32) || ((uintptr_t)ff != (uintptr_t)fm->super.root_dir)) {
+            /* ff is FAT32 or not root entry of FAT12/16.  */
+            fe = fat_enrty_access(FAT_READ, fm, clus, 0);
+            if (is_data_exist_fat_entry(fm, fe) == false) {
+                /* Invalid */
+                kfree(ffiles);
+                return NULL;
+            }
+
+            /* FAT entry indicates last entry or next entry cluster. */
+            next_clus = fe;
+
+            /* Read entry. */
+            if (fat_data_cluster_access(FAT_READ, fm, clus, fm->buffer) == NULL) {
+                /* TODO: error handling. */
+            }
+        } else {
+            /* ff is root entry of FAT12/16. */
+
+            /* Set dummy entry data */
+            switch (fm->fat_type) {
+                case FAT_TYPE12:
+                    fe = 0xFF8;
+                    break;
+                case FAT_TYPE16:
+                    fe = 0xFFF8;
+                    break;
+            }
+
+            /* read from root directory area. */
+            fat_access(FAT_READ, fm, fm->rdentry.begin_sec, 1, fm->buffer);
         }
 
-        /* FAT entry indicates last entry or next entry cluster. */
-        next_clus = fe;
-
-        /* Read data. */
-        fat_data_cluster_access(FAT_READ, fm, clus, fm->buffer);
-        Dir_entry* const de       = (Dir_entry*)(uintptr_t)fm->buffer;
+        Dir_entry* const de = (Dir_entry*)(uintptr_t)fm->buffer;
         Long_dir_entry* const lde = (Long_dir_entry*)(uintptr_t)fm->buffer;
 
         /* Find children */
@@ -426,7 +476,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
 
             file_cnt++;
         }
-    } while (is_last_fat_entry(fe) == false);
+    } while (is_last_fat_entry(fm, fe) == false);
 
     if (file_cnt != 0) {
         /* Store file infomation */
@@ -477,7 +527,7 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
         clus = next_clus;
         fe = fat_enrty_access(FAT_READ, fm, clus, 0);
 
-        if (is_data_exist_fat_entry(fe) == false) {
+        if (is_data_exist_fat_entry(fm, fe) == false) {
             /* Invalid. */
             kfree(ebuffer);
             return AXEL_FAILED;
@@ -494,13 +544,13 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
 
         /* Shift Next cluster. */
         eb += bpc;
-        if (rw == FAT_WRITE && is_last_fat_entry(fe) == false && eb < eb_limit) {
+        if (rw == FAT_WRITE && is_last_fat_entry(fm, fe) == false && eb < eb_limit) {
             /*
              * file size becomes bigger.
              * So, allocate new cluster.
              */
         }
-    } while (is_last_fat_entry(fe) == false);
+    } while (is_last_fat_entry(fm, fe) == false);
 
     if (direction == FILE_READ) {
         memcpy(buffer, ebuffer, f->size);
@@ -586,78 +636,79 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     size_t const bytes_per_sec = dev->sector_size;
     uint8_t* const b = kmalloc(bytes_per_sec);
 
-    Fat_manager* const fman = kmalloc_zeroed(sizeof(Fat_manager));
-    fman->super.dev = dev;
-    fman->super.pe = *pe;
-    fman->super.change_dir = fat_change_dir;
-    fman->super.access_file = fat_access_file;
+    Fat_manager* const fm = kmalloc_zeroed(sizeof(Fat_manager));
+    fm->super.dev = dev;
+    fm->super.pe = *pe;
+    fm->super.change_dir = fat_change_dir;
+    fm->super.access_file = fat_access_file;
 
-    Fat_file* const root  = kmalloc_zeroed(sizeof(Fat_file));
-    root->super.name      = kmalloc(1 + 1);
-    root->super.belong_fs = &fman->super;
-    root->super.type      = FILE_TYPE_DIR | FILE_TYPE_ROOT;
-    fman->super.current_dir  = &root->super;
-    fman->super.root_dir     = &root->super;
+    Fat_file* const root = kmalloc_zeroed(sizeof(Fat_file));
+    root->super.name = kmalloc(1 + 1);
+    root->super.belong_fs = &fm->super;
+    root->super.type = FILE_TYPE_DIR | FILE_TYPE_ROOT;
+    fm->super.current_dir = &root->super;
+    fm->super.root_dir = &root->super;
     strcpy(root->super.name, "/");
 
     /* Load Bios parameter block. */
-    if ((fat_access(FAT_READ, fman, 0, 1, b) != AXEL_SUCCESS) || (*((uint16_t*)(uintptr_t)(&b[510])) == 0x55aa)) {
+    if ((fat_access(FAT_READ, fm, 0, 1, b) != AXEL_SUCCESS) || (*((uint16_t*)(uintptr_t)(&b[510])) == 0x55aa)) {
         goto failed;
     }
-    memcpy(&fman->bpb, b, sizeof(Bios_param_block));
-    Bios_param_block* const bpb = &fman->bpb;
+    memcpy(&fm->bpb, b, sizeof(Bios_param_block));
+    Bios_param_block* const bpb = &fm->bpb;
 
     /* Free temporary buffer and allocate buffer of one cluster. */
     kfree(b);
-    fman->buffer_size = bpb->sec_per_clus * bytes_per_sec;
-    fman->buffer = kmalloc(fman->buffer_size);
+    fm->buffer_size = bpb->sec_per_clus * bytes_per_sec;
+    fm->buffer = kmalloc(fm->buffer_size);
 
     /* These are logical sector number. */
-    uint32_t fat_size           = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
-    uint32_t total_sec          = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
-    /* uint32_t rsvd_first_sec     = 0; */
-    uint32_t rsvd_sec_num       = bpb->rsvd_area_sec_num;
-    uint32_t fat_first_sec      = rsvd_sec_num;
-    uint32_t fat_sec_size       = fat_size * bpb->num_fats;
-    uint32_t root_dir_first_sec = fat_first_sec + fat_sec_size;
-    uint32_t root_dir_sec_num   = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
-    uint32_t data_first_sec     = root_dir_first_sec + root_dir_sec_num;
-    uint32_t data_sec_num       = total_sec - data_first_sec;
-    fman->data_area_first_sec     = data_first_sec;
-    fman->data_area_sec_nr        = data_sec_num;
+    uint32_t fat_size     = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
+    uint32_t total_sec    = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
+    fm->rsvd.begin_sec    = 0;
+    fm->rsvd.sec_nr       = bpb->rsvd_area_sec_num;
+    fm->fat.begin_sec     = fm->rsvd.begin_sec + fm->rsvd.sec_nr;
+    fm->fat.sec_nr        = fat_size * bpb->num_fats;
+    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;;
+    fm->rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
+    fm->data.begin_sec    = fm->rdentry.begin_sec + fm->rdentry.sec_nr;
+    fm->data.sec_nr       = total_sec - fm->data.begin_sec;
 
     /* FAT type detection. */
-    uint32_t cluster_num = data_sec_num / bpb->sec_per_clus;
-    if (cluster_num < 4085) {
-        fman->fat_type = FAT_TYPE12;
-    } else if (cluster_num < 65525) {
-        fman->fat_type = FAT_TYPE16;
+    fm->cluster_nr = fm->data.sec_nr / bpb->sec_per_clus;
+    if (fm->cluster_nr < 4085) {
+        fm->fat_type = FAT_TYPE12;
+        root->clus_num = 0;
+    } else if (fm->cluster_nr < 65525) {
+        fm->fat_type = FAT_TYPE16;
+        root->clus_num = 0;
     } else {
-        fman->fat_type = FAT_TYPE32;
-        if (fsinfo_access(FAT_READ, fman) == NULL) {
+        fm->fat_type = FAT_TYPE32;
+        if (fsinfo_access(FAT_READ, fm) == NULL) {
             goto failed;
         }
 
-        if (fman->fsinfo.free_cnt == FSINFO_INVALID_FREE) {
+        if (fm->fsinfo.free_cnt == FSINFO_INVALID_FREE) {
             /* TODO: count free cluster */
         }
 
-        if (fman->fsinfo.next_free == FSINFO_INVALID_FREE) {
+        if (fm->fsinfo.next_free == FSINFO_INVALID_FREE) {
             /* TODO: set last allocated cluster number. */
         }
 
-        /* Load root directory entry. */
         root->clus_num = bpb->fat32.rde_clus_num;
-        if (read_directory(root) == NULL) {
-            goto failed;
-        }
     }
 
-    return &fman->super;
+    /* Load root directory entry. */
+    if (read_directory(root) == NULL) {
+        goto failed;
+    }
+
+    return &fm->super;
 
 failed:
-    kfree(fman);
-    kfree(fman->buffer);
+    kfree(fm);
+    kfree(fm->buffer);
     kfree(root);
     return NULL;
 }
