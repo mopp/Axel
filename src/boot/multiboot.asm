@@ -20,6 +20,7 @@ extern kernel_entry
 
 ; multiboot header section.
 ; This is read by multiboot bootstraps loader (grub2).
+; {{{
 section .multiboot_header
 align 4
     dd MULTIBOOT_HEADER_MAGIC
@@ -38,10 +39,12 @@ align 4
     dd DISPLAY_X_RESOLUTION
     dd DISPLAY_Y_RESOLUTION
     dd DISPLAY_BIT_SIZE
+; }}}
 
 
 ; boot kernel section
 ; This section is entry point and called by bootstraps loader.
+; {{{
 section .boot_kernel
 global boot_kernel
 boot_kernel:
@@ -98,12 +101,14 @@ boot_higher_kernel:
 sleep:
     hlt
     jmp sleep
+; }}}
 
 
 ; date section.
 ; This is Page Directory Table.
 ; And Page size is 4MB in this.
 ; NOTE: "4KB" align is necessary.
+; {{{
 section .data
 align 0x1000
 KERNEL_PDT_IDX equ (KERNEL_VIRTUAL_BASE_ADDR) >> 22 ; Page directory index of kernel.
@@ -121,13 +126,16 @@ kernel_init_page_directory_table:
     dd 0x01000083                               ; Virtual 0x0C1000000 map to physical 0x01000000
                                                 ;   -> 0x0C00000 - 0x0C1000000 (16MB) is available.
     times (0x3ff - (KERNEL_PDT_IDX - 4)) dd 0   ; Clear remain area.
+; }}}
 
 
 ; BSS(Block Started by Symbol) section
 ; This allocate initial kernel stack witch is 4KB.
+; {{{
 section .bss
 KERNEL_INIT_STACK_SIZE equ 0x1000
 global kernel_init_stack_top
 kernel_init_stack_bottom:
     resb KERNEL_INIT_STACK_SIZE
 kernel_init_stack_top:
+; }}}

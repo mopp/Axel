@@ -22,6 +22,7 @@ export ROOT_DIR    := $(PWD)/
 export INCLUDE_DIR := $(ROOT_DIR)include/
 
 OS_NAME     := $(shell uname -s)
+# DISK_IMG    := disk16.img
 DISK_IMG    := disk.img
 D_CYLINDER  := 100
 
@@ -143,6 +144,7 @@ ifeq ($(OS_NAME), Linux)
 	@# Maybe, fdisk default first LBA is 2048.
 	@# 2048 * 512 = 1048576
 	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
+	# sudo mkfs.msdos -F 16 /dev/loop0
 	sudo mkfs.msdos -F 32 /dev/loop0
 	sudo losetup -d /dev/loop0
 endif

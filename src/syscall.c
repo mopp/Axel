@@ -42,14 +42,14 @@ typedef struct syscall_entry Syscall_entry;
 #define set_syscall_entry(num, name) \
     [num] = {\
         sizeof(struct name##_args), sys_##name,\
-    }, \
+    } \
 
 
 static int sys_mopp(Syscall_args* a);
 
 
 static Syscall_entry syscall_table[] = {
-    set_syscall_entry(0, mopp)
+    set_syscall_entry(0, mopp),
 };
 
 

@@ -126,11 +126,13 @@ struct fat_file {
 };
 typedef struct fat_file Fat_file;
 
+
 struct fat_area {
     uint32_t begin_sec;
     uint32_t sec_nr;
 };
 typedef struct fat_area Fat_area;
+
 
 struct fat_manager {
     File_system super;
