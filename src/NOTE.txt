@@ -28,6 +28,21 @@ e=$(du -b $f | sed 's/^\([0-9]*\).*/\1/g')
 a=$((a+e))
 end; echo "$((a/1024))kb"
 
+dd if=/dev/zero of=floppy.img bs=512 count=2880
+sudo losetup /dev/loop0 floppy.img
+sudo mkfs.fat -F 12 /dev/loop0
+sudo mount /dev/loop0 /mnt
+sudo mkdir /mnt/boot/
+sudo cp ~/git/Axel/src/axel.bin /mnt/boot/
+sudo umount /mnt
+sudo dd if=loader2 of=/dev/loop0 bs=1 count=11
+sudo dd if=loader2 of=/dev/loop0 bs=1 skip=90 seek=90 count=422
+sudo losetup -d /dev/loop0
+
+sudo losetup /dev/loop0 floppy.img
+sudo dd if=loader2 of=/dev/loop0 bs=1 count=11
+sudo dd if=loader2 of=/dev/loop0 bs=1 skip=90 seek=90 count=422
+sudo losetup -d /dev/loop0
 
 
 ------------
