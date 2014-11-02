@@ -26,7 +26,7 @@ File_system* init_fs(Ata_dev* dev) {
 
     /* Load first sector. */
     uint8_t* first_sec = kmalloc(axel_s.main_disk->sector_size);
-    if (ata_access(ATA_READ, axel_s.main_disk, 0, 1, first_sec) != AXEL_SUCCESS) {
+    if (first_sec == NULL || ata_access(ATA_READ, axel_s.main_disk, 0, 1, first_sec) != AXEL_SUCCESS) {
         kfree(first_sec);
         return NULL;
     }
