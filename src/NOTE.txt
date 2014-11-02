@@ -7,6 +7,11 @@
 [x] make console.
 [ ] add panic function.
 [x] fix vmalloc and related function.
+[ ] System Call
+[ ] lock
+[ ] abstract file system
+[ ] abstract devices
+[ ] boot loader
 
 
 
