@@ -591,11 +591,11 @@ static inline void init_gdt(void) {
     axel_s.tss->gs  = KERNEL_DATA_SEGMENT_SELECTOR;
 
     /* Setup flat address model. */
-    set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
-    set_segment_descriptor(axel_s.gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
-    set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_CODE);
-    set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_DATA);
-    set_segment_descriptor(axel_s.gdt + KERNEL_TSS_SEGMENT_INDEX, (uint32_t)axel_s.tss, sizeof(Task_state_segment) - 1, GDT_FLAGS_TSS);
+    set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000,           0xffffffff,                     GDT_FLAGS_KERNEL_CODE);
+    set_segment_descriptor(axel_s.gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000,           0xffffffff,                     GDT_FLAGS_KERNEL_DATA);
+    set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX,   0x00000000,           KERNEL_VIRTUAL_BASE_ADDR,       GDT_FLAGS_USER_CODE);
+    set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX,   0x00000000,           KERNEL_VIRTUAL_BASE_ADDR,       GDT_FLAGS_USER_DATA);
+    set_segment_descriptor(axel_s.gdt + KERNEL_TSS_SEGMENT_INDEX,  (uint32_t)axel_s.tss, sizeof(Task_state_segment) - 1, GDT_FLAGS_TSS);
 
     load_gdtr(GDT_LIMIT, (uint32_t)axel_s.gdt);
     set_task_register(KERNEL_TSS_SEGMENT_SELECTOR);
