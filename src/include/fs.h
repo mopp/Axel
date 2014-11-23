@@ -128,6 +128,7 @@ enum fs_constants {
 
 
 File_system* init_fs(Ata_dev*);
+File* resolve_path(File_system const*, char const*);
 
 
 

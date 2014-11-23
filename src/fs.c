@@ -14,6 +14,7 @@
 #include <kernel.h>
 #include <paging.h>
 #include <macros.h>
+#include <utils.h>
 
 
 static Master_boot_record* mbr;
@@ -54,22 +55,37 @@ File_system* init_fs(Ata_dev* dev) {
 }
 
 
-static char const* resolve_path(char const* path) {
-    /* Absolute path. */
-    if (*path == '/') {
-        return path;
+/* TODO: stack */
+File* resolve_path(File_system const* fs, char const* path) {
+    if ((path[0] == '/') && (strstr(path, "..") == NULL)) {
+        /* Absolute path. */
     }
 
-    /* relative path. */
-}
+    File* current = fs->current_dir;
 
+    do {
+        if (memcmp(path, "../", 3) == 0) {
+            if (current == current->belong_fs->root_dir) {
+                /* Path error. */
+                return NULL;
+            }
+            /* Move to upper dir. */
+            current = current->parent_dir;
+            continue;
+        }
 
-void* fs_access(uint8_t direction, char const* path) {
-    char const* p = resolve_path(path);
+        char* c = strchr(path, '/');
+        size_t l = ((uintptr_t)c - (uintptr_t)path);
+        size_t cnr = current->child_nr;
+        for (size_t i = 0; i < cnr; i++) {
+            File* child = current->children[i];
+            if (memcmp(child->name, path, l) == 0) {
+                path += (l + 1);
+                current = child;
+                break;
+            }
+        }
+    } while ((path != '\0') && (current->type != FILE_TYPE_FILE));
 
-    if (p != path) {
-        kfree((void*)p);
-    }
-
-    return NULL;
+    return current;
 }
