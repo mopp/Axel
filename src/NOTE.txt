@@ -20,6 +20,8 @@
 --------
 clang option for cross compile
 lib32-glibc-2.14-4
+clang --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib -nostartfiles -static ./main.c -Wl,-e main
+
 
 wc -l ./*.c ./*/*.c ./*.asm ./*/*.asm
 

@@ -208,6 +208,12 @@ static inline Axel_state_code init_user_process(void) {
 }
 
 
+Axel_state_code execve(char const *path, char const * const *argv, char const * const *envp) {
+
+    return AXEL_SUCCESS;
+}
+
+
 Axel_state_code init_process(void) {
     pk.pid = 0;
     pk.pdt = NULL;

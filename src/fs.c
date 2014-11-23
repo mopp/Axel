@@ -52,3 +52,24 @@ File_system* init_fs(Ata_dev* dev) {
 
     return fs;
 }
+
+
+static char const* resolve_path(char const* path) {
+    /* Absolute path. */
+    if (*path == '/') {
+        return path;
+    }
+
+    /* relative path. */
+}
+
+
+void* fs_access(uint8_t direction, char const* path) {
+    char const* p = resolve_path(path);
+
+    if (p != path) {
+        kfree((void*)p);
+    }
+
+    return NULL;
+}
