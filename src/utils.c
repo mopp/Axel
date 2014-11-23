@@ -171,6 +171,29 @@ char* strrchr(const char* s, int c) {
 }
 
 
+char* strstr(char const* s1, char const* s2) {
+    if ((s1 == NULL) || (s2 == NULL)) {
+        return NULL;
+    }
+
+    size_t l1 = strlen(s1);
+    size_t l2 = strlen(s2);
+
+    if (l1 < l2) {
+        return NULL;
+    }
+
+    while (*s1 != '\0') {
+        if (memcmp(s1, s2, l2) == 0) {
+            return (char*)s1;
+        }
+        ++s1;
+    }
+
+    return NULL;
+}
+
+
 size_t trim_tail(char* s) {
     if (s == NULL) {
         return 0;

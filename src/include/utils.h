@@ -17,18 +17,19 @@
 
 extern void *memchr(const void *, int, size_t);
 extern int memcmp(const void *, const void *, size_t);
-extern void* memcpy(void* restrict, const void* restrict, size_t);
+extern void *memcpy(void *restrict, const void *restrict, size_t);
 extern void *memset(void *, int, size_t);
 extern int strcmp(const char *, const char *);
 extern char *strcpy(char *, const char *);
 extern size_t strlen(const char *);
-extern char* strchr(char const*, int);
-extern char* strrchr(const char*, int);
-extern size_t trim_tail(char*);
+extern char *strchr(char const *, int);
+extern char *strrchr(const char *, int);
+extern char *strstr(char const *, char const *);
+extern size_t trim_tail(char *);
 extern int isdigit(int);
 
-extern int printf(const char*, ...);
-extern char* itoa(int, char*, int);
+extern int printf(const char *, ...);
+extern char *itoa(int, char *, int);
 extern int puts(const char *);
 extern int putchar(int);
 
