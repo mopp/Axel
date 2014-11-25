@@ -68,7 +68,6 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     }
     init_acpi();
     init_pit();
-    init_process();
 
     if (init_keyboard() == AXEL_FAILED) {
         puts("Keyboard initialize failed\n");
@@ -77,9 +76,9 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     if (init_mouse() == AXEL_FAILED) {
         puts("Mouse initialize failed\n");
     }
-
     io_sti();
 
+    /* ATA uses wait() */
     if (AXEL_SUCCESS != init_ata()) {
         printf("Init IDE is failed\n");
     }
@@ -88,7 +87,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     if (axel_s.fs== NULL) {
         printf("Init FileSystem is failed\n");
     }
-    /* execve("main", NULL, NULL); */
+
+    init_process();
 
     Window* mouse_win = get_mouse_window();
     Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
@@ -592,11 +592,16 @@ static inline void init_gdt(void) {
     axel_s.tss->gs  = KERNEL_DATA_SEGMENT_SELECTOR;
 
     /* Setup flat address model. */
-    set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000,           0xffffffff,                     GDT_FLAGS_KERNEL_CODE);
-    set_segment_descriptor(axel_s.gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000,           0xffffffff,                     GDT_FLAGS_KERNEL_DATA);
-    set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX,   0x00000000,           KERNEL_VIRTUAL_BASE_ADDR,       GDT_FLAGS_USER_CODE);
-    set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX,   0x00000000,           KERNEL_VIRTUAL_BASE_ADDR,       GDT_FLAGS_USER_DATA);
-    set_segment_descriptor(axel_s.gdt + KERNEL_TSS_SEGMENT_INDEX,  (uint32_t)axel_s.tss, sizeof(Task_state_segment) - 1, GDT_FLAGS_TSS);
+    set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
+    set_segment_descriptor(axel_s.gdt + KERNEL_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_DATA);
+
+    /* Bochs cause errror */
+    /* set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX, 0x00000000, KERNEL_VIRTUAL_BASE_ADDR, GDT_FLAGS_USER_CODE); */
+    /* set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX, 0x00000000, KERNEL_VIRTUAL_BASE_ADDR, GDT_FLAGS_USER_DATA); */
+
+    set_segment_descriptor(axel_s.gdt + USER_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_CODE);
+    set_segment_descriptor(axel_s.gdt + USER_DATA_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_USER_DATA);
+    set_segment_descriptor(axel_s.gdt + KERNEL_TSS_SEGMENT_INDEX, (uint32_t)axel_s.tss, sizeof(Task_state_segment) - 1, GDT_FLAGS_TSS);
 
     load_gdtr(GDT_LIMIT, (uint32_t)axel_s.gdt);
     set_task_register(KERNEL_TSS_SEGMENT_SELECTOR);

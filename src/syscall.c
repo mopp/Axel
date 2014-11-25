@@ -11,6 +11,7 @@
 #include <interrupt.h>
 #include <utils.h>
 #include <macros.h>
+#include <proc.h>
 
 
 enum {
@@ -18,13 +19,20 @@ enum {
 };
 
 
+/* Arguments order is Left to Right. */
 union syscall_args {
     size_t args[SYSCALL_MAX_ARG_NUM];
     struct mopp_args {
         char* str;
     } mopp_args;
+    struct execve_args {
+        char const *path;
+        char const * const *argv;
+        char const * const *envp;
+    } execve_args;
 };
 typedef struct mopp_args Mopp_args;
+typedef struct execve_args Execve_args;
 typedef union syscall_args Syscall_args;
 _Static_assert(sizeof(Syscall_args) == 32, "Syscall_args size is NOT 32 byte.");
 
@@ -45,11 +53,13 @@ typedef struct syscall_entry Syscall_entry;
     } \
 
 
-static int sys_mopp(Syscall_args* a);
+static int sys_mopp(Syscall_args*);
+static int sys_execve(Syscall_args*);
 
 
 static Syscall_entry syscall_table[] = {
-    set_syscall_entry(0, mopp),
+    set_syscall_entry(0x00, mopp),
+    set_syscall_entry(0x0b, execve),
 };
 
 
@@ -73,8 +83,14 @@ void syscall_enter(Interrupt_frame* iframe) {
 
 
 static int sys_mopp(Syscall_args* a) {
-    /* Mopp_args* args = (Mopp_args*)a; */
-
-    /* printf("%s\n", args->str); */
     return 1;
+}
+
+
+static int sys_execve(Syscall_args* a) {
+    Execve_args* args = (Execve_args*)a;
+
+    Axel_state_code r = execve(args->path, args->argv, args->envp);
+
+    return (r == AXEL_SUCCESS) ? (1) : (-1);
 }

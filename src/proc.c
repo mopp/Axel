@@ -112,7 +112,6 @@ Process* running_proc(void) {
  */
 void __fastcall change_context(Process* current, Process* next) {
     run_proc= next;
-    BOCHS_MAGIC_BREAK();
 }
 
 
@@ -218,9 +217,6 @@ static inline Axel_state_code init_user_process(void) {
     expand_segment(p, &us->text, DEFAULT_TEXT_SIZE);
     expand_segment(p, &us->stack, DEFAULT_STACK_SIZE);
 
-    /* set pdt for setting init user space. */
-    set_cpu_pdt(get_page_phys_addr(&p->pdt_page));
-
     p->thread.sp -= sizeof(Interrupt_frame);
     Interrupt_frame* intf = (Interrupt_frame*)p->thread.sp;
     p->thread.iframe = intf;
@@ -237,12 +233,23 @@ static inline Axel_state_code init_user_process(void) {
     intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
 
     /* dirty initialize. */
-    /* static uint8_t inst[] = { 0xe8, 0x05, 0x00, 0x00, 0x00, 0xe9, 0xf6, 0xff, 0xff, 0xff, 0x35, 0xac, 0xac, 0x00, 0x00, 0xc3, }; */
-    /* static uint8_t inst[] = {0xe8,  0x07 , 0x00 , 0x00 , 0x00 , 0xcd , 0x80 , 0xe9 , 0xf4 , 0xff , 0xff , 0xff , 0x35 , 0xac , 0xac , 0x00 , 0x00 , 0xc3}; */
-    static uint8_t inst[] = {
-        0xe8,0x14,0x00,0x00,0x00,0xb8,0x00,0x00,0x00,0x00,0x68,0x1f,0x10,0x00,0x00,0xcd,0x80,0x83,0xc4,0x04,0xe9,0xe7,0xff,0xff,0xff,0x35,0xac,0xac,0x00,0x00,0xc3,0x4d,0x4f,0x50,0x50,0x00
-    };
-    memcpy((void*)us->text.addr, inst, ARRAY_SIZE_OF(inst));
+    /* static uint8_t inst[] = { */
+        /* 0xe8,0x14,0x00,0x00,0x00,0xb8,0x00,0x00,0x00,0x00,0x68,0x1f,0x10,0x00,0x00,0xcd,0x80,0x83,0xc4,0x04,0xe9,0xe7,0xff,0xff,0xff,0x35,0xac,0xac,0x00,0x00,0xc3,0x4d,0x4f,0x50,0x50,0x00 */
+    /* }; */
+    /* memcpy((void*)us->text.addr, inst, ARRAY_SIZE_OF(inst)); */
+
+    /* Load program file. */
+    File* f = resolve_path(axel_s.fs, "init");
+    void* fbuf = kmalloc(f->size);
+    if (f->belong_fs->access_file(FILE_READ, f, fbuf) != AXEL_SUCCESS ) {
+        kfree(fbuf);
+        return AXEL_FAILED;
+    }
+
+    /* set pdt for setting init user space. */
+    set_cpu_pdt(get_page_phys_addr(&p->pdt_page));
+
+    memcpy((void*)us->text.addr, fbuf, f->size);
 
     set_cpu_pdt(vir_to_phys_addr((uintptr_t)(get_kernel_pdt())));
 
@@ -307,17 +314,10 @@ Axel_state_code elf_callback(void* o, size_t n, void const* fbuf, Elf_phdr const
     size_t size = ALIGN_UP(ph->memsz + (ph->vaddr - s->addr), FRAME_SIZE);
     expand_segment(p, s, size);
 
-    printf("0x%x -> 0x%x\n", ph->vaddr, s->addr);
-    /* 0x8048000 */
-    /* 0x80490ec */
-
-    /* TODO: remove */
-    uintptr_t pdt = get_cpu_pdt();
     set_cpu_pdt(get_page_phys_addr(&p->pdt_page));
     /* Copy segment into memory. */
     void* segbuf = (void*)((uintptr_t)fbuf + ph->offset);
     memcpy((void*)s->addr, segbuf, s->size);
-    set_cpu_pdt(pdt);
 
     return AXEL_SUCCESS;
 }
@@ -337,16 +337,6 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
     /* Process* p = running_proc(); */
     Process* p = &procs[1];
 
-    /* Free current program on memory. */
-    // p->state = PROC_STATE_WAIT;
-    // User_segments* segs = &p->u_segs;
-    // if (segs->text.addr != 0) {
-    //     free_segment(p, &segs->text);
-    // }
-    // if (segs->data.addr != 0) {
-    //     free_segment(p, &segs->data);
-    // }
-
     /* Load program file. */
     File* f = resolve_path(axel_s.fs, path);
     void* fbuf = kmalloc(f->size);
@@ -356,6 +346,15 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
     }
 
     io_cli();
+
+    /* Free current program on memory. */
+    User_segments* segs = &p->u_segs;
+    if (segs->text.addr != 0) {
+        free_segment(p, &segs->text);
+    }
+    if (segs->data.addr != 0) {
+        free_segment(p, &segs->data);
+    }
 
     /* Load program into memory. */
     Axel_state_code r = elf_load_program(fbuf, p, elf_callback, elf_callback_error);
@@ -368,7 +367,6 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
     p->thread.iframe->eip = elf_get_entry_addr(fbuf);
 
     io_sti();
-    BOCHS_MAGIC_BREAK();
 
     return AXEL_SUCCESS;
 }
