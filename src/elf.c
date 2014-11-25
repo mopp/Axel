@@ -139,7 +139,7 @@ static bool is_valid_elf(elf_uchar const* id) {
 }
 
 
-Axel_state_code elf_program_load(void const* fbuf, Elf_load_callback f, Elf_load_err_callback ef) {
+Axel_state_code elf_load_program(void const* fbuf, void* o, Elf_load_callback f, Elf_load_err_callback ef) {
     Elf_ehdr const* eh = (Elf_ehdr const*)(fbuf);
 
     /* TODO: divide error type. */
@@ -168,8 +168,8 @@ Axel_state_code elf_program_load(void const* fbuf, Elf_load_callback f, Elf_load
     Elf_phdr const* ph = (Elf_phdr const*)((uintptr_t)fbuf + eh->ph_off);
     uint8_t i = 0;
     while (i++ < 2) {
-        if (f(ph) != AXEL_SUCCESS) {
-            ef(ph);
+        if (f(o, i, ph) != AXEL_SUCCESS) {
+            ef(o, i, ph);
             return AXEL_FAILED;
         }
 

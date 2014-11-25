@@ -121,11 +121,11 @@ enum {
     PT_HIPROC      = 0x7FFFFFFF,
 };
 
-typedef Axel_state_code (*Elf_load_callback)(Elf_phdr const*);
-typedef Axel_state_code (*Elf_load_err_callback)(Elf_phdr const*);
+typedef Axel_state_code (*Elf_load_callback)(void* p, size_t, Elf_phdr const*);
+typedef Axel_state_code (*Elf_load_err_callback)(void* p, size_t, Elf_phdr const*);
 
 
-Axel_state_code elf_program_load(void const*, Elf_load_callback, Elf_load_err_callback);
+Axel_state_code elf_load_program(void const*, void*, Elf_load_callback, Elf_load_err_callback);
 
 
 

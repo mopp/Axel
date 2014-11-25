@@ -183,7 +183,7 @@ extern uintptr_t phys_to_vir_addr(uintptr_t);
 extern uintptr_t vir_to_phys_addr(uintptr_t);
 extern void set_phys_to_vir_addr(void*);
 extern uintptr_t get_free_vmems(size_t);
-
+extern uintptr_t get_mapped_addr(Page_table_entry const*);
 
 
 #endif /* _ASSEMBLY_H_ */

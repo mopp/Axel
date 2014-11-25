@@ -58,15 +58,6 @@ struct user_segments {
 typedef struct user_segments User_segments;
 
 
-enum Process_constants {
-    PROC_STATE_RUN,
-    PROC_STATE_SLEEP,
-    PROC_STATE_WAIT,
-    PROC_STATE_ZOMBI,
-    KERNEL_MODE_STACK_SIZE = FRAME_SIZE,
-};
-
-
 struct process {
     uint8_t priority;
     uint8_t state;
@@ -74,7 +65,7 @@ struct process {
     uint32_t cpu_time;
     Elist used_pages;
     User_segments u_segs;
-    Thread* thread;
+    Thread thread;
     struct process* parent;
     uintptr_t km_stack;
     Page_directory_table pdt;
@@ -85,8 +76,8 @@ typedef struct process Process;
 
 Axel_state_code init_process(void);
 void switch_context(Interrupt_frame*);
-Process* get_current_process(void);
-Process* get_current_pdt_process(void);
+Process* running_proc(void);
+Process* pdt_proc(void);
 
 extern bool is_enable_process;
 

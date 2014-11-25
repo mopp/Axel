@@ -78,6 +78,11 @@ static inline Page_table_entry* set_frame_addr(Page_table_entry* const pte, uint
 }
 
 
+uintptr_t get_mapped_addr(Page_table_entry const* pte) {
+    return (uintptr_t)(pte->frame_addr << PTE_FRAME_ADDR_SHIFT_NUM);
+}
+
+
 /**
  * @brief Mapping page at virtual addr to physical addr.
  *          And overwrite pde and pte flags.
@@ -173,11 +178,11 @@ void unmap_page(uintptr_t vaddr) {
         }
 
         pte->bit_expr &= PTE_FLAGS_AREA_MASK;
-        flush_tlb(vaddr);
     } else {
         /* User area unmapping. */
         /* TODO */
     }
+    flush_tlb(vaddr);
 }
 
 
@@ -200,7 +205,7 @@ bool is_kernel_pdt(Page_directory_table const pdt) {
 
 /* synchronize user and kernel pdt */
 Axel_state_code synchronize_pdt(uintptr_t vaddr) {
-    Process* p = get_current_pdt_process();
+    Process* p = pdt_proc();
     if (p == NULL || p->pdt == NULL) {
         return AXEL_PAGE_SYNC_ERROR;
     }
@@ -220,16 +225,6 @@ Axel_state_code synchronize_pdt(uintptr_t vaddr) {
     if (u_pde->present_flag == 0) {
         *u_pde = *k_pde;
     }
-
-    // Page_table_entry* u_pte = get_pte(get_pt(u_pde), vaddr);
-    // Page_table_entry* k_pte = get_pte(get_pt(k_pde), vaddr);
-    // DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, k_pte);
-    // if (k_pte->present_flag == 0) {
-    //     /* This case is same things above */
-    //     return AXEL_PAGE_SYNC_ERROR;
-    // }
-
-    // *u_pte = *k_pte;
 
     return AXEL_SUCCESS;
 }
