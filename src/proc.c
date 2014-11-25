@@ -112,6 +112,7 @@ Process* running_proc(void) {
  */
 void __fastcall change_context(Process* current, Process* next) {
     run_proc= next;
+    BOCHS_MAGIC_BREAK();
 }
 
 
@@ -152,13 +153,13 @@ void switch_context(Interrupt_frame* current_iframe) {
             "popfl                              \n"  // Restore eflags
 
             :   [current_ip] "=m"(current_t->ip),
-            [current_sp] "=m"(current_t->sp)
+                [current_sp] "=m"(current_t->sp)
             :   [next_ip] "r"(next_t->ip),
-            [next_sp] "r"(next_t->sp),
-            [current_proc] "m"(current_p),
-            [next_proc] "m"(next_p)
-                 :   "memory", "%ecx", "%edx"
-                     );
+                [next_sp] "r"(next_t->sp),
+                [current_proc] "m"(current_p),
+                [next_proc] "m"(next_p)
+            :   "memory", "%ecx", "%edx"
+            );
 }
 
 
@@ -202,7 +203,9 @@ static inline Axel_state_code init_user_process(void) {
     elist_init(&p->used_pages);
 
     us->text.addr  = DEFAULT_TEXT_ADDR;
+    us->text.size  = 0;
     us->stack.addr = DEFAULT_STACK_TOP_ADDR;
+    us->stack.size = 0;
     p->km_stack    = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
     p->thread.ip   = (uintptr_t)interrupt_return;
     p->thread.sp   = p->km_stack;
@@ -239,9 +242,7 @@ static inline Axel_state_code init_user_process(void) {
     static uint8_t inst[] = {
         0xe8,0x14,0x00,0x00,0x00,0xb8,0x00,0x00,0x00,0x00,0x68,0x1f,0x10,0x00,0x00,0xcd,0x80,0x83,0xc4,0x04,0xe9,0xe7,0xff,0xff,0xff,0x35,0xac,0xac,0x00,0x00,0xc3,0x4d,0x4f,0x50,0x50,0x00
     };
-    for (size_t i = 0; i < ARRAY_SIZE_OF(inst); i++) {
-        *((uint8_t*)us->text.addr + i) = inst[i];
-    }
+    memcpy((void*)us->text.addr, inst, ARRAY_SIZE_OF(inst));
 
     set_cpu_pdt(vir_to_phys_addr((uintptr_t)(get_kernel_pdt())));
 
@@ -287,11 +288,42 @@ static inline void free_segment(Process* p, Segment* s) {
 }
 
 
-Axel_state_code elf_callback(void* p, size_t n, Elf_phdr const* ph) {
+Axel_state_code elf_callback(void* o, size_t n, void const* fbuf, Elf_phdr const* ph) {
+    Process* p = (Process*)o;
+    Segment* s = NULL;
+    switch (n) {
+        case 0:
+            s = &p->u_segs.text;
+            break;
+        case 1:
+            s = &p->u_segs.data;
+            break;
+        default:
+            return AXEL_SUCCESS;
+    }
+
+    s->addr = ALIGN_DOWN(ph->vaddr, FRAME_SIZE);
+    s->size = 0;
+    size_t size = ALIGN_UP(ph->memsz + (ph->vaddr - s->addr), FRAME_SIZE);
+    expand_segment(p, s, size);
+
+    printf("0x%x -> 0x%x\n", ph->vaddr, s->addr);
+    /* 0x8048000 */
+    /* 0x80490ec */
+
+    /* TODO: remove */
+    uintptr_t pdt = get_cpu_pdt();
+    set_cpu_pdt(get_page_phys_addr(&p->pdt_page));
+    /* Copy segment into memory. */
+    void* segbuf = (void*)((uintptr_t)fbuf + ph->offset);
+    memcpy((void*)s->addr, segbuf, s->size);
+    set_cpu_pdt(pdt);
+
+    return AXEL_SUCCESS;
 }
 
 
-Axel_state_code elf_callback_error(void* p, size_t n, Elf_phdr const* ph) {
+Axel_state_code elf_callback_error(void* p, size_t n, void const* fbuf, Elf_phdr const* ph) {
     /* TODO: */
     return AXEL_SUCCESS;
 }
@@ -306,17 +338,14 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
     Process* p = &procs[1];
 
     /* Free current program on memory. */
-    p->state = PROC_STATE_WAIT;
-    User_segments* segs = &p->u_segs;
-    if (segs->text.addr != 0) {
-        free_segment(p, &segs->text);
-    }
-    if (segs->data.addr != 0) {
-        free_segment(p, &segs->data);
-    }
-    if (segs->stack.addr != 0) {
-        free_segment(p, &segs->stack);
-    }
+    // p->state = PROC_STATE_WAIT;
+    // User_segments* segs = &p->u_segs;
+    // if (segs->text.addr != 0) {
+    //     free_segment(p, &segs->text);
+    // }
+    // if (segs->data.addr != 0) {
+    //     free_segment(p, &segs->data);
+    // }
 
     /* Load program file. */
     File* f = resolve_path(axel_s.fs, path);
@@ -326,8 +355,20 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
         return AXEL_FAILED;
     }
 
+    io_cli();
+
     /* Load program into memory. */
-    elf_load_program(fbuf, p, elf_callback, elf_callback_error);
+    Axel_state_code r = elf_load_program(fbuf, p, elf_callback, elf_callback_error);
+    if (r != AXEL_SUCCESS) {
+        return AXEL_FAILED;
+    }
+
+    /* Init stack pointer. */
+    p->thread.iframe->prev_esp = p->u_segs.stack.addr + p->u_segs.stack.size;
+    p->thread.iframe->eip = elf_get_entry_addr(fbuf);
+
+    io_sti();
+    BOCHS_MAGIC_BREAK();
 
     return AXEL_SUCCESS;
 }

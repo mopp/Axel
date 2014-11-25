@@ -20,8 +20,8 @@
 
 
 struct thread {
-    uintptr_t sp; /* Stack pointer. */
-    uintptr_t ip; /* Instruction pointer. */
+    uintptr_t sp; /* Stack pointer in kernel space. */
+    uintptr_t ip; /* Instruction pointer in kernel space. */
     Interrupt_frame* iframe;
 };
 typedef struct thread Thread;
@@ -43,7 +43,7 @@ typedef struct segment Segment;
 
 enum User_segmentss_constants {
     DEFAULT_STACK_SIZE        = FRAME_SIZE,
-    DEFAULT_STACK_TOP_ADDR    = 0x2000,
+    DEFAULT_STACK_TOP_ADDR    = KERNEL_VIRTUAL_BASE_ADDR - DEFAULT_STACK_SIZE,
     DEFAULT_STACK_BOTTOM_ADDR = DEFAULT_STACK_TOP_ADDR + DEFAULT_STACK_SIZE,
     DEFAULT_TEXT_SIZE         = FRAME_SIZE,
     DEFAULT_TEXT_ADDR         = 0x1000,
@@ -78,6 +78,7 @@ Axel_state_code init_process(void);
 void switch_context(Interrupt_frame*);
 Process* running_proc(void);
 Process* pdt_proc(void);
+Axel_state_code execve(char const *, char const * const*, char const * const*);
 
 extern bool is_enable_process;
 

@@ -133,7 +133,9 @@ extern void asm_syscall_enter(void);
 
 
 static void hlt(Interrupt_frame* ic) {
-    DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, ic);
+    io_cli();
+    BOCHS_MAGIC_BREAK();
+    INF_LOOP();
 }
 
 

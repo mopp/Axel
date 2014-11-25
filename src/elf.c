@@ -159,23 +159,50 @@ Axel_state_code elf_load_program(void const* fbuf, void* o, Elf_load_callback f,
         return AXEL_FAILED;
     }
 
-    if ((eh->ph_num == 0) || (eh->sh_num == 0) || (eh->ph_entry_size == 0) || (eh->sh_entry_size)) {
+    if ((eh->ph_num == 0) || (eh->sh_num == 0) || (eh->ph_entry_size == 0) || (eh->sh_entry_size == 0)) {
         return AXEL_FAILED;
     }
-
 
     /* TODO: more flexible. */
     Elf_phdr const* ph = (Elf_phdr const*)((uintptr_t)fbuf + eh->ph_off);
     uint8_t i = 0;
-    while (i++ < 2) {
-        if (f(o, i, ph) != AXEL_SUCCESS) {
-            ef(o, i, ph);
+    while (i < 2) {
+        if (f(o, i, fbuf, ph) != AXEL_SUCCESS) {
+            ef(o, i, fbuf, ph);
             return AXEL_FAILED;
         }
+        i++;
 
         /* next */
         ph = (Elf_phdr const*)((uintptr_t)ph + eh->ph_entry_size);
     }
 
     return AXEL_SUCCESS;
+}
+
+uintptr_t elf_get_entry_addr(void const* fbuf) {
+    Elf_ehdr const* eh = (Elf_ehdr const*)(fbuf);
+
+    /* TODO: divide error type. */
+    if (fbuf == NULL) {
+        return AXEL_FAILED;
+    }
+
+    if (is_valid_elf(eh->ident) == false) {
+        return AXEL_FAILED;
+    }
+
+    if (eh->type != ET_EXEC) {
+        return AXEL_FAILED;
+    }
+
+    if (eh->machine != EM_386) {
+        return AXEL_FAILED;
+    }
+
+    if ((eh->ph_num == 0) || (eh->sh_num == 0) || (eh->ph_entry_size == 0) || (eh->sh_entry_size == 0)) {
+        return AXEL_FAILED;
+    }
+
+    return eh->entry;
 }
