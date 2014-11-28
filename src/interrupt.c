@@ -227,14 +227,13 @@ void send_done_pic_slave(void) {
 
 void exception_page_fault(Interrupt_frame* ic) {
     uintptr_t fault_addr = load_cr2();
-    io_cli();
-    BOCHS_MAGIC_BREAK();
 
     if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
         /* TODO: User space fault */
         io_cli();
         printf("\nfault_addr: 0x%zx\n", fault_addr);
         puts("User space fault or Kernel space fault");
+        BOCHS_MAGIC_BREAK();
         DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x1);
     }
 
@@ -245,6 +244,7 @@ void exception_page_fault(Interrupt_frame* ic) {
         io_cli();
         printf("\nfault_addr: 0x%zx\n", fault_addr);
         puts("Kernel space fault");
+        BOCHS_MAGIC_BREAK();
         DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x2);
     }
 
@@ -254,6 +254,7 @@ void exception_page_fault(Interrupt_frame* ic) {
         io_cli();
         printf("\nfault_addr: 0x%zx\n", fault_addr);
         puts("Synchronize fault");
+        BOCHS_MAGIC_BREAK();
         DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x3);
     }
 }
