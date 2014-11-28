@@ -149,6 +149,14 @@ ifeq ($(OS_NAME), Linux)
 	sudo losetup -d /dev/loop0
 endif
 
+.PHONY: copy
+copy:
+	nasm -f bin ./init.asm -o init
+	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
+	sudo mount /dev/loop0 /mnt
+	sudo cp init /mnt/
+	sudo umount /mnt
+	sudo losetup -d /dev/loop0
 
 .PHONY: clean
 clean:

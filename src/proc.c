@@ -41,18 +41,16 @@ Process* pdt_proc(void) {
     return pdt_process;
 }
 
-static Process* alloc_proc(void) {
-    static uint16_t pid = 0;
-    static size_t last = 0;
+static Process* alloc_proc(Process* parent) {
+    /* pid 0 is kernel. */
+    static uint16_t pid = 1;
+    static size_t last = 1;
     size_t store = last;
     Process* p = NULL;
 
     do {
         if (procs[last].state == PROC_STATE_FREE) {
             p = &procs[last];
-            memset(p, 0, sizeof(Process));
-            p->state = PROC_STATE_ALLOC;
-            p->pid   = pid++;
         }
 
         last++;
@@ -66,6 +64,16 @@ static Process* alloc_proc(void) {
         }
     } while(p == NULL);
 
+    memset(p, 0, sizeof(Process));
+    p->state = PROC_STATE_ALLOC;
+    p->pid = pid++;
+    elist_init(&p->used_pages);
+    p->km_stack = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
+
+    /* Alloc pdt */
+    Page_directory_table pdt = vcmalloc(&p->pdt_page, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
+    p->pdt = init_user_pdt(p, pdt, ((parent == NULL) ? (NULL) : (parent->pdt)));
+
     return p;
 }
 
@@ -75,7 +83,11 @@ static inline void free_proc(Process* p) {
         return;
     }
 
+    kfree((void*)p->km_stack);
     p->state = PROC_STATE_FREE;
+
+    /* TODO: cleanup pdt. */
+    vfree(&p->pdt_page);
 }
 
 
@@ -158,7 +170,7 @@ void switch_context(Interrupt_frame* current_iframe) {
                 [current_proc] "m"(current_p),
                 [next_proc] "m"(next_p)
             :   "memory", "%ecx", "%edx"
-            );
+    );
 }
 
 
@@ -180,10 +192,9 @@ static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size
     /* allocate page table */
     Page_directory_entry* const pde = get_pde(p->pdt, v_s);
     if (pde->present_flag == 0) {
-        Page* pg = kmalloc(sizeof(Page));
-        vcmalloc(pg, (sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM));
-        pde->page_table_addr = PAGE_TABLE_ADDR_MASK & (get_page_phys_addr(pg) >> PDE_PT_ADDR_SHIFT_NUM);
-        elist_insert_next(&p->used_pages, &pg->list);
+        if (alloc_page_table(p, pde) == NULL) {
+            return AXEL_FAILED;
+        }
     }
 
     Page_table_entry* const pte = get_pte(get_pt(pde), v_s);
@@ -197,21 +208,15 @@ static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size
 
 
 static inline Axel_state_code init_user_process(void) {
-    Process* p = alloc_proc();
+    Process* p = alloc_proc(NULL);
     User_segments* us = &p->u_segs;
-    elist_init(&p->used_pages);
 
     us->text.addr  = DEFAULT_TEXT_ADDR;
     us->text.size  = 0;
     us->stack.addr = DEFAULT_STACK_TOP_ADDR;
     us->stack.size = 0;
-    p->km_stack    = (uintptr_t)(kmalloc_zeroed(KERNEL_MODE_STACK_SIZE)) + KERNEL_MODE_STACK_SIZE;
     p->thread.ip   = (uintptr_t)interrupt_return;
     p->thread.sp   = p->km_stack;
-
-    /* alloc pdt */
-    Page_directory_table pdt = vcmalloc(&p->pdt_page, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
-    p->pdt = init_user_pdt(pdt);
 
     /* setting user progam segments. */
     expand_segment(p, &us->text, DEFAULT_TEXT_SIZE);
@@ -232,11 +237,13 @@ static inline Axel_state_code init_user_process(void) {
     intf->prev_esp = ECAST_UINT32(us->stack.addr + DEFAULT_STACK_SIZE);
     intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
 
+#if 0
     /* dirty initialize. */
-    /* static uint8_t inst[] = { */
-        /* 0xe8,0x14,0x00,0x00,0x00,0xb8,0x00,0x00,0x00,0x00,0x68,0x1f,0x10,0x00,0x00,0xcd,0x80,0x83,0xc4,0x04,0xe9,0xe7,0xff,0xff,0xff,0x35,0xac,0xac,0x00,0x00,0xc3,0x4d,0x4f,0x50,0x50,0x00 */
-    /* }; */
-    /* memcpy((void*)us->text.addr, inst, ARRAY_SIZE_OF(inst)); */
+    static uint8_t inst[] = {
+        0xe8,0x14,0x00,0x00,0x00,0xb8,0x00,0x00,0x00,0x00,0x68,0x1f,0x10,0x00,0x00,0xcd,0x80,0x83,0xc4,0x04,0xe9,0xe7,0xff,0xff,0xff,0x35,0xac,0xac,0x00,0x00,0xc3,0x4d,0x4f,0x50,0x50,0x00
+    };
+    memcpy((void*)us->text.addr, inst, ARRAY_SIZE_OF(inst));
+#endif
 
     /* Load program file. */
     File* f = resolve_path(axel_s.fs, "init");
@@ -246,12 +253,12 @@ static inline Axel_state_code init_user_process(void) {
         return AXEL_FAILED;
     }
 
-    /* set pdt for setting init user space. */
+    /* Set pdt for setting init user space. */
     set_cpu_pdt(get_page_phys_addr(&p->pdt_page));
-
     memcpy((void*)us->text.addr, fbuf, f->size);
-
     set_cpu_pdt(vir_to_phys_addr((uintptr_t)(get_kernel_pdt())));
+
+    kfree(fbuf);
 
     p->state = PROC_STATE_RUN;
 
@@ -325,6 +332,7 @@ Axel_state_code elf_callback(void* o, size_t n, void const* fbuf, Elf_phdr const
 
 Axel_state_code elf_callback_error(void* p, size_t n, void const* fbuf, Elf_phdr const* ph) {
     /* TODO: */
+    puts("elf program load error\n");
     return AXEL_SUCCESS;
 }
 
@@ -372,9 +380,35 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
 }
 
 
+int fork(void) {
+    printf("enter fork\n");
+    Process* pp = running_proc(); /* Parent */
+    Process* cp = alloc_proc(pp); /* Child */
+    if (cp == NULL) {
+        return -1;
+    }
+
+    uint16_t p_pid = pp->pid;
+    uint16_t c_pid = cp->pid;
+
+    cp->thread.ip = pp->thread.ip;
+    cp->thread.sp = pp->thread.sp;
+    cp->thread.iframe = (Interrupt_frame*)(cp->km_stack + ((uintptr_t)pp->thread.iframe - pp->km_stack));
+    cp->u_segs = pp->u_segs;
+    memcpy(cp->thread.iframe, pp->thread.iframe, sizeof(Interrupt_frame));
+    memcpy((void*)cp->km_stack, (void*)pp->km_stack, KERNEL_MODE_STACK_SIZE);
+    printf("pid %d\n", pp->pid);
+
+    cp->parent = pp;
+    cp->state = PROC_STATE_RUN;
+
+    return (pp->pid == p_pid) ? c_pid : 0;
+}
+
+
 Axel_state_code init_process(void) {
     /* Current context is dealed with process 0. */
-    run_proc = alloc_proc();
+    run_proc = &procs[0];
     run_proc->state = PROC_STATE_RUN;
 
     init_user_process();

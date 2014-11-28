@@ -156,10 +156,11 @@ struct page {
 };
 typedef struct page Page;
 
-
+struct process;
+typedef struct process Process;
 extern Axel_state_code synchronize_pdt(uintptr_t);
 extern Page_directory_table get_kernel_pdt(void);
-extern Page_directory_table init_user_pdt(Page_directory_table);
+extern Page_directory_table init_user_pdt(Process*, Page_directory_table, Page_directory_table const);
 extern Page_table_entry* get_pte(Page_table const, uintptr_t const);
 extern Page_table get_pt(Page_directory_entry const* const);
 extern Page_directory_entry* get_pde(Page_directory_table const, uintptr_t const);
@@ -184,6 +185,7 @@ extern uintptr_t vir_to_phys_addr(uintptr_t);
 extern void set_phys_to_vir_addr(void*);
 extern uintptr_t get_free_vmems(size_t);
 extern uintptr_t get_mapped_addr(Page_table_entry const*);
+extern Page* alloc_page_table(Process*, Page_directory_entry*);
 
 
 #endif /* _ASSEMBLY_H_ */

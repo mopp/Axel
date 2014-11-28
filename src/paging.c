@@ -230,15 +230,58 @@ Axel_state_code synchronize_pdt(uintptr_t vaddr) {
 }
 
 
-Page_directory_table init_user_pdt(Page_directory_table pdt) {
+Page* alloc_page_table(Process* p, Page_directory_entry* pde) {
+    Page* pg = kmalloc(sizeof(Page));
+    if (vcmalloc(pg, (sizeof(Page_table_entry) * PAGE_TABLE_ENTRY_NUM)) == NULL) {
+        kfree(pg);
+        return NULL;
+    }
+
+    pde->page_table_addr = PAGE_TABLE_ADDR_MASK & (get_page_phys_addr(pg) >> PDE_PT_ADDR_SHIFT_NUM);
+    elist_insert_next(&p->used_pages, &pg->list);
+
+    return pg;
+}
+
+
+Page_directory_table init_user_pdt(Process* p, Page_directory_table pdt, Page_directory_table const src) {
     /* Copy kernel area. */
     memset(pdt, 0, sizeof(Page_directory_entry) * PAGE_DIRECTORY_ENTRY_NUM);
     size_t s = get_pde_index(get_kernel_vir_start_addr());
-    /* size_t e = get_pde_index(get_kernel_vir_end_addr()); */
-    size_t e = get_pde_index(0xffffffff);
+    size_t e = get_pde_index(~0u);
     do {
         pdt[s].bit_expr = axel_s.kernel_pdt[s].bit_expr;
     } while (++s <= e);
+
+    if (src == NULL) {
+        return pdt;
+    }
+
+    /* Copy user area. */
+    for (uintptr_t i = 0; i < KERNEL_VIRTUAL_BASE_ADDR; i+= (FRAME_SIZE * PAGE_TABLE_ENTRY_NUM)) {
+        Page_directory_entry* src_pde = get_pde(src, i);
+        if (src_pde->present_flag == 0) {
+            continue;
+        }
+
+        Page_directory_entry* pde = get_pde(pdt, i);
+        if (alloc_page_table(p, pde) == NULL) {
+            /* TODO: */
+            return NULL;
+        }
+
+        uintptr_t const lim = i + (FRAME_SIZE * PAGE_TABLE_ENTRY_NUM);
+        Page_table const pt = get_pt(pde);
+        Page_table const src_pt = get_pt(src_pde);
+        for (uintptr_t j = 0; j < lim; j+= FRAME_SIZE) {
+            Page_table_entry* const src_pte = get_pte(src_pt, j);
+            if (src_pte->present_flag == 1) {
+                Page_table_entry* const pte = get_pte(pt, j);
+                *pte = *src_pte;
+                /* TODO: Copy memory. */
+            }
+        }
+    }
 
     return pdt;
 }
@@ -247,6 +290,7 @@ Page_directory_table init_user_pdt(Page_directory_table pdt) {
 /*
  * Return head address of free virtual memorys
  * It has frame_nr * FRAME_SIZE size.
+ * FRAME_SIZE alignment.
  * FIXME: lock ?
  */
 uintptr_t get_free_vmems(size_t frame_nr) {

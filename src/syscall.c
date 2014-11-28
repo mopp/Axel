@@ -30,6 +30,8 @@ union syscall_args {
         char const * const *argv;
         char const * const *envp;
     } execve_args;
+    struct fork_args {
+    } fork_args;
 };
 typedef struct mopp_args Mopp_args;
 typedef struct execve_args Execve_args;
@@ -55,10 +57,12 @@ typedef struct syscall_entry Syscall_entry;
 
 static int sys_mopp(Syscall_args*);
 static int sys_execve(Syscall_args*);
+static int sys_fork(Syscall_args*);
 
 
 static Syscall_entry syscall_table[] = {
     set_syscall_entry(0x00, mopp),
+    set_syscall_entry(0x02, fork),
     set_syscall_entry(0x0b, execve),
 };
 
@@ -78,7 +82,7 @@ void syscall_enter(Interrupt_frame* iframe) {
     /* Do system call. */
     int error = se->func(&sa);
 
-    memcpy(&iframe->eax, &error, 4);
+    memcpy(&iframe->eax, &error, sizeof(int));
 }
 
 
@@ -93,4 +97,9 @@ static int sys_execve(Syscall_args* a) {
     Axel_state_code r = execve(args->path, args->argv, args->envp);
 
     return (r == AXEL_SUCCESS) ? (1) : (-1);
+}
+
+
+static int sys_fork(Syscall_args* a) {
+    return fork();
 }

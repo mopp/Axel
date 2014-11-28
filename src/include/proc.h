@@ -43,7 +43,7 @@ typedef struct segment Segment;
 
 enum User_segmentss_constants {
     DEFAULT_STACK_SIZE        = FRAME_SIZE,
-    DEFAULT_STACK_TOP_ADDR    = KERNEL_VIRTUAL_BASE_ADDR - DEFAULT_STACK_SIZE,
+    DEFAULT_STACK_TOP_ADDR    = KERNEL_VIRTUAL_BASE_ADDR - DEFAULT_STACK_SIZE * 2,
     DEFAULT_STACK_BOTTOM_ADDR = DEFAULT_STACK_TOP_ADDR + DEFAULT_STACK_SIZE,
     DEFAULT_TEXT_SIZE         = FRAME_SIZE,
     DEFAULT_TEXT_ADDR         = 0x1000,
@@ -74,11 +74,12 @@ struct process {
 typedef struct process Process;
 
 
-Axel_state_code init_process(void);
-void switch_context(Interrupt_frame*);
-Process* running_proc(void);
-Process* pdt_proc(void);
-Axel_state_code execve(char const *, char const * const*, char const * const*);
+extern Axel_state_code init_process(void);
+extern void switch_context(Interrupt_frame*);
+extern Process* running_proc(void);
+extern Process* pdt_proc(void);
+extern Axel_state_code execve(char const *, char const * const*, char const * const*);
+extern int fork(void);
 
 extern bool is_enable_process;
 
