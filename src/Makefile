@@ -26,10 +26,12 @@ OS_NAME     := $(shell uname -s)
 DISK_IMG    := disk.img
 D_CYLINDER  := 100
 
-AXEL_BIN    := axel.bin
-AXEL_SYM    := axel.sym
-KERNEL_LNK  := kernel.ld
-KERNEL_MAP  := kernel.map
+AXEL_BIN       := axel.bin
+AXEL_SYM       := axel.sym
+KERNEL_LNK     := kernel.ld
+KERNEL_MAP     := kernel.map
+PROG_INIT_FILE := init.asm
+PROG_INIT      := init
 
 ISO_NAME    := axel.iso
 
@@ -100,7 +102,7 @@ $(BOOT_OBJ) : $(MAKEFILE)
 	$(MAKE) -C $(BOOT_DIR)
 
 
-$(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS)
+$(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS) $(DISK_IMG)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $(KERNEL_LNK) > $(TMP_FILE)
 	@$(LD) $(OBJS) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
@@ -133,35 +135,40 @@ __EOF__
 endef
 export FDISK
 
-$(DISK_IMG) :
+$(DISK_IMG) : $(PROG_INIT_FILE)
 ifeq ($(OS_NAME), Linux)
-	@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder has 516096 bytes (16 * 63 * 512)
-	@# cylinder * 516096 = disk size
-	@# cylinder = (disk size) / 516096
-	dd if=/dev/zero of=$(DISK_IMG) bs=516096 count=$(D_CYLINDER)
-	@echo "$$FDISK" | $(SHELL)
-	@# skip area of disk heads that include MBR.
-	@# Maybe, fdisk default first LBA is 2048.
-	@# 2048 * 512 = 1048576
-	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
-	# sudo mkfs.msdos -F 16 /dev/loop0
-	sudo mkfs.msdos -F 32 /dev/loop0
-	sudo losetup -d /dev/loop0
+ifeq ("$(wildcard $(DISK_IMG))","")
+		@# $(DISK_IMG) is NOT exist.
+		@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder has 516096 bytes (16 * 63 * 512)
+		@# cylinder * 516096 = disk size
+		@# cylinder = (disk size) / 516096
+		dd if=/dev/zero of=$(DISK_IMG) bs=516096 count=$(D_CYLINDER)
+		@echo "$$FDISK" | $(SHELL)
+		@# skip area of disk heads that include MBR.
+		@# Maybe, fdisk default first LBA is 2048.
+		@# 2048 * 512 = 1048576
+		sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
+		# sudo mkfs.msdos -F 16 /dev/loop0
+		sudo mkfs.msdos -F 32 /dev/loop0
+		sudo losetup -d /dev/loop0
 endif
 
-.PHONY: copy
-copy:
-	nasm -f bin ./init.asm -o init
+	nasm -f bin ./$(PROG_INIT_FILE) -o $(PROG_INIT)
 	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
 	sudo mount /dev/loop0 /mnt
 	sudo cp init /mnt/
+	sudo mkdir -p /mnt/dir
 	sudo umount /mnt
 	sudo losetup -d /dev/loop0
+else
+	@echo "Please do on linux :("
+endif
+
 
 .PHONY: clean
 clean:
 	$(MAKE) -C $(BOOT_DIR) clean
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIRS)
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIRS) $(PROG_INIT) bx_enh_dbg.ini
 	ctags -R ./*
 
 

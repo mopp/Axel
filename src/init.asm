@@ -21,15 +21,15 @@ main:
     jmp .loop_parent
 
 
-execve:
-    push 0
-    push 0
-    push path
-    mov eax, 0x0b
-    int 0x80
-
-    add esp, 12
-    ret
+;execve:
+;    push 0
+;    push 0
+;    push path
+;    mov eax, 0x0b
+;    int 0x80
+;
+;    add esp, 12
+;    ret
 
 
 fork:
