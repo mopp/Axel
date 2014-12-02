@@ -265,9 +265,13 @@ Page_directory_table init_user_pdt(Process* p, Page_directory_table pdt, Page_di
         }
 
         Page_directory_entry* pde = get_pde(pdt, i);
-        if (alloc_page_table(p, pde) == NULL) {
-            /* TODO: */
-            return NULL;
+        if (pde->present_flag == 0) {
+            if (alloc_page_table(p, pde) == NULL) {
+                /* TODO: */
+                puts("alloc_page_table error\n");
+                return NULL;
+            }
+            pde->bit_expr = (PDE_FLAGS_AREA_MASK & src_pde->bit_expr) | PDE_FLAGS_USER;
         }
 
         uintptr_t const lim = i + (FRAME_SIZE * PAGE_TABLE_ENTRY_NUM);
@@ -278,7 +282,6 @@ Page_directory_table init_user_pdt(Process* p, Page_directory_table pdt, Page_di
             if (src_pte->present_flag == 1) {
                 Page_table_entry* const pte = get_pte(pt, j);
                 *pte = *src_pte;
-                /* TODO: Copy memory. */
             }
         }
     }

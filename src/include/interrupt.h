@@ -63,6 +63,9 @@ extern void disable_pic_port(uint16_t);
 extern void send_done_pic_master(void);
 extern void send_done_pic_slave(void);
 extern void interrupt_return(void);
+struct process;
+typedef struct process Process;
+extern void fork_return(Process* p);
 
 
 

@@ -55,12 +55,25 @@ section .text
 
 global interrupt_return
 interrupt_return:
+    cmp word [esp + 16], 0x8989
+    jne .skip
+    xchg bx, bx
+.skip:
     pop_all
 
     ; Remove error code or dummy code from stack.
     add esp, 4
 
     iret
+
+global fork_return
+fork_return:
+    mov ebx, [esp]
+    mov eax, [ebx + 2]
+    add esp, 4;
+    xchg bx, bx
+    jmp interrupt_return
+
 
 ; making interrupt handler.
 ; first argument is 0, if interrupt has NOT error code.

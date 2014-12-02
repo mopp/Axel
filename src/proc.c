@@ -138,7 +138,7 @@ void switch_context(Interrupt_frame* current_iframe) {
     Thread* next_t     = &next_p->thread;
     current_t->iframe  = current_iframe;
 
-    if (next_p->pdt != NULL) {
+    if (next_p->pdt != NULL && pdt_process != next_p) {
         /*
          * Next Memory space is user space.
          * So, change pdt.
@@ -382,6 +382,7 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
 
 int fork(void) {
     printf("enter fork\n");
+    io_cli();
     Process* pp = running_proc(); /* Parent */
     Process* cp = alloc_proc(pp); /* Child */
     if (cp == NULL) {
@@ -391,16 +392,32 @@ int fork(void) {
     uint16_t p_pid = pp->pid;
     uint16_t c_pid = cp->pid;
 
-    cp->thread.ip = pp->thread.ip;
-    cp->thread.sp = pp->thread.sp;
-    cp->thread.iframe = (Interrupt_frame*)(cp->km_stack + ((uintptr_t)pp->thread.iframe - pp->km_stack));
     cp->u_segs = pp->u_segs;
-    memcpy(cp->thread.iframe, pp->thread.iframe, sizeof(Interrupt_frame));
-    memcpy((void*)cp->km_stack, (void*)pp->km_stack, KERNEL_MODE_STACK_SIZE);
+    cp->thread.ip = (uintptr_t)interrupt_return;
+    cp->thread.sp = cp->km_stack;
+    cp->thread.sp -= sizeof(Interrupt_frame);
+    Interrupt_frame* intf = (Interrupt_frame*)cp->thread.sp;
+    cp->thread.iframe = intf;
+    *intf = *pp->thread.iframe;
+    memcpy(intf, pp->thread.iframe, sizeof(Interrupt_frame));
+
+    /* Child process get 0 as return value of fork() */
+    intf->eax = 0;
+    intf->ebx = 0x8989;
+    intf->esp = cp->thread.sp;
+
+    printf("proc   %p\n", cp);
+    printf("iframe %p\n", cp->thread.iframe);
+    printf("    gs 0x%x\n", pp->thread.iframe->gs);
+    printf("    gs 0x%x\n", pp->thread.iframe->gs);
+    printf("ip     0x%zx\n", cp->thread.ip);
+    printf("sp     0x%zx\n", cp->thread.sp);
+    printf("pdt    0x%zx\n", get_page_phys_addr(&cp->pdt_page));
     printf("pid %d\n", pp->pid);
 
     cp->parent = pp;
     cp->state = PROC_STATE_RUN;
+    io_sti();
 
     return (pp->pid == p_pid) ? c_pid : 0;
 }

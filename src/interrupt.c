@@ -54,6 +54,7 @@
 #include <segment.h>
 #include <utils.h>
 #include <paging.h>
+#include <proc.h>
 
 
 /*
@@ -134,15 +135,19 @@ extern void asm_syscall_enter(void);
 
 static void hlt(Interrupt_frame* ic) {
     io_cli();
+    __asm__ volatile("movl $0x3333, %eax");
     BOCHS_MAGIC_BREAK();
     INF_LOOP();
 }
 
 
 static void no_op(Interrupt_frame* ic) {
-    puts("No Operation");
-    printf("eip: 0x%x\n", ic->eip);
+    puts("No Operation\n");
+    printf("Interrupt_frame: %p\n", ic);
+
     /* TODO: kill caller process. */
+    BOCHS_MAGIC_BREAK();
+    INF_LOOP();
 }
 
 
@@ -227,6 +232,7 @@ void send_done_pic_slave(void) {
 
 void exception_page_fault(Interrupt_frame* ic) {
     uintptr_t fault_addr = load_cr2();
+    printf("caused proc is %d\n", running_proc()->pid);
 
     if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
         /* TODO: User space fault */
