@@ -237,14 +237,6 @@ static inline Axel_state_code init_user_process(void) {
     intf->prev_esp = ECAST_UINT32(us->stack.addr + DEFAULT_STACK_SIZE);
     intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
 
-#if 0
-    /* dirty initialize. */
-    static uint8_t inst[] = {
-        0xe8,0x14,0x00,0x00,0x00,0xb8,0x00,0x00,0x00,0x00,0x68,0x1f,0x10,0x00,0x00,0xcd,0x80,0x83,0xc4,0x04,0xe9,0xe7,0xff,0xff,0xff,0x35,0xac,0xac,0x00,0x00,0xc3,0x4d,0x4f,0x50,0x50,0x00
-    };
-    memcpy((void*)us->text.addr, inst, ARRAY_SIZE_OF(inst));
-#endif
-
     /* Load program file. */
     File* f = resolve_path(axel_s.fs, "init");
     void* fbuf = kmalloc(f->size);
@@ -381,16 +373,13 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
 
 
 int fork(void) {
-    printf("enter fork\n");
     io_cli();
+
     Process* pp = running_proc(); /* Parent */
     Process* cp = alloc_proc(pp); /* Child */
     if (cp == NULL) {
         return -1;
     }
-
-    uint16_t p_pid = pp->pid;
-    uint16_t c_pid = cp->pid;
 
     cp->u_segs = pp->u_segs;
     cp->thread.ip = (uintptr_t)interrupt_return;
@@ -398,28 +387,19 @@ int fork(void) {
     cp->thread.sp -= sizeof(Interrupt_frame);
     Interrupt_frame* intf = (Interrupt_frame*)cp->thread.sp;
     cp->thread.iframe = intf;
-    *intf = *pp->thread.iframe;
-    memcpy(intf, pp->thread.iframe, sizeof(Interrupt_frame));
+    *cp->thread.iframe = *pp->thread.iframe;
 
     /* Child process get 0 as return value of fork() */
     intf->eax = 0;
     intf->ebx = 0x8989;
     intf->esp = cp->thread.sp;
 
-    printf("proc   %p\n", cp);
-    printf("iframe %p\n", cp->thread.iframe);
-    printf("    gs 0x%x\n", pp->thread.iframe->gs);
-    printf("    gs 0x%x\n", pp->thread.iframe->gs);
-    printf("ip     0x%zx\n", cp->thread.ip);
-    printf("sp     0x%zx\n", cp->thread.sp);
-    printf("pdt    0x%zx\n", get_page_phys_addr(&cp->pdt_page));
-    printf("pid %d\n", pp->pid);
-
     cp->parent = pp;
     cp->state = PROC_STATE_RUN;
     io_sti();
 
-    return (pp->pid == p_pid) ? c_pid : 0;
+    /* Return to parent process. */
+    return cp->pid;
 }
 
 
