@@ -80,7 +80,7 @@ $(OBJS_DIR)%.o : %.c
 	@echo $(patsubst -W%,,$(CC) -c $< -o $@)
 
 $(OBJS_DIR)%.o : %.asm
-	test -d $(OBJS_DIR) || $(MKDIR) $(WORK_DIRS)
+	@test -d $(OBJS_DIR) || $(MKDIR) $(WORK_DIRS)
 	$(eval TMP_FILE = $(shell mktemp))
 	$(PP) $< > $(TMP_FILE)
 	$(NASM) -l $(OBJS_DIR)$*.lst -o $@ $(TMP_FILE)
@@ -118,6 +118,7 @@ $(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	cp $(GRUB_CONFIG) $(ISO_DIR)boot/grub/grub.cfg
 	grub-mkimage -O i386-pc -o $(ISO_DIR)efi.img multiboot biosdisk iso9660
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
+	$(MAKE) copy
 
 
 define FDISK
@@ -135,34 +136,36 @@ __EOF__
 endef
 export FDISK
 
-$(DISK_IMG) : $(PROG_INIT_FILE)
+$(DISK_IMG) :
 ifeq ($(OS_NAME), Linux)
-ifeq ("$(wildcard $(DISK_IMG))","")
-		@# $(DISK_IMG) is NOT exist.
-		@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder has 516096 bytes (16 * 63 * 512)
-		@# cylinder * 516096 = disk size
-		@# cylinder = (disk size) / 516096
-		dd if=/dev/zero of=$(DISK_IMG) bs=516096 count=$(D_CYLINDER)
-		@echo "$$FDISK" | $(SHELL)
-		@# skip area of disk heads that include MBR.
-		@# Maybe, fdisk default first LBA is 2048.
-		@# 2048 * 512 = 1048576
-		sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
-		# sudo mkfs.msdos -F 16 /dev/loop0
-		sudo mkfs.msdos -F 32 /dev/loop0
-		sudo losetup -d /dev/loop0
-endif
-
-	nasm -f bin ./$(PROG_INIT_FILE) -o $(PROG_INIT)
+	@# $(DISK_IMG) is NOT exist.
+	@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder has 516096 bytes (16 * 63 * 512)
+	@# cylinder * 516096 = disk size
+	@# cylinder = (disk size) / 516096
+	dd if=/dev/zero of=$(DISK_IMG) bs=516096 count=$(D_CYLINDER)
+	@echo "$$FDISK" | $(SHELL)
+	@# Skip area of disk heads that include MBR.
+	@# Maybe, fdisk default first LBA is 2048.
+	@# 2048 * 512 = 1048576
 	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
-	sudo mount /dev/loop0 /mnt
-	sudo cp init /mnt/
-	sudo mkdir -p /mnt/dir
-	sudo umount /mnt
+	@# sudo mkfs.msdos -F 16 /dev/loop0
+	sudo mkfs.msdos -F 32 /dev/loop0
 	sudo losetup -d /dev/loop0
 else
 	@echo "Please do on linux :("
 endif
+
+
+.PHONY: copy
+copy: $(PROG_INIT_FILE)
+	nasm -f bin ./$(PROG_INIT_FILE) -o $(PROG_INIT)
+	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
+	sudo mount /dev/loop0 /mnt
+	sudo cp $(PROG_INIT) /mnt/
+	sudo cp ./kernel.c /mnt/
+	sudo mkdir -p /mnt/dir
+	sudo umount /mnt
+	sudo losetup -d /dev/loop0
 
 
 .PHONY: clean
