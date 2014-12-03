@@ -36,6 +36,8 @@ static Process* pdt_process;
 static Process* run_proc;
 static Process procs[MAX_PROC_NR];
 
+void __fastcall change_context(Process*, Process*);
+
 
 Process* pdt_proc(void) {
     return pdt_process;
@@ -123,6 +125,7 @@ Process* running_proc(void) {
  * @param next pointer to next process.
  */
 void __fastcall change_context(Process* current, Process* next) {
+    (void)current;
     run_proc= next;
 }
 
@@ -294,7 +297,7 @@ static inline void free_segment(Process* p, Segment* s) {
 }
 
 
-Axel_state_code elf_callback(void* o, size_t n, void const* fbuf, Elf_phdr const* ph) {
+static Axel_state_code elf_callback(void* o, size_t n, void const* fbuf, Elf_phdr const* ph) {
     Process* p = (Process*)o;
     Segment* s = NULL;
     switch (n) {
@@ -322,14 +325,20 @@ Axel_state_code elf_callback(void* o, size_t n, void const* fbuf, Elf_phdr const
 }
 
 
-Axel_state_code elf_callback_error(void* p, size_t n, void const* fbuf, Elf_phdr const* ph) {
+static Axel_state_code elf_callback_error(void* p, size_t n, void const* fbuf, Elf_phdr const* ph) {
     /* TODO: */
+    (void)p;
+    (void)n;
+    (void)fbuf;
+    (void)ph;
     puts("elf program load error\n");
     return AXEL_SUCCESS;
 }
 
 
 Axel_state_code execve(char const *path, char const * const *argv, char const * const *envp) {
+    (void)envp;
+    (void)argv;
     if (path == NULL) {
         return AXEL_FAILED;
     }

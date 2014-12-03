@@ -31,6 +31,7 @@ union syscall_args {
         char const * const *envp;
     } execve_args;
     struct fork_args {
+        uint8_t dummy;
     } fork_args;
 };
 typedef struct mopp_args Mopp_args;
@@ -87,6 +88,7 @@ void syscall_enter(Interrupt_frame* iframe) {
 
 
 static int sys_mopp(Syscall_args* a) {
+    (void)a;
     return 1;
 }
 
@@ -101,5 +103,6 @@ static int sys_execve(Syscall_args* a) {
 
 
 static int sys_fork(Syscall_args* a) {
+    (void)a;
     return fork();
 }

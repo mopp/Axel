@@ -118,7 +118,7 @@ Window* alloc_window(Point2d const* pos, Point2d const* size) {
 }
 
 
-Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw, size_t len) {
+Window* alloc_drawn_window(Point2d const* pos, Drawable_bitmap const* dw) {
     Window* w = alloc_window(pos, &make_point2d(dw->width, dw->width));
     if (w == NULL) {
         return NULL;
@@ -355,7 +355,7 @@ void window_draw_bitmap(Window* const w, Drawable_bitmap const* dw, size_t len) 
         return;
     }
 
-    for (int k = 0; k < len; k++) {
+    for (size_t k = 0; k < len; k++) {
         for (int32_t y = 0; y < dw[k].height; y++) {
             for (int32_t x = 0; x < dw[k].width; x++) {
                 /* if bit is 1, draw color */

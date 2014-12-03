@@ -9,6 +9,7 @@
 #include <interrupt.h>
 #include <asm_functions.h>
 #include <proc.h>
+#include <time.h>
 
 
 /*

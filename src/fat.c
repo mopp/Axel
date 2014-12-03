@@ -17,6 +17,8 @@
 #include <macros.h>
 #include <paging.h>
 
+#pragma GCC diagnostic ignored "-Wpacked"
+#pragma GCC diagnostic ignored "-Wpadded"
 
 struct bios_param_block {
     uint8_t jmp_boot[3];        /* Jump instruction for boot. */
@@ -146,15 +148,17 @@ struct fat_manager {
     Fat_area data;
     uint32_t cluster_nr;
     uint8_t fat_type;
+    uint8_t reserved1;
+    uint16_t reserved2;
 };
 typedef struct fat_manager Fat_manager;
 
 
+#define FSINFO_TRAIL_SIG         0xAA550000
+#define FSINFO_INVALID_FREE      0xFFFFFFFF
 enum {
     FSINFO_LEAD_SIG         = 0x41615252,
     FSINFO_STRUCT_SIG       = 0x61417272,
-    FSINFO_TRAIL_SIG        = 0xAA550000,
-    FSINFO_INVALID_FREE     = 0xFFFFFFFF,
     DIR_LAST_FREE           = 0x00,
     DIR_FREE                = 0xe5,
     DIR_ATTR_READ_ONLY      = 0x01,
@@ -187,7 +191,7 @@ static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft
         return 0;
     }
     uint32_t* b = (uint32_t*)(uintptr_t)&ft->buffer[entry_offset];
-    uint32_t read_entry;
+    uint32_t read_entry = 0;
 
     /* Filter */
     switch (ft->fat_type) {
@@ -314,7 +318,7 @@ static inline bool is_last_fat_entry(Fat_manager const* fm, uint32_t fe) {
 
 
 static inline uint32_t set_last_fat_entry(Fat_manager const* fm, uint32_t clus) {
-    uint32_t last;
+    uint32_t last = 0;
 
     switch (fm->fat_type) {
         case FAT_TYPE12:
@@ -384,7 +388,7 @@ static inline bool is_lfn(Dir_entry const* de) {
 }
 
 
-static inline size_t ucs2_to_ascii(uint8_t* ucs2, uint8_t* ascii, size_t ucs2_len) {
+static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) {
     if ((ucs2_len & 0x1) == 1) {
         /* invalid. */
         return 0;
@@ -394,7 +398,7 @@ static inline size_t ucs2_to_ascii(uint8_t* ucs2, uint8_t* ascii, size_t ucs2_le
     for(size_t i = 0; i < ucs2_len; i++) {
         uint8_t c = ucs2[i];
         if((0 < c) && (c < 127)) {
-            ascii[cnt++] = ucs2[i];
+            ascii[cnt++] = (char)ucs2[i];
         }
     }
     ascii[cnt] = '\0';
@@ -431,7 +435,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
     Fat_file* ffiles = kmalloc(512 * sizeof(Fat_file));
     size_t file_cnt = 0;
     uint32_t limit = (bpb->sec_per_clus * bpb->bytes_per_sec) / sizeof(Dir_entry);
-    uint32_t fe;
+    uint32_t fe = 0;
     uint32_t next_clus = ff->clus_num;
     uint32_t clus;
     do {
@@ -554,7 +558,7 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
         return AXEL_FAILED;
     }
 
-    Fat_file const * const ff = (Fat_file*)f;
+    Fat_file const * const ff = (Fat_file const* const)f;
     Fat_manager * const fm = (Fat_manager*)f->belong_fs;
 
     /* Allocate buffer that have enough size for reading/writing per cluster unit. */

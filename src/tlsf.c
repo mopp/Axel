@@ -550,7 +550,7 @@ void tlsf_destruct(Tlsf_manager* tman) {
 }
 
 
-inline void* tlsf_malloc_align(Tlsf_manager* tman, size_t size, size_t align) {
+void* tlsf_malloc_align(Tlsf_manager* tman, size_t size, size_t align) {
     assert((align == 0) || ((align - 1u) & align) == 0);
     assert(align <= MAX_ALLOC_ALIGN);
 

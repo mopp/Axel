@@ -1098,7 +1098,7 @@ Drawable_multi_bitmap const mplus_fonts = {
 };
 
 
-Drawable_bitmap const cursors[] = {
+static Drawable_bitmap const cursors[] = {
     {
         .height = 19,
         .width = 16,

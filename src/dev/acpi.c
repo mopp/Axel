@@ -13,6 +13,7 @@
 #include <kernel.h>
 #include <macros.h>
 #include <asm_functions.h>
+#include <dev/acpi.h>
 
 
 enum {
@@ -154,12 +155,12 @@ static inline bool validate_rsdp(Rsdp* rsdp) {
     uint32_t sum = 0;
     switch (rsdp->revision) {
         case ACPI_VERSION_1:
-            for (int i = 0; i < offsetof(Rsdp, length); i++) {
+            for (size_t i = 0; i < offsetof(Rsdp, length); i++) {
                 sum += ((uint8_t*)rsdp)[i];
             }
             break;
         case ACPI_VERSION_2:
-            for (int i = 0; i < sizeof(Rsdp); i++) {
+            for (size_t i = 0; i < sizeof(Rsdp); i++) {
                 sum += ((uint8_t*)rsdp)[i];
             }
             break;
@@ -307,13 +308,12 @@ static inline Axel_state_code decode_dsdt(Sdt_header* dsdt) {
 }
 
 
-Axel_state_code enable_acpi(void) {
+static Axel_state_code enable_acpi(void) {
     if (fadt_g == NULL) {
         return AXEL_FAILED;
     }
 
     if ((io_in16(ECAST_UINT16(fadt_g->pm1a_ctrl_block)) & ACPI_SCI_EN) == 0) {
-
         /* send */
         io_out8(ECAST_UINT16(fadt_g->smi_cmd_port), fadt_g->acpi_enable);
 

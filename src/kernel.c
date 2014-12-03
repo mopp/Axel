@@ -7,8 +7,8 @@
  */
 
 
-#include <acpi.h>
 #include <asm_functions.h>
+#include <dev/acpi.h>
 #include <dev/ata.h>
 #include <dev/pci.h>
 #include <dev/ps2.h>
@@ -22,19 +22,21 @@
 #include <paging.h>
 #include <proc.h>
 #include <segment.h>
+#include <time.h>
 #include <tlsf.h>
 #include <utils.h>
 #include <vbe.h>
 #include <window.h>
-#include <time.h>
 
 
+enum {
+    MAX_CMD_LEN = 256,
+};
 Axel_struct axel_s;
 static Window* console;
-static char const * prompt = "> ";
-#define MAX_CMD_LEN 256
-static char cmd[MAX_CMD_LEN + 1];
-static size_t cmd_idx = 0 ;
+static char const* prompt = "> ";
+static char cmd[256 + 1];
+static size_t cmd_idx = 0;
 
 
 static void draw_desktop(void);
@@ -161,39 +163,39 @@ static inline void draw_desktop(void) {
 }
 
 
-static inline void do_cmd(char* cmd)  {
-    if (strlen(cmd) == 0) {
+static inline void do_cmd(char* ecmd)  {
+    if (strlen(ecmd) == 0) {
         puts(prompt);
         return;
     }
 
-    trim_tail(cmd);
+    trim_tail(ecmd);
 
-    if (memcmp(cmd, "mem", 3) == 0) {
+    if (memcmp(ecmd, "mem", 3) == 0) {
         printf("Total memory : %zu KB\n", KB(get_total_memory_size()));
-    } else if (memcmp(cmd, "va", 2) == 0) {
+    } else if (memcmp(ecmd, "va", 2) == 0) {
         printf("kernel virtual addr : 0x%08zx - 0x%08zx\n", get_kernel_vir_start_addr(), get_kernel_vir_end_addr());
-    } else if (memcmp(cmd, "pa", 2) == 0) {
+    } else if (memcmp(ecmd, "pa", 2) == 0) {
         printf("kernel physical addr : 0x%08zx - 0x%08zx\n", get_kernel_phys_start_addr(), get_kernel_phys_end_addr());
-    } else if (memcmp(cmd, "size", 4) == 0) {
+    } else if (memcmp(ecmd, "size", 4) == 0) {
         printf("kernel size        : %zu KB\n", KB(get_kernel_size()));
         printf("kernel static size : %zu KB\n", KB(get_kernel_static_size()));
-    } else if (memcmp(cmd, "buddy", 5) == 0) {
+    } else if (memcmp(ecmd, "buddy", 5) == 0) {
         printf("BuddySystem Total    : %zu KB\n", KB(buddy_get_total_memory_size(axel_s.bman)));
         printf("BuddySystem Frame nr : %zu\n", axel_s.bman->total_frame_nr);
         printf("BuddySystem Free     : %zu KB\n", KB(buddy_get_free_memory_size(axel_s.bman)));
         for (size_t i = 0; i < BUDDY_SYSTEM_MAX_ORDER; i++) {
             printf("  Order: %02zu(%05u) - Buddy %02zu nr\n", i, PO2(i), axel_s.bman->free_frame_nr[i]);
         }
-    } else if (memcmp(cmd, "tlsf", 4) == 0) {
+    } else if (memcmp(ecmd, "tlsf", 4) == 0) {
         printf("Tlsf total_memory_size : %zu KB\n", KB(axel_s.tman->total_memory_size));
         printf("Tlsf free_memory_size  : %zu KB\n", KB(axel_s.tman->free_memory_size));
-    } else if (memcmp(cmd, "clear", 5) == 0) {
+    } else if (memcmp(ecmd, "clear", 5) == 0) {
         window_fill_area(console, &console->wr_begin, &console->wr_size, &console->bg);
         console->wr_pos = console->wr_begin;
-    } else if (memcmp(cmd, "exit", 4) == 0) {
+    } else if (memcmp(ecmd, "exit", 4) == 0) {
         shutdown();
-    } else if (memcmp(cmd, "ata", 3) == 0) {
+    } else if (memcmp(ecmd, "ata", 3) == 0) {
         char const* const ch[] = {"Primary", "Secondary"};
         char const* const ms[] = {"Master", "Slave"};
         puts("ATA/ATAPI Drive Info\n");
@@ -207,7 +209,7 @@ static inline void do_cmd(char* cmd)  {
             printf("    Type : %s\n", (d->type == TYPE_ATA ? "ATA" : "ATAPI"));
             printf("    size : %zd MB\n", MB(get_ata_device_size(d)));
         }
-    } else if (memcmp(cmd, "pwd", 3) == 0) {
+    } else if (memcmp(ecmd, "pwd", 3) == 0) {
         if (axel_s.fs == NULL) {
             puts("FileSystem is NOT available.\n");
         }
@@ -224,7 +226,7 @@ static inline void do_cmd(char* cmd)  {
         } while (f != NULL);
         printf("%s\n", tail);
         kfree(pwd);
-    } else if (memcmp(cmd, "ls", 2) == 0) {
+    } else if (memcmp(ecmd, "ls", 2) == 0) {
         if (axel_s.fs == NULL) {
             puts("FileSystem is NOT available.\n");
         }
@@ -253,25 +255,25 @@ static inline void do_cmd(char* cmd)  {
             }
             putchar('\n');
         }
-    } else if (memcmp(cmd, "cd", 2) == 0) {
+    } else if (memcmp(ecmd, "cd", 2) == 0) {
         if (axel_s.fs == NULL) {
             puts("FileSystem is NOT available.\n");
         }
 
-        char const* const path = (cmd[2] == '\0') ? "/" : &cmd[3];
+        char const* const path = (ecmd[2] == '\0') ? "/" : &ecmd[3];
         if (axel_s.fs->change_dir(axel_s.fs, path) != AXEL_SUCCESS) {
             printf("no such directory - %s\n", path);
         }
-    } else if (memcmp(cmd, "cat", 3) == 0) {
+    } else if (memcmp(ecmd, "cat", 3) == 0) {
         if (axel_s.fs == NULL) {
             puts("FileSystem is NOT available.\n");
         }
 
-        if (cmd[3] == '\0') {
+        if (ecmd[3] == '\0') {
             puts("invalid argument\n");
         } else {
             /* Skip command string. */
-            cmd += 4;
+            ecmd += 4;
 
             bool f = false;
             File_system* fs = axel_s.fs;
@@ -279,13 +281,13 @@ static inline void do_cmd(char* cmd)  {
             File** limit = fs->current_dir->children;
             for (size_t i = 0; i < cnr; i++) {
                 File const* c = limit[i];
-                if (c->type_file == 1 && strcmp(c->name, cmd) == 0) {
+                if (c->type_file == 1 && strcmp(c->name, ecmd) == 0) {
                     uint8_t* b = kmalloc(c->size + 1);
                     b[c->size] = '\0';
 
                     if (fs->access_file(FILE_READ, c, b) == AXEL_SUCCESS) {
-                        for (int i = 0; i < c->size; i++) {
-                            putchar(b[i]);
+                        for (size_t j = 0; j < c->size; j++) {
+                            putchar(b[j]);
                         }
                         if (b[c->size - 1] != '\n') {
                             putchar('\n');
@@ -301,11 +303,11 @@ static inline void do_cmd(char* cmd)  {
             }
 
             if (f == false) {
-                printf("%s is NOT found.\n", cmd);
+                printf("%s is NOT found.\n", ecmd);
             }
         }
     } else {
-        printf("invalid command - %s\n", cmd);
+        printf("invalid command - %s\n", ecmd);
     }
 
     puts(prompt);
@@ -612,5 +614,5 @@ static inline void clear_bss(void) {
     extern uintptr_t const LD_KERNEL_BSS_START;
     extern uintptr_t const LD_KERNEL_BSS_SIZE;
 
-    memset((void*)&LD_KERNEL_BSS_START, 0, (size_t)&LD_KERNEL_BSS_SIZE);
+    memset((void*)(uintptr_t)&LD_KERNEL_BSS_START, 0, (size_t)&LD_KERNEL_BSS_SIZE);
 }

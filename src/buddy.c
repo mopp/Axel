@@ -15,7 +15,7 @@
 #include <macros.h>
 
 
-static inline Frame* elist_get_frame(Elist const* const l) {
+static inline Frame* elist_get_frame(Elist* const l) {
     return (Frame*)l;
 }
 
@@ -63,9 +63,11 @@ static inline Frame* get_buddy_frame(Buddy_manager const* const bman, Frame cons
 
 /**
  * @brief バディマネージャを初期化.
- * @param bman        初期化対象
- * @param memory_size バディマネージャの管理するメモリーサイズ.
- * @return 初期化出来なかった場合NULL, それ以外は引数のマネージャが返る.
+ * @param bman target for initiation.
+ * @param base base address.
+ * @param frames pointer to frame array.
+ * @param frame_nr the number of frames.
+ * @return If error occur, It returns NULL, otherwise return bman.
  */
 Buddy_manager* buddy_init(Buddy_manager* const bman, uintptr_t base, Frame* frames, size_t frame_nr) {
     assert(bman != NULL);

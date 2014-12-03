@@ -69,9 +69,9 @@ enum {
     SHT_DYNSYM     = 11,
     SHT_LOPROC     = 0x70000000,
     SHT_HIPROC     = 0x7FFFFFFF,
-    SHT_LOUSER     = 0x80000000,
-    SHT_HIUSER     = 0x8FFFFFFF,
 };
+/* #define SHT_LOUSER 0x80000000 */
+/* #define SHT_HIUSER 0x8FFFFFFF */
 
 
 struct elf_ehdr {

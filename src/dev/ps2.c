@@ -186,7 +186,8 @@ Axel_state_code init_keyboard(void) {
         FAILED_RETURN(write_ctrl_cmd(KEYBOARD_CTRL_CMD_ENABLE_MOUSE));
         FAILED_RETURN(write_ctrl_cmd(KEYBOARD_CTRL_CMD_READ));
         FAILED_RETURN(read_data(&response));
-        if (((Keyboard_config_byte)response).mouse_disable == 0) {
+        Keyboard_config_byte t = {.bit_expr = response};
+        if (t.mouse_disable == 0) {
             /*
              * mouse is enable.
              * So, this machine has mouse.
@@ -237,7 +238,7 @@ Axel_state_code init_keyboard(void) {
 }
 
 
-void interrupt_keybord(uint32_t* esp) {
+void interrupt_keybord(void) {
     uint8_t keycode;
     if (AXEL_SUCCESS == read_data(&keycode)) {
         aqueue_insert(&keyboard.aqueue, &keycode);

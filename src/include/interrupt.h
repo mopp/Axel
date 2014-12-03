@@ -57,15 +57,17 @@ struct interrupt_frame {
 typedef struct interrupt_frame Interrupt_frame;
 
 
+struct process;
+typedef struct process Process;
+
 extern void init_idt(void);
 extern void enable_pic_port(uint16_t);
 extern void disable_pic_port(uint16_t);
 extern void send_done_pic_master(void);
 extern void send_done_pic_slave(void);
 extern void interrupt_return(void);
-struct process;
-typedef struct process Process;
 extern void fork_return(Process* p);
+extern void exception_page_fault(Interrupt_frame*);
 
 
 

@@ -12,7 +12,6 @@
 #include <macros.h>
 
 
-#define BUSY_WAIT() io_hlt()
 Pci_data_reg pci_read_data(Pci_conf_reg const pcr) {
     io_out32(PCI_CONFIG_ADDR_PORT, pcr.bit_expr);
     io_hlt();

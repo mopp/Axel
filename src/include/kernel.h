@@ -13,6 +13,7 @@
 
 
 #include <stdint.h>
+#include <multiboot.h>
 
 
 union segment_descriptor;
@@ -47,6 +48,7 @@ typedef struct axel_struct Axel_struct;
 
 extern Axel_struct axel_s;
 extern uintptr_t kernel_init_stack_top;
+extern _Noreturn void kernel_entry(Multiboot_info* const);
 
 
 

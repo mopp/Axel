@@ -84,7 +84,7 @@ struct file {
     };
     uint8_t lock;
     uint8_t permission;
-    uint8_t* name;
+    char* name;
     size_t size;
     size_t create_time;
     size_t write_time;

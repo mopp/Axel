@@ -550,8 +550,8 @@ Axel_state_code init_ata(void) {
                 /* Do identify packet command. */
                 ata_do_cmd(ch, ATA_CMD_IDENTIFY_PACKET);
 
-                uint8_t result = ata_polling(ch, true);
-                if (result != 0) {
+                uint8_t r = ata_polling(ch, true);
+                if (r != 0) {
                     d->type = TYPE_UNKNOWN;
                     continue;
                 }

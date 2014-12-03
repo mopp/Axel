@@ -67,6 +67,8 @@ enum mouse_constants {
 extern Axel_state_code init_keyboard(void);
 extern Axel_state_code init_mouse(void);
 extern Axel_state_code update_keyboard_led(void);
+extern void interrupt_mouse(void);
+extern void interrupt_keybord(void);
 
 
 

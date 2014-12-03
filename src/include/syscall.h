@@ -9,4 +9,13 @@
 
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
+
+
+
+#include <interrupt.h>
+
+extern void syscall_enter(Interrupt_frame*);
+
+
+
 #endif

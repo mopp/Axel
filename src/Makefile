@@ -65,9 +65,10 @@ OBJS        := $(BOOT_OBJ) $(A_OBJS) $(C_OBJS)
 # 	-nostdinc cause error(macro redifine)
 # debug option
 # 	--analyze -g
-CPPFLAGS  := -I$(INCLUDE_DIR)
+CPPFLAGS  := -isystem$(INCLUDE_DIR)
 W_FLAGS   := -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
-CFLAGS    := --target=i686-elf -m32 -std=c11 -ffreestanding -fno-builtin -nostdlib $(W_FLAGS)
+# W_FLAGS   := -g -Weverything -pedantic
+CFLAGS    := --target=i686-elf -m32 -std=c11 -nostdlib -ffreestanding -fno-builtin $(W_FLAGS)
 LDFLAGS   := -Map $(KERNEL_MAP) -nostdlib
 export CC := $(CLANG) $(CFLAGS) $(CPPFLAGS)
 export PP := $(CLANG) $(CPPFLAGS) -x c -E -P

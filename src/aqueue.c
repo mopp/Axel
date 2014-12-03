@@ -92,7 +92,7 @@ void aqueue_destruct(Aqueue* q) {
     assert(q != NULL);
 
     size_t const size = aqueue_get_size(q);
-    for (int i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         ((q->free != NULL) ? q->free : kfree)(q->data[i]);
     }
 

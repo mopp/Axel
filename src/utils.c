@@ -12,26 +12,33 @@
 #include <stdbool.h>
 #include <window.h>
 
+#pragma GCC diagnostic ignored "-Wcast-qual"
 
-void* memchr(const void* s, int c, size_t n) {
-    unsigned char const* p = (unsigned char const*)s;
 
-    for (int i = 0; i < n; i++) {
-        if (p[i] == (unsigned char)c) {
-            return (void*)&p[i];
-        }
+
+void* memchr(void const* s, register int c, size_t n) {
+    register unsigned char const* p = (unsigned char const*)s;
+    register unsigned char const* const lim = (unsigned char const*)s + n;
+    if (s == NULL || n == 0) {
+        return NULL;
     }
+
+    do {
+        if (*p == (unsigned char)c) {
+            return (void*)p;
+        }
+    } while (p < lim);
 
     return NULL;
 }
 
 
-int memcmp(const void* buf1, const void* buf2, size_t n) {
-    const unsigned char* ucb1, *ucb2;
+int memcmp(void const* buf1, void const* buf2, size_t n) {
+    unsigned char const* ucb1, *ucb2;
     int result = 0;
     ucb1 = buf1;
     ucb2 = buf2;
-    unsigned char const * const limit = (char*)buf1 + n;
+    unsigned char const * const limit = (unsigned char const* const)buf1 + n;
 
     do {
         result = *ucb1++ - *ucb2++;
@@ -116,7 +123,7 @@ int strcmp(register const char* s1, register const char* s2) {
 }
 
 
-char* strcpy(char* s1, const char* s2) {
+char* strcpy(register char* s1, register char const* s2) {
     char* p = s1;
     while (*s2 != '\0') {
         *s1++ = *s2++;
@@ -127,12 +134,12 @@ char* strcpy(char* s1, const char* s2) {
 }
 
 
-size_t strlen(const char* s) {
+size_t strlen(register const char* s) {
     if (s == NULL) {
         return 0;
     }
 
-    size_t i = 0;
+    register size_t i = 0;
     do {
         ++i;
     } while (*s++ != '\0');
@@ -141,7 +148,7 @@ size_t strlen(const char* s) {
 }
 
 
-char* strchr(char const* s, int c) {
+char* strchr(register char const* s, register int c) {
     if (s == NULL) {
         return NULL;
     }
@@ -169,6 +176,7 @@ char* strrchr(const char* s, int c) {
 
     return found;
 }
+
 
 
 char* strstr(char const* s1, char const* s2) {
@@ -232,7 +240,7 @@ static inline char* utoa(uint32_t value, char* s, uint8_t const radix) {
 }
 
 
-char* itoa_big(int32_t value, char* s, uint8_t radix) {
+static inline char* itoa_big(int32_t value, char* s, uint8_t radix) {
     uint32_t t = (uint32_t)value;
     char* ss = s;
 

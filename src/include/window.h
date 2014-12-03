@@ -51,7 +51,7 @@ static RGB8 const inv_color = {.bit_expr = 0};
 
 extern Axel_state_code init_window(void);
 extern Window* alloc_window(Point2d const*, Point2d const*);
-extern Window* alloc_drawn_window(Point2d const*, Drawable_bitmap const*, size_t);
+extern Window* alloc_drawn_window(Point2d const*, Drawable_bitmap const*);
 extern Window* alloc_filled_window(Point2d const*, Point2d const*, RGB8 const*);
 extern Window* get_mouse_window(void);
 extern void window_draw_bitmap(Window* const, Drawable_bitmap const*, size_t);

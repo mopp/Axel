@@ -12,10 +12,12 @@
 
 
 #include <stdint.h>
+#include <interrupt.h>
 
 
 extern void init_pit(void);
 extern void wait(uint32_t);
+extern void interrupt_timer(Interrupt_frame*);
 
 
 
