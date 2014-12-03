@@ -26,14 +26,13 @@ OS_NAME     := $(shell uname -s)
 DISK_IMG    := disk.img
 D_CYLINDER  := 100
 
-AXEL_BIN       := axel.bin
-AXEL_SYM       := axel.sym
-KERNEL_LNK     := kernel.ld
-KERNEL_MAP     := kernel.map
-PROG_INIT_FILE := init.asm
-PROG_INIT      := init
-
-ISO_NAME    := axel.iso
+AXEL_BIN   := axel.bin
+AXEL_SYM   := axel.sym
+KERNEL_LNK := kernel.ld
+KERNEL_MAP := kernel.map
+INIT_FILE  := init.asm
+INIT       := init
+ISO_NAME   := axel.iso
 
 BOOT_DIR    := boot/
 BOOT_OBJ    := $(BOOT_DIR)multiboot.o
@@ -157,11 +156,11 @@ endif
 
 
 .PHONY: copy
-copy: $(PROG_INIT_FILE)
-	nasm -f bin ./$(PROG_INIT_FILE) -o $(PROG_INIT)
+copy: $(INIT_FILE)
+	nasm -f bin ./$(INIT_FILE) -o $(INIT)
 	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
 	sudo mount /dev/loop0 /mnt
-	sudo cp $(PROG_INIT) /mnt/
+	sudo cp $(INIT) /mnt/
 	sudo cp ./kernel.c /mnt/
 	sudo mkdir -p /mnt/dir
 	sudo umount /mnt
@@ -171,7 +170,7 @@ copy: $(PROG_INIT_FILE)
 .PHONY: clean
 clean:
 	$(MAKE) -C $(BOOT_DIR) clean
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIRS) $(PROG_INIT) bx_enh_dbg.ini
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIRS) bx_enh_dbg.ini
 	ctags -R ./*
 
 
