@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <window.h>
 
-#pragma GCC diagnostic ignored "-Wcast-qual"
+/* #pragma GCC diagnostic ignored "-Wcast-qual" */
 
 
 
@@ -25,7 +25,7 @@ void* memchr(void const* s, register int c, size_t n) {
 
     do {
         if (*p == (unsigned char)c) {
-            return (void*)p;
+            return (void*)(uintptr_t)p;
         }
     } while (p < lim);
 
@@ -157,7 +157,7 @@ char* strchr(register char const* s, register int c) {
         s++;
     }
 
-    return (*s == '\0') ? NULL : (char*)s;
+    return (*s == '\0') ? NULL : (char*)(uintptr_t)s;
 }
 
 
@@ -169,7 +169,7 @@ char* strrchr(const char* s, int c) {
     char* found = NULL;
     while (*s != '\0') {
         if (*s == c) {
-            found = (char*)s;
+            found = (char*)(uintptr_t)s;
         }
         ++s;
     }
@@ -186,6 +186,9 @@ char* strstr(char const* s1, char const* s2) {
 
     size_t l1 = strlen(s1);
     size_t l2 = strlen(s2);
+    if (l2 == 0) {
+        return (char*)(uintptr_t)s1;
+    }
 
     if (l1 < l2) {
         return NULL;
@@ -193,7 +196,7 @@ char* strstr(char const* s1, char const* s2) {
 
     while (*s1 != '\0') {
         if (memcmp(s1, s2, l2) == 0) {
-            return (char*)s1;
+            return (char*)(uintptr_t)s1;
         }
         ++s1;
     }
