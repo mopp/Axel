@@ -272,8 +272,18 @@ static inline void free_page(Elist* used_pages, uintptr_t addr) {
     }
 
     if (freep != NULL) {
-        elist_remove(&freep->list);
-        kfree(freep);
+        bool is_one_ref = true;
+        elist_foreach(f, &freep->mapped_frames, Frame, list) {
+            if (1 < f->ref_count) {
+                --(f->ref_count);
+                is_one_ref = false;
+            }
+        }
+
+        if (is_one_ref == true) {
+            elist_remove(&freep->list);
+            kfree(freep);
+        }
     }
 }
 
@@ -400,7 +410,6 @@ int fork(void) {
 
     /* Child process get 0 as return value of fork() */
     intf->eax = 0;
-    intf->ebx = 0x8989;
     intf->esp = cp->thread.sp;
 
     cp->parent = pp;

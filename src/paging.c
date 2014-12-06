@@ -282,6 +282,9 @@ Page_directory_table init_user_pdt(Process* p, Page_directory_table pdt, Page_di
             if (src_pte->present_flag == 1) {
                 Page_table_entry* const pte = get_pte(pt, j);
                 *pte = *src_pte;
+
+                Frame* f = phys_addr_to_frame(axel_s.bman, (uintptr_t)(pte->frame_addr << PTE_FRAME_ADDR_SHIFT_NUM));
+                f->ref_count++;
             }
         }
     }
