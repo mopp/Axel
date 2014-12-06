@@ -75,7 +75,7 @@ File* resolve_path(File_system const* fs, char const* path) {
         }
 
         char* c = strchr(path, '/');
-        size_t l = ((uintptr_t)c - (uintptr_t)path);
+        size_t l = (c == NULL) ? (strlen(path)) : ((uintptr_t)c - (uintptr_t)path);
         size_t cnr = current->child_nr;
         for (size_t i = 0; i < cnr; i++) {
             File* child = current->children[i];
