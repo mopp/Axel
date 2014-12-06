@@ -33,16 +33,60 @@ void* memchr(void const* s, register int c, size_t n) {
 }
 
 
-int memcmp(void const* buf1, void const* buf2, size_t n) {
-    unsigned char const* ucb1, *ucb2;
+int memcmp(void const* s1, void const* s2, size_t n) {
     int result = 0;
-    ucb1 = buf1;
-    ucb2 = buf2;
-    unsigned char const * const limit = (unsigned char const* const)buf1 + n;
+    size_t nr, t = 0;
 
-    do {
-        result = *ucb1++ - *ucb2++;
-    } while ((ucb1 < limit) && result == 0);
+    __asm__ volatile("cld");
+
+    if (4 <= n) {
+        nr = n >> 2;
+        __asm__ volatile(
+            "repe cmpsl             \n"
+            "movl -4(%%esi), %%eax  \n"
+            "movl -4(%%edi), %%ecx  \n"
+            "subl %%ecx, %%eax      \n"
+            "movl %%eax, %[r]       \n"
+            : [r] "=m"(result)
+            : "S"((void*)((uintptr_t)s1 + t)), "D"((void*)((uintptr_t)s2 + t)), "c"(nr)
+            : "memory", "%esi", "%edi", "%ecx", "%eax"
+        );
+        t = nr << 2;
+        n -= t;
+    }
+
+    if (2 <= n && result == 0) {
+        nr = n >> 1;
+        __asm__ volatile(
+            "repe cmpsw             \n"
+            "xor %%eax, %%eax       \n"
+            "xor %%ecx, %%ecx       \n"
+            "movw -2(%%esi), %%ax   \n"
+            "movw -2(%%edi), %%cx   \n"
+            "subl %%ecx, %%eax      \n"
+            "movl %%eax, %[r]       \n"
+            : [r] "=m"(result)
+            : "S"((void*)((uintptr_t)s1 + t)), "D"((void*)((uintptr_t)s2 + t)), "c"(nr)
+            : "memory", "%esi", "%edi", "%ecx", "%eax"
+        );
+        t = nr << 1;
+        n -= t;
+    }
+
+    if (n != 0 && result == 0) {
+        __asm__ volatile(
+            "repe cmpsb             \n"
+            "xor %%eax, %%eax       \n"
+            "xor %%ecx, %%ecx       \n"
+            "movb -1(%%esi), %%al   \n"
+            "movb -1(%%edi), %%cl   \n"
+            "subl %%ecx, %%eax      \n"
+            "movl %%eax, %[r] \n"
+            : [r] "=m"(result)
+            : "S"((void*)((uintptr_t)s1 + t)), "D"((void*)((uintptr_t)s2 + t)), "c"(n)
+            : "memory", "%esi", "%edi", "%ecx", "%eax"
+        );
+    }
 
     return result;
 }
@@ -176,7 +220,6 @@ char* strrchr(const char* s, int c) {
 
     return found;
 }
-
 
 
 char* strstr(char const* s1, char const* s2) {
