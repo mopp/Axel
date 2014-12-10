@@ -66,8 +66,8 @@ OBJS        := $(BOOT_OBJ) $(A_OBJS) $(C_OBJS)
 # debug option
 # 	--analyze -g
 CPPFLAGS  := -isystem$(INCLUDE_DIR)
-W_FLAGS   := -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
 # W_FLAGS   := -g -Weverything -pedantic
+W_FLAGS   := -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
 CFLAGS    := --target=i686-elf -m32 -std=c11 -nostdlib -ffreestanding -fno-builtin $(W_FLAGS)
 LDFLAGS   := -Map $(KERNEL_MAP) -nostdlib
 export CC := $(CLANG) $(CFLAGS) $(CPPFLAGS)

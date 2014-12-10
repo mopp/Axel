@@ -163,7 +163,7 @@ static inline void draw_desktop(void) {
 }
 
 
-static inline void do_cmd(char* ecmd)  {
+static inline void do_cmd(char* ecmd) {
     if (strlen(ecmd) == 0) {
         puts(prompt);
         return;
