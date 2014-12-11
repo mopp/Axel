@@ -50,28 +50,6 @@ struct fat_manager {
 typedef struct fat_manager Fat_manager;
 
 
-#define FSINFO_TRAIL_SIG         0xAA550000
-#define FSINFO_INVALID_FREE      0xFFFFFFFF
-enum {
-    FSINFO_LEAD_SIG         = 0x41615252,
-    FSINFO_STRUCT_SIG       = 0x61417272,
-    DIR_LAST_FREE           = 0x00,
-    DIR_FREE                = 0xe5,
-    DIR_ATTR_READ_ONLY      = 0x01,
-    DIR_ATTR_HIDDEN         = 0x02,
-    DIR_ATTR_SYSTEM         = 0x04,
-    DIR_ATTR_VOLUME_ID      = 0x08,
-    DIR_ATTR_DIRECTORY      = 0x10,
-    DIR_ATTR_ARCHIVE        = 0x20,
-    DIR_ATTR_LONG_NAME      = DIR_ATTR_READ_ONLY | DIR_ATTR_HIDDEN | DIR_ATTR_SYSTEM | DIR_ATTR_VOLUME_ID,
-    DIR_ATTR_LONG_NAME_MASK = DIR_ATTR_READ_ONLY | DIR_ATTR_HIDDEN | DIR_ATTR_SYSTEM | DIR_ATTR_VOLUME_ID | DIR_ATTR_DIRECTORY | DIR_ATTR_ARCHIVE,
-    LFN_LAST_ENTRY_FLAG     = 0x40,
-    FAT_TYPE12              = 12,
-    FAT_TYPE16              = 16,
-    FAT_TYPE32              = 32,
-};
-
-
 static inline Axel_state_code fat_access(uint8_t direction, Fat_manager const* ft, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
     return ata_access((direction == FILE_READ) ? ATA_READ : ATA_WRITE, ft->super.dev, ft->super.pe.lba_first + lba, sec_cnt, buf);
 }

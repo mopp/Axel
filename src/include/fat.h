@@ -118,6 +118,28 @@ typedef struct long_dir_entry Long_dir_entry;
 _Static_assert(sizeof(Long_dir_entry) == 32, "Long_dir_entry is NOT 32 byte.");
 
 
+#define FSINFO_TRAIL_SIG         0xAA550000
+#define FSINFO_INVALID_FREE      0xFFFFFFFF
+enum {
+    FSINFO_LEAD_SIG         = 0x41615252,
+    FSINFO_STRUCT_SIG       = 0x61417272,
+    DIR_LAST_FREE           = 0x00,
+    DIR_FREE                = 0xe5,
+    DIR_ATTR_READ_ONLY      = 0x01,
+    DIR_ATTR_HIDDEN         = 0x02,
+    DIR_ATTR_SYSTEM         = 0x04,
+    DIR_ATTR_VOLUME_ID      = 0x08,
+    DIR_ATTR_DIRECTORY      = 0x10,
+    DIR_ATTR_ARCHIVE        = 0x20,
+    DIR_ATTR_LONG_NAME      = DIR_ATTR_READ_ONLY | DIR_ATTR_HIDDEN | DIR_ATTR_SYSTEM | DIR_ATTR_VOLUME_ID,
+    DIR_ATTR_LONG_NAME_MASK = DIR_ATTR_READ_ONLY | DIR_ATTR_HIDDEN | DIR_ATTR_SYSTEM | DIR_ATTR_VOLUME_ID | DIR_ATTR_DIRECTORY | DIR_ATTR_ARCHIVE,
+    LFN_LAST_ENTRY_FLAG     = 0x40,
+    FAT_TYPE12              = 12,
+    FAT_TYPE16              = 16,
+    FAT_TYPE32              = 32,
+};
+
+
 File_system* init_fat(Ata_dev* dev, Partition_entry* pe);
 
 

@@ -5,6 +5,7 @@
 !boot
 !include
 !dev
+!tools
 
 # allow files
 !.gitignore
