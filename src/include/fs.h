@@ -98,11 +98,11 @@ typedef struct file File;
 
 struct file_system {
     Ata_dev* dev;
-    Partition_entry pe;
     File* current_dir;
     File* root_dir;
     Fs_change_dir_func change_dir;
     Fs_access_file access_file;
+    Partition_entry pe;
 };
 typedef struct file_system File_system;
 

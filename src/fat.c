@@ -32,16 +32,22 @@ struct fat_area {
 typedef struct fat_area Fat_area;
 
 
+struct fat_manager;
+typedef struct fat_manager Fat_manager;
+typedef Axel_state_code (*Dev_access)(Fat_manager const*, uint8_t, uint32_t, uint8_t, uint8_t*);
+
+
 struct fat_manager {
     File_system super;
     Bios_param_block bpb;
     Fsinfo fsinfo;
-    uint8_t* buffer;
+    uint8_t* buffer; /* this buffer has area that satisfy one cluster size. */
     size_t buffer_size;
     Fat_area rsvd;
     Fat_area fat;
     Fat_area rdentry;
     Fat_area data;
+    Dev_access access;
     uint32_t cluster_nr;
     uint8_t fat_type;
     uint8_t reserved1;
@@ -50,18 +56,18 @@ struct fat_manager {
 typedef struct fat_manager Fat_manager;
 
 
-static inline Axel_state_code fat_access(uint8_t direction, Fat_manager const* ft, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
+static inline Axel_state_code access(Fat_manager const* ft, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
     return ata_access((direction == FILE_READ) ? ATA_READ : ATA_WRITE, ft->super.dev, ft->super.pe.lba_first + lba, sec_cnt, buf);
 }
 
 
 static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft, uint32_t n, uint32_t write_entry) {
-    uint32_t offset       = n * ((ft->fat_type == FAT_TYPE32) ? 4 : 2);
-    uint32_t bps          = ft->bpb.bytes_per_sec;
-    uint32_t sec_num      = ft->bpb.rsvd_area_sec_num + (offset / bps);
+    uint32_t offset = n * ((ft->fat_type == FAT_TYPE32) ? 4 : 2);
+    uint32_t bps = ft->bpb.bytes_per_sec;
+    uint32_t sec_num = ft->bpb.rsvd_area_sec_num + (offset / bps);
     uint32_t entry_offset = offset % bps;
 
-    if (fat_access(FILE_READ, ft, sec_num, 1, ft->buffer) == AXEL_FAILED) {
+    if (ft->access(ft, FILE_READ, sec_num, 1, ft->buffer) == AXEL_FAILED) {
         return 0;
     }
     uint32_t* b = (uint32_t*)(uintptr_t)&ft->buffer[entry_offset];
@@ -98,7 +104,7 @@ static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft
             break;
     }
 
-    if (fat_access(FILE_WRITE, ft, sec_num, 1, ft->buffer) == AXEL_FAILED) {
+    if (ft->access(ft, FILE_WRITE, sec_num, 1, ft->buffer) == AXEL_FAILED) {
         return 0;
     }
 
@@ -112,7 +118,7 @@ static inline Fsinfo* fsinfo_access(uint8_t direction, Fat_manager* fm) {
     }
 
     /* Access FSINFO structure. */
-    if (fat_access(direction, fm, fm->bpb.fat32.fsinfo_sec_num, 1, fm->buffer) == AXEL_FAILED) {
+    if (fm->access(fm, direction, fm->bpb.fat32.fsinfo_sec_num, 1, fm->buffer) == AXEL_FAILED) {
         return NULL;
     }
 
@@ -130,10 +136,10 @@ static inline Fsinfo* fsinfo_access(uint8_t direction, Fat_manager* fm) {
 }
 
 
-static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager const * ft, uint32_t clus_num, uint8_t* buffer) {
+static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager const* ft, uint32_t clus_num, uint8_t* buffer) {
     uint8_t spc = ft->bpb.sec_per_clus;
     uint32_t sec = ft->data.begin_sec + (clus_num - 2) * spc;
-    if (fat_access(direction, ft, sec, spc, buffer) == AXEL_FAILED) {
+    if (ft->access(ft, direction, sec, spc, buffer) == AXEL_FAILED) {
         return NULL;
     }
 
@@ -207,7 +213,7 @@ static inline uint32_t set_last_fat_entry(Fat_manager const* fm, uint32_t clus) 
 }
 
 
-static inline uint32_t alloc_cluster(Fat_manager* fm){
+static inline uint32_t alloc_cluster(Fat_manager* fm) {
     if (fm->fsinfo.free_cnt == 0) {
         /* No free cluster. */
         return 0;
@@ -269,9 +275,9 @@ static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) 
     }
 
     size_t cnt = 0;
-    for(size_t i = 0; i < ucs2_len; i++) {
+    for (size_t i = 0; i < ucs2_len; i++) {
         uint8_t c = ucs2[i];
-        if((0 < c) && (c < 127)) {
+        if ((0 < c) && (c < 127)) {
             ascii[cnt++] = (char)ucs2[i];
         }
     }
@@ -344,7 +350,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
             }
 
             /* read from root directory area. */
-            fat_access(FILE_READ, fm, fm->rdentry.begin_sec, 1, fm->buffer);
+            fm->access(fm, FILE_READ, fm->rdentry.begin_sec, 1, fm->buffer);
         }
 
         Dir_entry* const de = (Dir_entry*)(uintptr_t)fm->buffer;
@@ -380,7 +386,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
                     }
                     char_num += ucs2_to_ascii(lde[j].name0, name + char_num, 10);
                     char_num += ucs2_to_ascii(lde[j].name1, name + char_num, 12);
-                    char_num += ucs2_to_ascii(lde[j].name2, name + char_num,  4);
+                    char_num += ucs2_to_ascii(lde[j].name2, name + char_num, 4);
                 } while (j != 0 && (lde[j--].order & LFN_LAST_ENTRY_FLAG) == 0 && char_num < 102);
             } else {
                 /* SFN stand alone. */
@@ -400,10 +406,10 @@ static inline Fat_file* read_directory(Fat_file* ff) {
             strcpy(f->super.name, name);
 
             /* Set the others. */
-            f->clus_num         = (uint16_t)((entry->first_clus_num_hi << 16) | entry->first_clus_num_lo);
-            f->super.type       = ((entry->attr & DIR_ATTR_DIRECTORY) != 0) ? FILE_TYPE_DIR : FILE_TYPE_FILE;
-            f->super.size       = entry->file_size;
-            f->super.belong_fs  = &fm->super;
+            f->clus_num = (uint16_t)((entry->first_clus_num_hi << 16) | entry->first_clus_num_lo);
+            f->super.type = ((entry->attr & DIR_ATTR_DIRECTORY) != 0) ? FILE_TYPE_DIR : FILE_TYPE_FILE;
+            f->super.size = entry->file_size;
+            f->super.belong_fs = &fm->super;
             f->super.parent_dir = &ff->super;
             f->super.state_load = 0;
 
@@ -432,8 +438,8 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
         return AXEL_FAILED;
     }
 
-    Fat_file const * const ff = (Fat_file const* const)f;
-    Fat_manager * const fm = (Fat_manager*)f->belong_fs;
+    Fat_file const* const ff = (Fat_file const* const)f;
+    Fat_manager* const fm = (Fat_manager*)f->belong_fs;
 
     /* Allocate buffer that have enough size for reading/writing per cluster unit. */
     uint32_t const bpc = (fm->bpb.sec_per_clus * fm->bpb.bytes_per_sec);
@@ -598,21 +604,22 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     uint8_t* const b = kmalloc(bytes_per_sec);
 
     Fat_manager* const fm = kmalloc_zeroed(sizeof(Fat_manager));
-    fm->super.dev = dev;
-    fm->super.pe = *pe;
-    fm->super.change_dir = fat_change_dir;
+    fm->super.dev         = dev;
+    fm->super.pe          = *pe;
+    fm->super.change_dir  = fat_change_dir;
     fm->super.access_file = fat_access_file;
+    fm->access = access;
 
-    Fat_file* const root = kmalloc_zeroed(sizeof(Fat_file));
-    root->super.name = kmalloc(1 + 1);
+    Fat_file* const root  = kmalloc_zeroed(sizeof(Fat_file));
+    root->super.name      = kmalloc(1 + 1);
     root->super.belong_fs = &fm->super;
-    root->super.type = FILE_TYPE_DIR | FILE_TYPE_ROOT;
+    root->super.type      = FILE_TYPE_DIR | FILE_TYPE_ROOT;
     fm->super.current_dir = &root->super;
-    fm->super.root_dir = &root->super;
+    fm->super.root_dir    = &root->super;
     strcpy(root->super.name, "/");
 
     /* Load Bios parameter block. */
-    if ((fat_access(FILE_READ, fm, 0, 1, b) != AXEL_SUCCESS) || (*((uint16_t*)(uintptr_t)(&b[510])) == 0x55aa)) {
+    if ((fm->access(fm, FILE_READ, 0, 1, b) != AXEL_SUCCESS) || (*((uint16_t*)(uintptr_t)(&b[510])) == 0x55aa)) {
         goto failed;
     }
     memcpy(&fm->bpb, b, sizeof(Bios_param_block));
@@ -630,7 +637,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     fm->rsvd.sec_nr       = bpb->rsvd_area_sec_num;
     fm->fat.begin_sec     = fm->rsvd.begin_sec + fm->rsvd.sec_nr;
     fm->fat.sec_nr        = fat_size * bpb->num_fats;
-    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;;
+    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;
     fm->rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
     fm->data.begin_sec    = fm->rdentry.begin_sec + fm->rdentry.sec_nr;
     fm->data.sec_nr       = total_sec - fm->data.begin_sec;
