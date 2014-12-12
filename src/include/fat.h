@@ -140,6 +140,42 @@ enum {
 };
 
 
+struct fat_file {
+    File super;
+    uint32_t clus_num;
+};
+typedef struct fat_file Fat_file;
+
+
+struct fat_area {
+    uint32_t begin_sec;
+    uint32_t sec_nr;
+};
+typedef struct fat_area Fat_area;
+
+
+struct fat_manager;
+typedef struct fat_manager Fat_manager;
+typedef Axel_state_code (*Dev_access)(Fat_manager const*, uint8_t, uint32_t, uint8_t, uint8_t*);
+
+
+struct fat_manager {
+    File_system super;
+    Fsinfo fsinfo;
+    Bios_param_block* bpb;
+    uint8_t* buffer; /* this buffer has area that satisfy one cluster size. */
+    size_t buffer_size;
+    Fat_area rsvd;
+    Fat_area fat;
+    Fat_area rdentry;
+    Fat_area data;
+    Dev_access access;
+    uint32_t cluster_nr;
+    uint8_t fat_type;
+};
+typedef struct fat_manager Fat_manager;
+
+
 File_system* init_fat(Ata_dev* dev, Partition_entry* pe);
 
 

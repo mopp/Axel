@@ -18,44 +18,6 @@
 #include <paging.h>
 
 
-struct fat_file {
-    File super;
-    uint32_t clus_num;
-};
-typedef struct fat_file Fat_file;
-
-
-struct fat_area {
-    uint32_t begin_sec;
-    uint32_t sec_nr;
-};
-typedef struct fat_area Fat_area;
-
-
-struct fat_manager;
-typedef struct fat_manager Fat_manager;
-typedef Axel_state_code (*Dev_access)(Fat_manager const*, uint8_t, uint32_t, uint8_t, uint8_t*);
-
-
-struct fat_manager {
-    File_system super;
-    Bios_param_block bpb;
-    Fsinfo fsinfo;
-    uint8_t* buffer; /* this buffer has area that satisfy one cluster size. */
-    size_t buffer_size;
-    Fat_area rsvd;
-    Fat_area fat;
-    Fat_area rdentry;
-    Fat_area data;
-    Dev_access access;
-    uint32_t cluster_nr;
-    uint8_t fat_type;
-    uint8_t reserved1;
-    uint16_t reserved2;
-};
-typedef struct fat_manager Fat_manager;
-
-
 static inline Axel_state_code access(Fat_manager const* ft, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
     return ata_access((direction == FILE_READ) ? ATA_READ : ATA_WRITE, ft->super.dev, ft->super.pe.lba_first + lba, sec_cnt, buf);
 }
@@ -63,8 +25,8 @@ static inline Axel_state_code access(Fat_manager const* ft, uint8_t direction, u
 
 static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft, uint32_t n, uint32_t write_entry) {
     uint32_t offset = n * ((ft->fat_type == FAT_TYPE32) ? 4 : 2);
-    uint32_t bps = ft->bpb.bytes_per_sec;
-    uint32_t sec_num = ft->bpb.rsvd_area_sec_num + (offset / bps);
+    uint32_t bps = ft->bpb->bytes_per_sec;
+    uint32_t sec_num = ft->bpb->rsvd_area_sec_num + (offset / bps);
     uint32_t entry_offset = offset % bps;
 
     if (ft->access(ft, FILE_READ, sec_num, 1, ft->buffer) == AXEL_FAILED) {
@@ -118,7 +80,7 @@ static inline Fsinfo* fsinfo_access(uint8_t direction, Fat_manager* fm) {
     }
 
     /* Access FSINFO structure. */
-    if (fm->access(fm, direction, fm->bpb.fat32.fsinfo_sec_num, 1, fm->buffer) == AXEL_FAILED) {
+    if (fm->access(fm, direction, fm->bpb->fat32.fsinfo_sec_num, 1, fm->buffer) == AXEL_FAILED) {
         return NULL;
     }
 
@@ -137,7 +99,7 @@ static inline Fsinfo* fsinfo_access(uint8_t direction, Fat_manager* fm) {
 
 
 static inline uint8_t* fat_data_cluster_access(uint8_t direction, Fat_manager const* ft, uint32_t clus_num, uint8_t* buffer) {
-    uint8_t spc = ft->bpb.sec_per_clus;
+    uint8_t spc = ft->bpb->sec_per_clus;
     uint32_t sec = ft->data.begin_sec + (clus_num - 2) * spc;
     if (ft->access(ft, direction, sec, spc, buffer) == AXEL_FAILED) {
         return NULL;
@@ -305,7 +267,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
     }
 
     Fat_manager* const fm = (Fat_manager*)ff->super.belong_fs;
-    Bios_param_block* const bpb = &fm->bpb;
+    Bios_param_block* const bpb = fm->bpb;
 
     if (ff->super.type_dir == 0) {
         return NULL;
@@ -442,7 +404,7 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
     Fat_manager* const fm = (Fat_manager*)f->belong_fs;
 
     /* Allocate buffer that have enough size for reading/writing per cluster unit. */
-    uint32_t const bpc = (fm->bpb.sec_per_clus * fm->bpb.bytes_per_sec);
+    uint32_t const bpc = (fm->bpb->sec_per_clus * fm->bpb->bytes_per_sec);
     uint32_t const rounded_size = (uint32_t)((f->size + bpc - 1) / bpc) * bpc;
     uint8_t* const ebuffer = kmalloc(sizeof(uint8_t) * rounded_size);
     if (ebuffer == NULL) {
@@ -599,10 +561,6 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
         return NULL;
     }
 
-    /* Temporary buffer. */
-    size_t const bytes_per_sec = dev->sector_size;
-    uint8_t* const b = kmalloc(bytes_per_sec);
-
     Fat_manager* const fm = kmalloc_zeroed(sizeof(Fat_manager));
     fm->super.dev         = dev;
     fm->super.pe          = *pe;
@@ -619,11 +577,14 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     strcpy(root->super.name, "/");
 
     /* Load Bios parameter block. */
-    if ((fm->access(fm, FILE_READ, 0, 1, b) != AXEL_SUCCESS) || (*((uint16_t*)(uintptr_t)(&b[510])) == 0x55aa)) {
+    Bios_param_block* const bpb = kmalloc(sizeof(Bios_param_block));
+    fm->bpb = bpb;
+    size_t const bytes_per_sec = dev->sector_size;
+    uint8_t* const b = kmalloc(bytes_per_sec);
+    if ((fm->access(fm, FILE_READ, 0, 1, (uint8_t*)b) != AXEL_SUCCESS) || (*((uint16_t*)(uintptr_t)(&b[510])) == 0x55aa)) {
         goto failed;
     }
-    memcpy(&fm->bpb, b, sizeof(Bios_param_block));
-    Bios_param_block* const bpb = &fm->bpb;
+    memcpy(bpb, b, sizeof(Bios_param_block));
 
     /* Free temporary buffer and allocate buffer of one cluster. */
     kfree(b);
