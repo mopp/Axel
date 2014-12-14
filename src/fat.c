@@ -23,7 +23,7 @@ static inline Axel_state_code access(Fat_manager const* ft, uint8_t direction, u
 }
 
 
-static inline uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft, uint32_t n, uint32_t write_entry) {
+uint32_t fat_enrty_access(uint8_t direction, Fat_manager const* ft, uint32_t n, uint32_t write_entry) {
     uint32_t offset = n * ((ft->fat_type == FAT_TYPE32) ? 4 : 2);
     uint32_t bps = ft->bpb->bytes_per_sec;
     uint32_t sec_num = ft->bpb->rsvd_area_sec_num + (offset / bps);
@@ -555,6 +555,23 @@ failed:
 }
 
 
+static inline void fat_calc_sectors(Fat_manager* fm) {
+    Bios_param_block* const bpb = fm->bpb;
+
+    /* These are logical sector number. */
+    uint32_t fat_size     = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
+    uint32_t total_sec    = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
+    fm->rsvd.begin_sec    = 0;
+    fm->rsvd.sec_nr       = bpb->rsvd_area_sec_num;
+    fm->fat.begin_sec     = fm->rsvd.begin_sec + fm->rsvd.sec_nr;
+    fm->fat.sec_nr        = fat_size * bpb->num_fats;
+    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;
+    fm->rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
+    fm->data.begin_sec    = fm->rdentry.begin_sec + fm->rdentry.sec_nr;
+    fm->data.sec_nr       = total_sec - fm->data.begin_sec;
+}
+
+
 /* LBA = (H + C * Total Head size) * (Sector size per track) + (S - 1) */
 File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     if (dev == NULL || pe == NULL) {
@@ -591,17 +608,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     fm->buffer_size = bpb->sec_per_clus * bytes_per_sec;
     fm->buffer = kmalloc(fm->buffer_size);
 
-    /* These are logical sector number. */
-    uint32_t fat_size     = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
-    uint32_t total_sec    = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
-    fm->rsvd.begin_sec    = 0;
-    fm->rsvd.sec_nr       = bpb->rsvd_area_sec_num;
-    fm->fat.begin_sec     = fm->rsvd.begin_sec + fm->rsvd.sec_nr;
-    fm->fat.sec_nr        = fat_size * bpb->num_fats;
-    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;
-    fm->rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
-    fm->data.begin_sec    = fm->rdentry.begin_sec + fm->rdentry.sec_nr;
-    fm->data.sec_nr       = total_sec - fm->data.begin_sec;
+    fat_calc_sectors(fm);
 
     /* FAT type detection. */
     fm->cluster_nr = fm->data.sec_nr / bpb->sec_per_clus;
