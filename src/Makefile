@@ -45,7 +45,7 @@ DEPS_DIR    := $(WORK_DIR)deps/
 WORK_DIRS   := $(WORK_DIR) $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)dev $(DEPS_DIR)dev
 SUB_DIRS    := $(BOOT_DIR)
 
-C_SRCS      := elf.c time.c syscall.c fat.c fs.c dev/ata.c dev/pci.c dev/acpi.c rgb8.c elist.c point.c aqueue.c buddy.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c dev/ps2.c tlsf.c utils.c window.c kernel.c
+C_SRCS      := elf.c time.c syscall.c fat_manip.c fat.c fs.c dev/ata.c dev/pci.c dev/acpi.c rgb8.c elist.c point.c aqueue.c buddy.c font.c graphic.c graphic_txt.c graphic_vbe.c interrupt.c memory.c paging.c proc.c dev/ps2.c tlsf.c utils.c window.c kernel.c
 C_OBJS      := $(addprefix $(OBJS_DIR), $(C_SRCS:%.c=%.o))
 C_DEPS      := $(addprefix $(DEPS_DIR), $(C_SRCS:%.c=%.d))
 A_SRCS      := asm_functions.asm interrupt_asm.asm

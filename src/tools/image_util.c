@@ -17,7 +17,8 @@ enum {
 
 
 typedef struct {
-    void* img_buffer;
+    uint8_t* tmp_buffer;
+    uint8_t* img_buffer;
     size_t img_size;
     Master_boot_record* mbr;
     Bios_param_block* bpb;
@@ -31,15 +32,15 @@ typedef struct {
     Fat_area fat;
     Fat_area rdentry;
     Fat_area data;
-} Fat_Image;
+} Fat_image;
 
 
-static int set_options(Fat_Image*, int, char* const[]);
-static int create_image(Fat_Image*);
+static int set_options(Fat_image*, int, char* const[]);
+static int create_image(Fat_image*);
 
 
 int main(int argc, char* const argv[]) {
-    Fat_Image img;
+    Fat_image img;
     if (set_options(&img, argc, argv) != 0) {
         return EXIT_FAILURE;
     }
@@ -93,7 +94,7 @@ static inline size_t lba_to_byte(size_t nr) {
 
 
 /*
- *                     Disk Fat_Image maps
+ *                     Disk Fat_image maps
  *    0 byte +---------------+----------------+
  *           |       Master Boot Record       |
  *           |       (First boot loader)      |
@@ -109,7 +110,7 @@ static inline size_t lba_to_byte(size_t nr) {
  *           |                                |
  *           +--------------------------------+
  */
-static inline int load_loader(Fat_Image* img) {
+static inline int load_loader(Fat_image* img) {
     char* const buf = img->img_buffer;
 
     /* Check size */
@@ -170,30 +171,93 @@ static inline int load_loader(Fat_Image* img) {
 }
 
 
-static inline void fat_calc_sectors(Fat_manager* fm) {
-    Bios_param_block* const bpb = fm->bpb;
+static inline void* access_buf(Fat_image const* img, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
+    /* lba is relative LBA address. */
+    void* p = (void*)(img->img_buffer + (img->mbr->p_entry[img->active_partition].lba_first) + (lba * SECTOR_SIZE));
+    size_t s = sec_cnt * SECTOR_SIZE;
+    if (direction == FILE_READ) {
+        return memcpy(buf, p, s);
+    } else if (direction == FILE_WRITE) {
+        return memcpy(p, buf, s);
+    }
 
-    /* These are logical sector number. */
-    uint32_t fat_size     = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
-    uint32_t total_sec    = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
-    fm->rsvd.begin_sec    = 0;
-    fm->rsvd.sec_nr       = bpb->rsvd_area_sec_num;
-    fm->fat.begin_sec     = fm->rsvd.begin_sec + fm->rsvd.sec_nr;
-    fm->fat.sec_nr        = fat_size * bpb->num_fats;
-    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;
-    fm->rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
-    fm->data.begin_sec    = fm->rdentry.begin_sec + fm->rdentry.sec_nr;
-    fm->data.sec_nr       = total_sec - fm->data.begin_sec;
+    return NULL;
 }
 
 
-static inline int set_fat(Fat_Image* img) {
+static inline uint32_t fat_entry_access(Fat_image const* img, uint8_t direction, uint32_t n, uint32_t write_entry) {
+    uint32_t offset       = n * ((img->fat_type == 32) ? 4 : 2);
+    uint32_t bps          = img->bpb->bytes_per_sec;
+    uint32_t sec_num      = img->bpb->rsvd_area_sec_num + (offset / bps);
+    uint32_t entry_offset = offset % bps;
+
+    if (access_buf(img, FILE_READ, sec_num, 1, img->tmp_buffer) == NULL) {
+        return 0;
+    }
+    uint32_t* b = (uint32_t*)(uintptr_t)&img->tmp_buffer[entry_offset];
+    uint32_t read_entry = 0;
+
+    /* Filter */
+    switch (img->fat_type) {
+        case 12:
+            read_entry = (*b & 0xFFF);
+            break;
+        case 16:
+            read_entry = (*b & 0xFFFF);
+            break;
+        case 32:
+            read_entry = (*b & 0x0FFFFFFF);
+            break;
+    }
+
+    if (direction == FILE_READ) {
+        return read_entry;
+    }
+
+    /* Change FAT entry. */
+    switch (img->fat_type) {
+        case 12:
+            *b = (write_entry & 0xFFF);
+            break;
+        case 16:
+            *b = (write_entry & 0xFFFF);
+            break;
+        case 32:
+            /* keep upper bits */
+            *b = (*b & 0xF0000000) | (write_entry & 0x0FFFFFFF);
+            break;
+    }
+
+    if (access_buf(img, FILE_WRITE, sec_num, 1, img->tmp_buffer) == 0) {
+        return 0;
+    }
+
+    return *b;
+}
+
+
+static inline void fat_calc_sectors(Fat_image* fm) {
+    Bios_param_block* const bpb = fm->bpb;
+
+    /* These are logical sector number. */
+    uint32_t fat_size = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
+    uint32_t total_sec = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
+    fm->rsvd.begin_sec = 0;
+    fm->rsvd.sec_nr = bpb->rsvd_area_sec_num;
+    fm->fat.begin_sec = fm->rsvd.begin_sec + fm->rsvd.sec_nr;
+    fm->fat.sec_nr = fat_size * bpb->num_fats;
+    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;
+    fm->rdentry.sec_nr = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
+    fm->data.begin_sec = fm->rdentry.begin_sec + fm->rdentry.sec_nr;
+    fm->data.sec_nr = total_sec - fm->data.begin_sec;
+}
+
+
+static inline int set_fat(Fat_image* img) {
     Master_boot_record* mbr = img->mbr;
 
-    size_t part_base = lba_to_byte(mbr->p_entry[img->active_partition].lba_first);
-    Bios_param_block* bpb = (Bios_param_block*)((uintptr_t)img->img_buffer + part_base);
-    Fat_manager fm;
-    fm.bpb = bpb;
+    Bios_param_block* bpb = (Bios_param_block*)((uintptr_t)img->img_buffer + (lba_to_byte(mbr->p_entry[img->active_partition].lba_first)));
+    img->bpb = bpb;
 
     /* setting BIOS Parameter Block */
     memcpy(bpb->oem_name, "AXELMOPP", 8);
@@ -204,10 +268,10 @@ static inline int set_fat(Fat_Image* img) {
 
     if (img->fat_type == 32) {
         bpb->root_ent_cnt = 0;
-        bpb->total_sec16  = 0;
-        bpb->fat_size16   = 0;
+        bpb->total_sec16 = 0;
+        bpb->fat_size16 = 0;
         bpb->rsvd_area_sec_num = 32;
-        bpb->total_sec32  = mbr->p_entry[img->active_partition].sector_nr;
+        bpb->total_sec32 = mbr->p_entry[img->active_partition].sector_nr;
 
         /* Calculate the number of cluster. */
         size_t clus_nr = bpb->total_sec32 / bpb->sec_per_clus;
@@ -222,17 +286,17 @@ static inline int set_fat(Fat_Image* img) {
         bpb->fat32.fsinfo_sec_num = 1;
         bpb->fat32.bk_boot_sec = 6;
 
-        fat_calc_sectors(&fm);
+        fat_calc_sectors(img);
 
-        printf("rsvd begin: %d\n", fm.rsvd.begin_sec);
-        printf("rsvd    nr: %d\n", fm.rsvd.sec_nr);
-        printf("fat  begin: %d\n", fm.fat.begin_sec);
-        printf("fat     nr: %d\n", fm.fat.sec_nr);
-        printf("rdentry begin: %d\n", fm.rdentry.begin_sec);
-        printf("rdentry    nr: %d\n", fm.rdentry.sec_nr);
-        printf("data begin: %d\n", fm.data.begin_sec);
-        printf("data    nr: %d\n", fm.data.sec_nr);
-    } else if (img->fat_type == 16){
+        printf("rsvd begin   : %5d\n", img->rsvd.begin_sec);
+        printf("rsvd    nr   : %5d\n", img->rsvd.sec_nr);
+        printf("fat  begin   : %5d\n", img->fat.begin_sec);
+        printf("fat     nr   : %5d\n", img->fat.sec_nr);
+        printf("rdentry begin: %5d\n", img->rdentry.begin_sec);
+        printf("rdentry    nr: %5d\n", img->rdentry.sec_nr);
+        printf("data begin   : %5d\n", img->data.begin_sec);
+        printf("data    nr   : %5d\n", img->data.sec_nr);
+    } else if (img->fat_type == 16) {
         bpb->rsvd_area_sec_num = 1;
         /* TODO: */
     } else {
@@ -244,10 +308,15 @@ static inline int set_fat(Fat_Image* img) {
 }
 
 
-static inline int create_image(Fat_Image* img) {
+static inline int create_image(Fat_image* img) {
     char* b = malloc(img->img_size * sizeof(char));
     if (b == NULL) {
         error_msg("Alloc failed: size %zu", img->img_size);
+        return EXIT_FAILURE;
+    }
+    img->tmp_buffer = malloc(SECTOR_SIZE * sizeof(char));
+    if (img->tmp_buffer == NULL) {
+        free(b);
         return EXIT_FAILURE;
     }
     memset(b, 0, img->img_size * sizeof(char));
@@ -278,12 +347,12 @@ static inline int create_image(Fat_Image* img) {
 }
 
 
-static inline int set_options(Fat_Image* img, int argc, char* const argv[]) {
-    img->img_path     = NULL;
-    img->mbr_path     = NULL;
+static inline int set_options(Fat_image* img, int argc, char* const argv[]) {
+    img->img_path = NULL;
+    img->mbr_path = NULL;
     img->loader2_path = NULL;
-    img->img_size     = 0;
-    img->fat_type     = 32;
+    img->img_size = 0;
+    img->fat_type = 32;
 
     while (1) {
         int opt = getopt(argc, argv, "hvs:");
@@ -314,7 +383,7 @@ static inline int set_options(Fat_Image* img, int argc, char* const argv[]) {
             case 'v':
             case 'h':
                 puts(
-                    "Fat_Image util for Axel.\n"
+                    "Fat_image util for Axel.\n"
                     "Usage: aim [-s IMAGE_SIZE MB] TARGET_FILE_NAME MBR FILE\n"
                     "  default values\n"
                     "    IMAGE_SIZE: 64 MB");
