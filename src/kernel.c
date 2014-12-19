@@ -90,7 +90,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         printf("Init FileSystem is failed\n");
     }
 
-    /* init_process(); */
+    init_process();
 
     Window* mouse_win = get_mouse_window();
     Point2d mouse_p = axel_s.mouse->pos = mouse_win->pos;
