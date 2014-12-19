@@ -112,13 +112,12 @@ $(AXEL_BIN) : $(MAKEFILE) $(KERNEL_LNK) $(OBJS) $(DISK_IMG)
 	$(MAKE) $(DISK_IMG)
 
 
-$(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
+$(ISO_NAME) : $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG) $(INIT)
 	$(MKDIR) $(ISO_DIR)boot/grub
 	cp $(AXEL_BIN) $(ISO_DIR)boot/
 	cp $(GRUB_CONFIG) $(ISO_DIR)boot/grub/grub.cfg
 	grub-mkimage -O i386-pc -o $(ISO_DIR)efi.img multiboot biosdisk iso9660
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
-	$(MAKE) copy
 
 
 define FDISK
@@ -156,8 +155,7 @@ else
 endif
 
 
-.PHONY: copy
-copy: $(INIT_FILE)
+$(INIT): $(INIT_FILE)
 	nasm -f bin ./$(INIT_FILE) -o $(INIT)
 	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
 	sudo mount /dev/loop0 /mnt
