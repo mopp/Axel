@@ -112,10 +112,17 @@ struct long_dir_entry {
 typedef struct long_dir_entry Long_dir_entry;
 _Static_assert(sizeof(Long_dir_entry) == 32, "Long_dir_entry is NOT 32 byte.");
 
-
-struct fat_area {
+struct area {
     uint32_t begin_sec;
     uint32_t sec_nr;
+};
+typedef struct area Area;
+
+struct fat_area {
+    Area rsvd;
+    Area fat;
+    Area rdentry;
+    Area data;
 };
 typedef struct fat_area Fat_area;
 
@@ -129,17 +136,14 @@ struct fat_manips {
     void* obj;
     /* Master_boot_record* mbr; */
     Bios_param_block* bpb;
-    Fsinfo fsinfo;
+    Fsinfo* fsinfo;
 
     /* Pointers to function */
     Block_access b_access;
     Mem_alloc alloc;
     Mem_free free;
 
-    Fat_area rsvd;
-    Fat_area fat;
-    Fat_area rdentry;
-    Fat_area data;
+    Fat_area area;
     uint32_t byte_per_cluster;
     uint32_t fat_type;
 };

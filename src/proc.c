@@ -353,8 +353,8 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
         return AXEL_FAILED;
     }
 
-    /* Process* p = running_proc(); */
-    Process* p = &procs[1];
+    Process* p = running_proc();
+    /* Process* p = &procs[1]; */
 
     /* Load program file. */
     File* f = resolve_path(axel_s.fs, path);

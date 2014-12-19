@@ -126,7 +126,7 @@ Fsinfo* fat_fsinfo_access(Fat_manips const* fm, uint8_t direction, Fsinfo* fsi) 
 
 uint8_t* fat_data_cluster_access(Fat_manips const* fm, uint8_t direction, uint32_t clus_num, uint8_t* buffer) {
     uint8_t spc = fm->bpb->sec_per_clus;
-    uint32_t sec = fm->data.begin_sec + ((clus_num - 2) * spc);
+    uint32_t sec = fm->area.data.begin_sec + ((clus_num - 2) * spc);
 
     if (fm->b_access(fm->obj, direction, sec, spc, buffer) != AXEL_SUCCESS) {
         return NULL;

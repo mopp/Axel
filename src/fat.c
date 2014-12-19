@@ -26,12 +26,12 @@ static inline Axel_state_code access(void* p, uint8_t direction, uint32_t lba, u
 
 
 static inline uint32_t alloc_cluster(Fat_manager* fm) {
-    if (fm->manip.fsinfo.free_cnt == 0) {
+    if (fm->manip.fsinfo->free_cnt == 0) {
         /* No free cluster. */
         return 0;
     }
 
-    uint32_t begin = fm->manip.fsinfo.next_free + 1;
+    uint32_t begin = fm->manip.fsinfo->next_free + 1;
     uint32_t end = fm->cluster_nr;
     uint32_t i, select_clus = 0;
 
@@ -50,9 +50,9 @@ static inline uint32_t alloc_cluster(Fat_manager* fm) {
     }
 
     /* Update FSINFO. */
-    fm->manip.fsinfo.next_free = select_clus;
-    fm->manip.fsinfo.free_cnt -= 1;
-    fat_fsinfo_access(&fm->manip, FILE_WRITE, &fm->manip.fsinfo);
+    fm->manip.fsinfo->next_free = select_clus;
+    fm->manip.fsinfo->free_cnt -= 1;
+    fat_fsinfo_access(&fm->manip, FILE_WRITE, fm->manip.fsinfo);
 
     return select_clus;
 }
@@ -164,7 +164,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
             }
 
             /* Read from root directory area. */
-            access(&fm->manip, FILE_READ, fm->manip.rdentry.begin_sec, 1, fm->buffer);
+            access(&fm->manip, FILE_READ, fm->manip.area.rdentry.begin_sec, 1, fm->buffer);
         }
 
         Dir_entry* const de = (Dir_entry*)(uintptr_t)fm->buffer;
@@ -415,14 +415,14 @@ static inline void fat_calc_sectors(Fat_manager* fman) {
     uint32_t total_sec    = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
 
     Fat_manips* fm = &fman->manip;
-    fm->rsvd.begin_sec    = 0;
-    fm->rsvd.sec_nr       = bpb->rsvd_area_sec_num;
-    fm->fat.begin_sec     = fm->rsvd.begin_sec + fm->rsvd.sec_nr;
-    fm->fat.sec_nr        = fat_size * bpb->num_fats;
-    fm->rdentry.begin_sec = fm->fat.begin_sec + fm->fat.sec_nr;
-    fm->rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
-    fm->data.begin_sec    = fm->rdentry.begin_sec + fm->rdentry.sec_nr;
-    fm->data.sec_nr       = total_sec - fm->data.begin_sec;
+    fm->area.rsvd.begin_sec    = 0;
+    fm->area.rsvd.sec_nr       = bpb->rsvd_area_sec_num;
+    fm->area.fat.begin_sec     = fm->area.rsvd.begin_sec + fm->area.rsvd.sec_nr;
+    fm->area.fat.sec_nr        = fat_size * bpb->num_fats;
+    fm->area.rdentry.begin_sec = fm->area.fat.begin_sec + fm->area.fat.sec_nr;
+    fm->area.rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
+    fm->area.data.begin_sec    = fm->area.rdentry.begin_sec + fm->area.rdentry.sec_nr;
+    fm->area.data.sec_nr       = total_sec - fm->area.data.begin_sec;
 }
 
 
@@ -467,11 +467,12 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     fm->manip.alloc        = kmalloc;
     fm->manip.free         = kfree;
     fm->manip.byte_per_cluster = bpb->sec_per_clus * bpb->bytes_per_sec;
+    fm->manip.fsinfo = kmalloc(sizeof(Fsinfo));
 
     fat_calc_sectors(fm);
 
     /* FAT type detection. */
-    fm->cluster_nr = fm->manip.data.sec_nr / bpb->sec_per_clus;
+    fm->cluster_nr = fm->manip.area.data.sec_nr / bpb->sec_per_clus;
     if (fm->cluster_nr < 4085) {
         fm->manip.fat_type = FAT_TYPE12;
         root->clus_num = 0;
@@ -480,15 +481,15 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
         root->clus_num = 0;
     } else {
         fm->manip.fat_type = FAT_TYPE32;
-        if (fat_fsinfo_access(&fm->manip, FILE_READ, &fm->manip.fsinfo) == NULL) {
+        if (fat_fsinfo_access(&fm->manip, FILE_READ, fm->manip.fsinfo) == NULL) {
             goto failed;
         }
 
-        if (fm->manip.fsinfo.free_cnt == FSINFO_INVALID_FREE) {
+        if (fm->manip.fsinfo->free_cnt == FSINFO_INVALID_FREE) {
             /* TODO: count free cluster */
         }
 
-        if (fm->manip.fsinfo.next_free == FSINFO_INVALID_FREE) {
+        if (fm->manip.fsinfo->next_free == FSINFO_INVALID_FREE) {
             /* TODO: set last allocated cluster number. */
         }
 

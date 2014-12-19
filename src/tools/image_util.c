@@ -1,9 +1,28 @@
+/*
+ *                     Disk Fat_image maps
+ *    0 byte +---------------+----------------+
+ *           |       Master Boot Record       |
+ *           |       (First boot loader)      |
+ *  512 byte +--------------------------------+
+ *           |                                |
+ *           ~       Second Boot Loader       ~
+ *           |                                |
+ *           +--------------------------------+
+ *           |                                |
+ *           |                                |
+ *           ~        First Partition         ~
+ *           |                                |
+ *           |                                |
+ *           +--------------------------------+
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
 #include "../include/fat.h"
+#include "../include/fat_manip.h"
 #include "../include/macros.h"
 
 
@@ -93,25 +112,8 @@ static inline size_t lba_to_byte(size_t nr) {
 }
 
 
-/*
- *                     Disk Fat_image maps
- *    0 byte +---------------+----------------+
- *           |       Master Boot Record       |
- *           |       (First boot loader)      |
- *  512 byte +--------------------------------+
- *           |                                |
- *           ~       Second Boot Loader       ~
- *           |                                |
- *           +--------------------------------+
- *           |                                |
- *           |                                |
- *           ~        First Partition         ~
- *           |                                |
- *           |                                |
- *           +--------------------------------+
- */
 static inline int load_loader(Fat_image* img) {
-    char* const buf = img->img_buffer;
+    uint8_t* const buf = img->img_buffer;
 
     /* Check size */
     long t = get_file_size(img->mbr_path);
@@ -168,71 +170,6 @@ static inline int load_loader(Fat_image* img) {
     img->active_partition = 0;
 
     return 0;
-}
-
-
-static inline void* access_buf(Fat_image const* img, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
-    /* lba is relative LBA address. */
-    void* p = (void*)(img->img_buffer + (img->mbr->p_entry[img->active_partition].lba_first) + (lba * SECTOR_SIZE));
-    size_t s = sec_cnt * SECTOR_SIZE;
-    if (direction == FILE_READ) {
-        return memcpy(buf, p, s);
-    } else if (direction == FILE_WRITE) {
-        return memcpy(p, buf, s);
-    }
-
-    return NULL;
-}
-
-
-static inline uint32_t fat_entry_access(Fat_image const* img, uint8_t direction, uint32_t n, uint32_t write_entry) {
-    uint32_t offset       = n * ((img->fat_type == 32) ? 4 : 2);
-    uint32_t bps          = img->bpb->bytes_per_sec;
-    uint32_t sec_num      = img->bpb->rsvd_area_sec_num + (offset / bps);
-    uint32_t entry_offset = offset % bps;
-
-    if (access_buf(img, FILE_READ, sec_num, 1, img->tmp_buffer) == NULL) {
-        return 0;
-    }
-    uint32_t* b = (uint32_t*)(uintptr_t)&img->tmp_buffer[entry_offset];
-    uint32_t read_entry = 0;
-
-    /* Filter */
-    switch (img->fat_type) {
-        case 12:
-            read_entry = (*b & 0xFFF);
-            break;
-        case 16:
-            read_entry = (*b & 0xFFFF);
-            break;
-        case 32:
-            read_entry = (*b & 0x0FFFFFFF);
-            break;
-    }
-
-    if (direction == FILE_READ) {
-        return read_entry;
-    }
-
-    /* Change FAT entry. */
-    switch (img->fat_type) {
-        case 12:
-            *b = (write_entry & 0xFFF);
-            break;
-        case 16:
-            *b = (write_entry & 0xFFFF);
-            break;
-        case 32:
-            /* keep upper bits */
-            *b = (*b & 0xF0000000) | (write_entry & 0x0FFFFFFF);
-            break;
-    }
-
-    if (access_buf(img, FILE_WRITE, sec_num, 1, img->tmp_buffer) == 0) {
-        return 0;
-    }
-
-    return *b;
 }
 
 
