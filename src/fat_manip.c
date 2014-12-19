@@ -136,6 +136,27 @@ uint8_t* fat_data_cluster_access(Fat_manips const* fm, uint8_t direction, uint32
 }
 
 
+Fat_area* fat_calc_sectors(Bios_param_block const* bpb, Fat_area* fa) {
+    /* These are logical sector number. */
+    uint32_t fat_size = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
+    uint32_t total_sec = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
+
+    fa->rsvd.begin_sec = 0;
+    fa->rsvd.sec_nr = bpb->rsvd_area_sec_num;
+
+    fa->fat.begin_sec = fa->rsvd.begin_sec + fa->rsvd.sec_nr;
+    fa->fat.sec_nr = fat_size * bpb->num_fats;
+
+    fa->rdentry.begin_sec = fa->fat.begin_sec + fa->fat.sec_nr;
+    fa->rdentry.sec_nr = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
+
+    fa->data.begin_sec = fa->rdentry.begin_sec + fa->rdentry.sec_nr;
+    fa->data.sec_nr = total_sec - fa->data.begin_sec;
+
+    return fa;
+}
+
+
 bool is_valid_fsinfo(Fsinfo* fsi) {
     return ((fsi->lead_signature != FSINFO_LEAD_SIG) || (fsi->struct_signature != FSINFO_STRUCT_SIG) || (fsi->trail_signature != FSINFO_TRAIL_SIG)) ? false : true;
 }

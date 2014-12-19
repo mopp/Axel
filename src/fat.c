@@ -407,25 +407,6 @@ failed:
 }
 
 
-static inline void fat_calc_sectors(Fat_manager* fman) {
-    Bios_param_block* const bpb = fman->bpb;
-
-    /* These are logical sector number. */
-    uint32_t fat_size     = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
-    uint32_t total_sec    = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
-
-    Fat_manips* fm = &fman->manip;
-    fm->area.rsvd.begin_sec    = 0;
-    fm->area.rsvd.sec_nr       = bpb->rsvd_area_sec_num;
-    fm->area.fat.begin_sec     = fm->area.rsvd.begin_sec + fm->area.rsvd.sec_nr;
-    fm->area.fat.sec_nr        = fat_size * bpb->num_fats;
-    fm->area.rdentry.begin_sec = fm->area.fat.begin_sec + fm->area.fat.sec_nr;
-    fm->area.rdentry.sec_nr    = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
-    fm->area.data.begin_sec    = fm->area.rdentry.begin_sec + fm->area.rdentry.sec_nr;
-    fm->area.data.sec_nr       = total_sec - fm->area.data.begin_sec;
-}
-
-
 /* LBA = (H + C * Total Head size) * (Sector size per track) + (S - 1) */
 File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     if (dev == NULL || pe == NULL) {
@@ -469,7 +450,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     fm->manip.byte_per_cluster = bpb->sec_per_clus * bpb->bytes_per_sec;
     fm->manip.fsinfo = kmalloc(sizeof(Fsinfo));
 
-    fat_calc_sectors(fm);
+    fat_calc_sectors(bpb, &fm->manip.area);
 
     /* FAT type detection. */
     fm->cluster_nr = fm->manip.area.data.sec_nr / bpb->sec_per_clus;
