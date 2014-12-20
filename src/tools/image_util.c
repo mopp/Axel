@@ -51,6 +51,7 @@ static int set_options(Fat_image*, int, char* const[]);
 static int create_image(Fat_image*);
 static int load_loader(Fat_image*);
 static int construct_fat(Fat_image*);
+static Axel_state_code block_access(void*, uint8_t, uint32_t, uint8_t, uint8_t*);
 static long get_file_size(char const*);
 static void* load_file(char const*, void*, size_t);
 static size_t lba_to_byte(size_t);
@@ -169,6 +170,9 @@ static inline int create_image(Fat_image* img) {
         goto failed;
     }
 
+    Fsinfo mem_fsinfo;
+    memset(&mem_fsinfo, 0, sizeof(Fsinfo));
+    img->manip.fsinfo = &mem_fsinfo;
     if (construct_fat(img) != 0) {
         error_echo("Setting FAT failed\n");
         goto failed;
@@ -256,11 +260,12 @@ static inline int construct_fat(Fat_image* img) {
     Master_boot_record* mbr = img->mbr;
     Bios_param_block* bpb = (Bios_param_block*)((uintptr_t)img->img_buffer + (lba_to_byte(mbr->p_entry[img->active_partition].lba_first)));
 
-    /* Set at manipulator function */
+    /* Set manipulator */
     fm->bpb = bpb;
-    /* fm->b_access = ; */
+    fm->b_access = block_access;
     fm->alloc = malloc;
     fm->free = free;
+    fm->obj = img;
 
     /* Setting BIOS Parameter Block */
     memcpy(bpb->oem_name, "AXELMOPP", 8);
@@ -299,6 +304,20 @@ static inline int construct_fat(Fat_image* img) {
         printf("rdentry    nr: %5d\n", fm->area.rdentry.sec_nr);
         printf("data begin   : %5d\n", fm->area.data.begin_sec);
         printf("data    nr   : %5d\n", fm->area.data.sec_nr);
+
+        /* Init FAT[0] and FAT[1]. */
+        uint32_t fat_entry = 0xFFFFFF00 | bpb->media;
+        fat_enrty_access(fm, FILE_WRITE, 0, fat_entry);
+        fat_entry = 0xFFFFFFFF;
+        fat_enrty_access(fm, FILE_WRITE, 1, fat_entry);
+
+        /* Init FSINFO structure. */
+        fm->fsinfo->lead_signature = FSINFO_LEAD_SIG;
+        fm->fsinfo->struct_signature = FSINFO_STRUCT_SIG;
+        fm->fsinfo->free_cnt = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus);
+        fm->fsinfo->next_free = 2; /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
+        fm->fsinfo->trail_signature = FSINFO_TRAIL_SIG;
+        fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
     } else if (img->manip.fat_type == FAT_TYPE16) {
         bpb->rsvd_area_sec_num = 1;
         /* TODO: */
@@ -308,6 +327,27 @@ static inline int construct_fat(Fat_image* img) {
     }
 
     return 0;
+}
+
+
+static inline Axel_state_code block_access(void* p, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
+    Fat_image* ft = p;
+
+    size_t base_lba = ft->mbr->p_entry[ft->active_partition].lba_first;
+    size_t offset = lba_to_byte(base_lba + lba);
+    size_t size = lba_to_byte(sec_cnt);
+    void* target = &ft->img_buffer[offset];
+
+    if (direction == FILE_READ) {
+        memcpy(buf, target, size);
+    } else if (direction == FILE_WRITE) {
+        memcpy(target, buf, size);
+    } else {
+        error_echo("unknown direction in block_access");
+        return AXEL_FAILED;
+    }
+
+    return AXEL_SUCCESS;
 }
 
 

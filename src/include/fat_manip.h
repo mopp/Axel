@@ -112,11 +112,13 @@ struct long_dir_entry {
 typedef struct long_dir_entry Long_dir_entry;
 _Static_assert(sizeof(Long_dir_entry) == 32, "Long_dir_entry is NOT 32 byte.");
 
+
 struct area {
     uint32_t begin_sec;
     uint32_t sec_nr;
 };
 typedef struct area Area;
+
 
 struct fat_area {
     Area rsvd;
