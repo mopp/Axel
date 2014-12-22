@@ -11,3 +11,8 @@ $(IMG_PROG): $(IMG_SRC) $(C_DEPS)
 .PHONY: run
 run: $(IMG_PROG)
 	./$(IMG_PROG) $(IMG_NAME) $(MBR_FILE) $(LOADER2_FILE)
+
+.PHONY: check
+check:
+	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=67580
+	fsck.fat -v -n tmp
