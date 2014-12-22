@@ -25,56 +25,6 @@ static inline Axel_state_code access(void* p, uint8_t direction, uint32_t lba, u
 }
 
 
-static inline uint32_t alloc_cluster(Fat_manager* fm) {
-    if (fm->manip.fsinfo->free_cnt == 0) {
-        /* No free cluster. */
-        return 0;
-    }
-
-    uint32_t begin = fm->manip.fsinfo->next_free + 1;
-    uint32_t end = fm->cluster_nr;
-    uint32_t i, select_clus = 0;
-
-    for (i = begin; i < end; i++) {
-        uint32_t fe = fat_enrty_access(&fm->manip, FILE_READ, i, 0);
-        if (is_unused_fat_entry(fe) == true) {
-            /* Found unused cluster. */
-            select_clus = i;
-            break;
-        }
-    }
-
-    if (select_clus == 0) {
-        /* Unused cluster is not found. */
-        return 0;
-    }
-
-    /* Update FSINFO. */
-    fm->manip.fsinfo->next_free = select_clus;
-    fm->manip.fsinfo->free_cnt -= 1;
-    fat_fsinfo_access(&fm->manip, FILE_WRITE, fm->manip.fsinfo);
-
-    return select_clus;
-}
-
-
-static inline void free_cluster(Fat_manager* fm, uint32_t clus) {
-    uint32_t fe;
-    do {
-        fe = fat_enrty_access(&fm->manip, FILE_READ, clus, 0);
-        bool f = is_unused_fat_entry(fe);
-        if (f == false || is_last_fat_entry(&fm->manip, fe) == true) {
-            fat_enrty_access(&fm->manip, FILE_WRITE, clus, 0);
-        }
-
-        if (f == true) {
-            return;
-        }
-        clus = fe;
-    } while (1);
-}
-
-
 static inline bool is_lfn(Dir_entry const* de) {
     return ((de->attr & DIR_ATTR_LONG_NAME) == DIR_ATTR_LONG_NAME) ? true : false;
 }

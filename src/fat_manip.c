@@ -124,9 +124,9 @@ Fsinfo* fat_fsinfo_access(Fat_manips const* fm, uint8_t direction, Fsinfo* fsi) 
 }
 
 
-uint8_t* fat_data_cluster_access(Fat_manips const* fm, uint8_t direction, uint32_t clus_num, uint8_t* buffer) {
+uint8_t* fat_data_cluster_access(Fat_manips const* fm, uint8_t direction, uint32_t cluster_number, uint8_t* buffer) {
     uint8_t spc = fm->bpb->sec_per_clus;
-    uint32_t sec = fm->area.data.begin_sec + ((clus_num - 2) * spc);
+    uint32_t sec = fm->area.data.begin_sec + ((cluster_number - 2) * spc);
 
     if (fm->b_access(fm->obj, direction, sec, spc, buffer) != AXEL_SUCCESS) {
         return NULL;
@@ -155,6 +155,60 @@ Fat_area* fat_calc_sectors(Bios_param_block const* bpb, Fat_area* fa) {
 
     return fa;
 }
+
+
+uint32_t alloc_cluster(Fat_manips* fm) {
+    if (fm->fsinfo->free_cnt == 0) {
+        /* No free cluster. */
+        return 0;
+    }
+
+    uint32_t begin = fm->fsinfo->next_free + 1;
+    uint32_t end = fm->area.data.sec_nr / fm->bpb->sec_per_clus;
+    uint32_t i, select_clus = 0;
+
+    for (i = begin; i < end; i++) {
+        uint32_t fe = fat_enrty_access(fm, FILE_READ, i, 0);
+        if (is_unused_fat_entry(fe) == true) {
+            /* Found unused cluster. */
+            select_clus = i;
+            break;
+        }
+    }
+
+    if (select_clus == 0) {
+        /* Unused cluster is not found. */
+        return 0;
+    }
+
+    /* Update FSINFO. */
+    fm->fsinfo->next_free = select_clus;
+    fm->fsinfo->free_cnt -= 1;
+    fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
+
+    return select_clus;
+}
+
+
+void free_cluster(Fat_manips* fm, uint32_t clus) {
+    uint32_t fe;
+    do {
+        fe = fat_enrty_access(fm, FILE_READ, clus, 0);
+        bool f = is_unused_fat_entry(fe);
+        if (f == false || is_last_fat_entry(fm, fe) == true) {
+            fat_enrty_access(fm, FILE_WRITE, clus, 0);
+        }
+
+        if (f == true) {
+            return;
+        }
+        clus = fe;
+    } while (1);
+}
+
+
+/* Axel_state_code access_fat_file(Fat_manips* fm, uint8_t direction, ) { */
+/* } */
 
 
 bool is_valid_fsinfo(Fsinfo* fsi) {

@@ -134,7 +134,7 @@ static inline int set_options(Fat_image* img, int argc, char* const argv[]) {
     }
 
     if (img->img_size == 0) {
-        img->img_size = 32 * 1024 * 1024;
+        img->img_size = 33 * 1024 * 1024;
     }
     img->img_size = ALIGN_UP(img->img_size, SECTOR_SIZE);
 
@@ -278,24 +278,30 @@ static inline int construct_fat(Fat_image* img) {
         bpb->root_ent_cnt = 0;
         bpb->total_sec16 = 0;
         bpb->fat_size16 = 0;
-        bpb->rsvd_area_sec_num = 32;
+        bpb->rsvd_area_sec_num = 4;
         bpb->total_sec32 = mbr->p_entry[img->active_partition].sector_nr;
 
         /* Calculate the number of cluster. */
-        size_t clus_nr = bpb->total_sec32 / bpb->sec_per_clus;
-        if (clus_nr < 65525) {
-            error_echo("Invalid FAT32 size");
-            return EXIT_FAILURE;
-        }
+        size_t spc = bpb->sec_per_clus;
+        size_t sectors = bpb->total_sec32 - bpb->rsvd_area_sec_num;
+        size_t fat_entry_nr = (sectors / spc);
+        size_t all_fat_entry_size = ALIGN_UP(fat_entry_nr * 4u, SECTOR_SIZE);
 
-        /* Calculate the number of sector per FAT. */
-        bpb->fat32.fat_size32 = (uint16_t)((clus_nr * 4u) / SECTOR_SIZE);
+        /* Assume FAT area size. */
+        size_t assumed_fat_sectors = (all_fat_entry_size * bpb->num_fats) / SECTOR_SIZE;
+        fat_entry_nr = (sectors - assumed_fat_sectors) / spc;
+        all_fat_entry_size = ALIGN_UP(fat_entry_nr * 4u, SECTOR_SIZE);
+
+        /* Calculate actual the number of sector per a FAT. */
+        bpb->fat32.fat_size32 = (uint16_t)(all_fat_entry_size / SECTOR_SIZE);
         bpb->fat32.rde_clus_num = 2;
         bpb->fat32.fsinfo_sec_num = 1;
-        bpb->fat32.bk_boot_sec = 6;
 
         fat_calc_sectors(bpb, &fm->area);
 
+        printf("fat size: %d\n", bpb->fat32.fat_size32);
+        printf("fat entries %d\n", bpb->fat32.fat_size32 * SECTOR_SIZE / 4);
+        printf("Total cluster %d\n", bpb->total_sec32);
         printf("rsvd begin   : %5d\n", fm->area.rsvd.begin_sec);
         printf("rsvd    nr   : %5d\n", fm->area.rsvd.sec_nr);
         printf("fat  begin   : %5d\n", fm->area.fat.begin_sec);
@@ -311,11 +317,15 @@ static inline int construct_fat(Fat_image* img) {
         fat_entry = 0xFFFFFFFF;
         fat_enrty_access(fm, FILE_WRITE, 1, fat_entry);
 
+        /* Init root directory */
+        uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;
+        set_last_fat_entry(fm, rood_dir_cluster_num);
+
         /* Init FSINFO structure. */
         fm->fsinfo->lead_signature = FSINFO_LEAD_SIG;
         fm->fsinfo->struct_signature = FSINFO_STRUCT_SIG;
-        fm->fsinfo->free_cnt = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus);
-        fm->fsinfo->next_free = 2; /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
+        fm->fsinfo->free_cnt = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus) - 1; /* -1 for root directory entry. */
+        fm->fsinfo->next_free = 2;                                                       /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
         fm->fsinfo->trail_signature = FSINFO_TRAIL_SIG;
         fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
     } else if (img->manip.fat_type == FAT_TYPE16) {
