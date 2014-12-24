@@ -313,9 +313,9 @@ static inline int construct_fat(Fat_image* img) {
 
         /* Init FAT[0] and FAT[1]. */
         uint32_t fat_entry = 0xFFFFFF00 | bpb->media;
-        fat_enrty_access(fm, FILE_WRITE, 0, fat_entry);
+        fat_entry_access(fm, FILE_WRITE, 0, fat_entry);
         fat_entry = 0xFFFFFFFF;
-        fat_enrty_access(fm, FILE_WRITE, 1, fat_entry);
+        fat_entry_access(fm, FILE_WRITE, 1, fat_entry);
 
         /* Init root directory */
         uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;

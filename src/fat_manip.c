@@ -1,6 +1,5 @@
 #include "./include/mbr.h"
 #include "./include/fat_manip.h"
-#include "./include/utils.h"
 
 
 static inline void* alloc_clus_buf(Fat_manips const* fm) {
@@ -16,7 +15,7 @@ static inline void* alloc_clus_buf(Fat_manips const* fm) {
  * @param write_entry It is enable when writting.
  * @return Value of FAT entry.
  */
-uint32_t fat_enrty_access(Fat_manips const* fm, uint8_t direction, uint32_t n, uint32_t write_entry) {
+uint32_t fat_entry_access(Fat_manips const* fm, uint8_t direction, uint32_t n, uint32_t write_entry) {
     uint32_t offset = n * ((fm->fat_type == FAT_TYPE32) ? 4 : 2);
     uint32_t bps = fm->bpb->bytes_per_sec;
     uint32_t sec_num = fm->bpb->rsvd_area_sec_num + (offset / bps);
@@ -82,6 +81,16 @@ failed:
 }
 
 
+uint32_t fat_entry_read(Fat_manips const* fm, uint32_t n) {
+    return fat_entry_access(fm, FILE_READ, n, 0);
+}
+
+
+uint32_t fat_entry_write(Fat_manips const* fm, uint32_t n, uint32_t write_entry) {
+    return fat_entry_access(fm, FILE_WRITE, n, write_entry);
+}
+
+
 uint32_t set_last_fat_entry(Fat_manips const* fm, uint32_t n) {
     uint32_t last = 0;
 
@@ -94,7 +103,7 @@ uint32_t set_last_fat_entry(Fat_manips const* fm, uint32_t n) {
             last = 0x0FFFFFFF;
     }
 
-    return fat_enrty_access(fm, FILE_WRITE, n, last);
+    return fat_entry_access(fm, FILE_WRITE, n, last);
 }
 
 
@@ -136,27 +145,6 @@ uint8_t* fat_data_cluster_access(Fat_manips const* fm, uint8_t direction, uint32
 }
 
 
-Fat_area* fat_calc_sectors(Bios_param_block const* bpb, Fat_area* fa) {
-    /* These are logical sector number. */
-    uint32_t fat_size = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
-    uint32_t total_sec = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
-
-    fa->rsvd.begin_sec = 0;
-    fa->rsvd.sec_nr = bpb->rsvd_area_sec_num;
-
-    fa->fat.begin_sec = fa->rsvd.begin_sec + fa->rsvd.sec_nr;
-    fa->fat.sec_nr = fat_size * bpb->num_fats;
-
-    fa->rdentry.begin_sec = fa->fat.begin_sec + fa->fat.sec_nr;
-    fa->rdentry.sec_nr = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
-
-    fa->data.begin_sec = fa->rdentry.begin_sec + fa->rdentry.sec_nr;
-    fa->data.sec_nr = total_sec - fa->data.begin_sec;
-
-    return fa;
-}
-
-
 uint32_t alloc_cluster(Fat_manips* fm) {
     if (fm->fsinfo->free_cnt == 0) {
         /* No free cluster. */
@@ -168,7 +156,7 @@ uint32_t alloc_cluster(Fat_manips* fm) {
     uint32_t i, select_clus = 0;
 
     for (i = begin; i < end; i++) {
-        uint32_t fe = fat_enrty_access(fm, FILE_READ, i, 0);
+        uint32_t fe = fat_entry_access(fm, FILE_READ, i, 0);
         if (is_unused_fat_entry(fe) == true) {
             /* Found unused cluster. */
             select_clus = i;
@@ -193,10 +181,10 @@ uint32_t alloc_cluster(Fat_manips* fm) {
 void free_cluster(Fat_manips* fm, uint32_t clus) {
     uint32_t fe;
     do {
-        fe = fat_enrty_access(fm, FILE_READ, clus, 0);
+        fe = fat_entry_access(fm, FILE_READ, clus, 0);
         bool f = is_unused_fat_entry(fe);
         if (f == false || is_last_fat_entry(fm, fe) == true) {
-            fat_enrty_access(fm, FILE_WRITE, clus, 0);
+            fat_entry_access(fm, FILE_WRITE, clus, 0);
         }
 
         if (f == true) {
@@ -209,6 +197,29 @@ void free_cluster(Fat_manips* fm, uint32_t clus) {
 
 /* Axel_state_code access_fat_file(Fat_manips* fm, uint8_t direction, ) { */
 /* } */
+
+Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_number, char const* name, uint8_t attr) {
+    if (255 < strlen(name)) {
+        return AXEL_FAILED;
+    }
+
+    uint32_t fat_entry = fat_entry_read(fm, parent_dir_cluster_number);
+    if (is_valid_data_exist_fat_entry(fm, fat_entry) == true) {
+        return AXEL_FAILED;
+    }
+
+    void* buffer = alloc_clus_buf(fm);
+    void* result = fat_data_cluster_access(fm, FILE_READ, parent_dir_cluster_number, buffer);
+    if (result == NULL) {
+        fm->free(buffer);
+        return AXEL_FAILED;
+    }
+
+    Long_dir_entry const* long_dirs = (Long_dir_entry const*)buffer;
+    Dir_entry const* dirs = (Dir_entry const*)buffer;
+
+    return AXEL_SUCCESS;
+}
 
 
 bool is_valid_fsinfo(Fsinfo* fsi) {
@@ -246,7 +257,7 @@ bool is_valid_data_fat_entry(Fat_manips const* fm, uint32_t fe) {
 }
 
 
-bool is_data_exist_fat_entry(Fat_manips const* fm, uint32_t fe) {
+bool is_valid_data_exist_fat_entry(Fat_manips const* fm, uint32_t fe) {
     return (is_unused_fat_entry(fe) == false && is_valid_data_fat_entry(fm, fe) == true) ? true : false;
 }
 
@@ -263,4 +274,25 @@ bool is_last_fat_entry(Fat_manips const* fm, uint32_t fe) {
 
     /* ERROR. */
     return false;
+}
+
+
+Fat_area* fat_calc_sectors(Bios_param_block const* bpb, Fat_area* fa) {
+    /* These are logical sector number. */
+    uint32_t fat_size = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
+    uint32_t total_sec = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
+
+    fa->rsvd.begin_sec = 0;
+    fa->rsvd.sec_nr = bpb->rsvd_area_sec_num;
+
+    fa->fat.begin_sec = fa->rsvd.begin_sec + fa->rsvd.sec_nr;
+    fa->fat.sec_nr = fat_size * bpb->num_fats;
+
+    fa->rdentry.begin_sec = fa->fat.begin_sec + fa->fat.sec_nr;
+    fa->rdentry.sec_nr = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
+
+    fa->data.begin_sec = fa->rdentry.begin_sec + fa->rdentry.sec_nr;
+    fa->data.sec_nr = total_sec - fa->data.begin_sec;
+
+    return fa;
 }

@@ -174,7 +174,9 @@ enum {
 };
 
 
-uint32_t fat_enrty_access(Fat_manips const*, uint8_t, uint32_t, uint32_t);
+uint32_t fat_entry_access(Fat_manips const*, uint8_t, uint32_t, uint32_t);
+uint32_t fat_entry_write(Fat_manips const*, uint32_t, uint32_t);
+uint32_t fat_entry_read(Fat_manips const*, uint32_t);
 Fsinfo* fat_fsinfo_access(Fat_manips const*, uint8_t, Fsinfo*);
 uint8_t* fat_data_cluster_access(Fat_manips const*, uint8_t, uint32_t, uint8_t*);
 Fat_area* fat_calc_sectors(Bios_param_block const*, Fat_area*);
@@ -186,8 +188,9 @@ bool is_unused_fat_entry(uint32_t);
 bool is_rsvd_fat_entry(uint32_t);
 bool is_bad_clus_fat_entry(Fat_manips const*, uint32_t);
 bool is_valid_data_fat_entry(Fat_manips const*, uint32_t);
-bool is_data_exist_fat_entry(Fat_manips const*, uint32_t);
+bool is_valid_data_exist_fat_entry(Fat_manips const*, uint32_t);
 bool is_last_fat_entry(Fat_manips const*, uint32_t);
+
 
 
 #endif

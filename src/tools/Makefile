@@ -1,4 +1,4 @@
-C_DEPS       := ../fat_manip.c
+C_DEPS       := ../fat_manip.c ../utils.c
 IMG_SRC      := image_util.c
 IMG_PROG     := img_util
 IMG_NAME     := disk.img

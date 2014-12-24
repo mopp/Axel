@@ -84,8 +84,8 @@ static inline Fat_file* read_directory(Fat_file* ff) {
         clus = next_clus;
         if ((fm->manip.fat_type == FAT_TYPE32) || ((uintptr_t)ff != (uintptr_t)fm->super.root_dir)) {
             /* ff is FAT32 or not root entry of FAT12/16.  */
-            fe = fat_enrty_access(&fm->manip, FILE_READ, clus, 0);
-            if (is_data_exist_fat_entry(&fm->manip, fe) == false) {
+            fe = fat_entry_access(&fm->manip, FILE_READ, clus, 0);
+            if (is_valid_data_exist_fat_entry(&fm->manip, fe) == false) {
                 /* Invalid */
                 kfree(ffiles);
                 return NULL;
@@ -228,9 +228,9 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
     next_clus = ff->clus_num;
     do {
         clus = next_clus;
-        fe = fat_enrty_access(&fm->manip, FILE_READ, clus, 0);
+        fe = fat_entry_access(&fm->manip, FILE_READ, clus, 0);
 
-        if (is_data_exist_fat_entry(&fm->manip, fe) == false) {
+        if (is_valid_data_exist_fat_entry(&fm->manip, fe) == false) {
             /* Invalid. */
             goto failed;
         }
@@ -259,7 +259,7 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
             alloc_clus = alloc_cluster(fm);
 
             /* Set FAT chain. */
-            if (alloc_clus == 0 || fat_enrty_access(&fm->manip, FILE_WRITE, clus, alloc_clus) == 0) {
+            if (alloc_clus == 0 || fat_entry_access(&fm->manip, FILE_WRITE, clus, alloc_clus) == 0) {
                 /* allocate failed */
                 goto failed;
             }
