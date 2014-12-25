@@ -319,6 +319,7 @@ static inline int construct_fat(Fat_image* img) {
 
         /* Init root directory */
         uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;
+        printf("entry %d\n", fat_make_directory(fm, rood_dir_cluster_num, "MultiMediaCard System Summary.pdf", DIR_ATTR_READ_ONLY));
         set_last_fat_entry(fm, rood_dir_cluster_num);
 
         /* Init FSINFO structure. */

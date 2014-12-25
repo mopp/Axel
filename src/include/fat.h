@@ -7,7 +7,7 @@
  */
 
 
-#ifndef _FAT_H_
+#if !defined(_FAT_H_) && !defined(FOR_IMG_UTIL)
 #define _FAT_H_
 
 

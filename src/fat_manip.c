@@ -1,5 +1,20 @@
 #include "./include/mbr.h"
 #include "./include/fat_manip.h"
+#include "./include/macros.h"
+
+#ifdef FOR_IMG_UTIL
+
+/* this is used in img_util */
+#include <string.h>
+#include <time.h>
+#include <stdio.h>
+
+#else
+
+/* this is used in Axel */
+#include <utils.h>
+
+#endif
 
 
 static inline void* alloc_clus_buf(Fat_manips const* fm) {
@@ -198,15 +213,120 @@ void free_cluster(Fat_manips* fm, uint32_t clus) {
 /* Axel_state_code access_fat_file(Fat_manips* fm, uint8_t direction, ) { */
 /* } */
 
-Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_number, char const* name, uint8_t attr) {
-    if (255 < strlen(name)) {
-        return AXEL_FAILED;
+
+
+static inline void set_long_file_name(uint8_t* dst_p, char const** src_p, char const* src_last, uint8_t dst_max_len_16, bool* padding_flag) {
+    uint16_t* dst = (uint16_t*)dst_p;
+    char const* src = *src_p;
+
+    for (uint8_t j = 0; j < dst_max_len_16; j++) {
+        if (src == src_last) {
+            if (*padding_flag == true) {
+                dst[j] = 0xFFFF;
+            } else {
+                /* set terminal. */
+                dst[j] = 0;
+                *padding_flag = true;
+            }
+        } else {
+            /* Supporting only ascii character. */
+            dst[j] = ((*src++) & 0x00FF);
+        }
+    }
+}
+
+
+uint8_t fat_calc_checksum(Dir_entry const* entry) {
+    uint8_t sum = 0;
+
+    for (uint8_t i = 0; i < 11; i++) {
+        sum = (sum >> 1u) + (uint8_t)(sum << 7u) + entry->name[i];
     }
 
+    return sum;
+}
+
+
+#ifdef FOR_IMG_UTIL
+static void set_fat_time(uint16_t* fat_time) {
+    time_t current_time = time(NULL);
+    struct tm const *t_st = localtime(&current_time);
+
+    /* Set time */
+    uint16_t tmp = 0;
+    tmp |= (0x001F & (t_st->tm_sec >> 1));  /* sec mod by 2 */
+    tmp |= (0x07E0 & (t_st->tm_min << 5));
+    tmp |= (0xF800 & (t_st->tm_hour << 11));
+    *fat_time = tmp;
+}
+
+// static inline void set_fat_date(uint16_t* date) {
+//     time_t short current_time = time(NULL);
+//     struct tm const *t_st = localtime(&current_time);
+//
+//     /* Set date */
+//     uint16_t tmp = 0;
+//     tmp |= (0x001F & (t_st->tm_mday));
+//     tmp |= (0x01E0 & ((t_st->tm_mon + 1) << 5));
+//     tmp |= (0xFE00 & ((t_st->tm_year + 1900 - 1980) << 11)); /* Base of tm_year is 1900. However, Base of FAT date is 1980. */
+//     *date = tmp;
+// }
+#endif
+
+
+Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_number, char const* name, uint8_t attr) {
     uint32_t fat_entry = fat_entry_read(fm, parent_dir_cluster_number);
     if (is_valid_data_exist_fat_entry(fm, fat_entry) == true) {
         return AXEL_FAILED;
     }
+
+    Dir_entry new_short_entry;
+    memset(&new_short_entry, 0, sizeof(Dir_entry));
+    new_short_entry.attr              = attr;
+#ifdef FOR_IMG_UTIL
+    //set_fat_date(&new_short_entry.last_access_date);
+    //set_fat_date(&new_short_entry.create_date);
+    //set_fat_time(&new_short_entry.create_time);
+    //set_fat_date(&new_short_entry.write_date);
+    //set_fat_time(&new_short_entry.write_time);
+    //printf("mop 0x%x\n", new_short_entry.write_time);
+#endif
+    return 0;
+
+    if (fm->fat_type != FAT_TYPE32) {
+        /* TODO */
+        return AXEL_FAILED;
+    }
+
+    size_t name_len = strlen(name);
+    if (FAT_FILE_MAX_NAME_LEN < name_len) {
+        return AXEL_FAILED;
+    }
+
+    /* Assume the number of long dir entry to used */
+    uint8_t long_dir_entry_nr = (uint8_t)(name_len / FAT_LONG_DIR_MAX_NAME_LEN);
+    if (name_len % FAT_LONG_DIR_MAX_NAME_LEN != 0) {
+        ++long_dir_entry_nr;
+    }
+
+    Long_dir_entry new_long_entries[long_dir_entry_nr];
+    char const* const name_last = name + name_len;
+    bool padding_flag = false;
+    uint8_t const checksum = fat_calc_checksum(&new_short_entry);
+    for (uint8_t i = 0; i < long_dir_entry_nr; i++) {
+        new_long_entries[i].order = i + 1;
+        new_long_entries[i].attr = DIR_ATTR_LONG_NAME;
+        new_long_entries[i].type = 0;
+        new_long_entries[i].first_clus_num_lo = 0;
+        new_long_entries[i].checksum = checksum;
+        set_long_file_name(new_long_entries[i].name0, &name, name_last, 5, &padding_flag);
+        set_long_file_name(new_long_entries[i].name1, &name, name_last, 6, &padding_flag);
+        set_long_file_name(new_long_entries[i].name2, &name, name_last, 2, &padding_flag);
+    }
+    new_long_entries[long_dir_entry_nr - 1].order |= LFN_LAST_ENTRY_FLAG;
+
+    /* MultiMediaCard System Summary.pdf */
+
 
     void* buffer = alloc_clus_buf(fm);
     void* result = fat_data_cluster_access(fm, FILE_READ, parent_dir_cluster_number, buffer);

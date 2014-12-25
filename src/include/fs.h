@@ -7,7 +7,37 @@
  */
 
 
-#ifndef _FS_H_
+#ifndef _FS_CONSTANTS_H_
+#define _FS_CONSTANTS_H_
+
+
+
+enum fs_constants {
+    BOOT_SIGNATURE      = 0xAA55,
+    PART_TYPE_EMPTY     = 0x00,
+    PART_TYPE_FAT12     = 0x01,
+    PART_TYPE_FAT16     = 0x04,
+    PART_TYPE_HPFS      = 0x07,
+    PART_TYPE_NTFS      = 0x07,
+    PART_TYPE_EX_FAT    = 0x07,
+    PART_TYPE_FAT32     = 0x0B,
+    PART_TYPE_FAT32_LBA = 0x1B,
+    FILE_TYPE_ROOT      = 0x01,
+    FILE_TYPE_DIR       = 0x02,
+    FILE_TYPE_FILE      = 0x04,
+    FILE_TYPE_DEV       = 0x08,
+    FILE_STATE_LOAD     = 0x01,
+    FILE_READ,
+    FILE_WRITE,
+};
+
+
+
+#endif
+
+
+
+#if !defined(_FS_H_) && !defined(FOR_IMG_UTIL)
 #define _FS_H_
 
 
@@ -67,26 +97,6 @@ struct file_system {
     Partition_entry pe;
 };
 typedef struct file_system File_system;
-
-
-enum fs_constants {
-    BOOT_SIGNATURE      = 0xAA55,
-    PART_TYPE_EMPTY     = 0x00,
-    PART_TYPE_FAT12     = 0x01,
-    PART_TYPE_FAT16     = 0x04,
-    PART_TYPE_HPFS      = 0x07,
-    PART_TYPE_NTFS      = 0x07,
-    PART_TYPE_EX_FAT    = 0x07,
-    PART_TYPE_FAT32     = 0x0B,
-    PART_TYPE_FAT32_LBA = 0x1B,
-    FILE_TYPE_ROOT      = 0x01,
-    FILE_TYPE_DIR       = 0x02,
-    FILE_TYPE_FILE      = 0x04,
-    FILE_TYPE_DEV       = 0x08,
-    FILE_STATE_LOAD     = 0x01,
-    FILE_READ,
-    FILE_WRITE,
-};
 
 
 File_system* init_fs(Ata_dev*);

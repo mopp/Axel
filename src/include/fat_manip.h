@@ -1,3 +1,12 @@
+/**
+ * @file include/fat_manip.h
+ * @brief FAT filesystem manipulator.
+ * @author mopp
+ * @version 0.1
+ * @date 2014-12-20
+ */
+
+
 #ifndef FAT_MANIP_H
 #define FAT_MANIP_H
 
@@ -98,7 +107,9 @@ typedef struct dir_entry Dir_entry;
 _Static_assert(sizeof(Dir_entry) == 32, "Dir_entry is NOT 32 byte.");
 
 
-/* Long file name formant. */
+/* Long file name formant.
+ * This name char encoding is UCS-2
+ */
 struct long_dir_entry {
     uint8_t order; /* The order of this entry in the sequence of long dir entries. */
     uint8_t name0[10];
@@ -157,6 +168,8 @@ enum {
     FSINFO_STRUCT_SIG       = 0x61417272,
     FSINFO_TRAIL_SIG        = 0xAA550000,
     FSINFO_INVALID_FREE     = 0xFFFFFFFF,
+    FAT_FILE_MAX_NAME_LEN   = 255,
+    FAT_LONG_DIR_MAX_NAME_LEN = 13,
     DIR_LAST_FREE           = 0x00,
     DIR_FREE                = 0xe5,
     DIR_ATTR_READ_ONLY      = 0x01,
@@ -180,8 +193,10 @@ uint32_t fat_entry_read(Fat_manips const*, uint32_t);
 Fsinfo* fat_fsinfo_access(Fat_manips const*, uint8_t, Fsinfo*);
 uint8_t* fat_data_cluster_access(Fat_manips const*, uint8_t, uint32_t, uint8_t*);
 Fat_area* fat_calc_sectors(Bios_param_block const*, Fat_area*);
+Axel_state_code fat_make_directory(Fat_manips*, uint32_t, char const*, uint8_t);
 uint32_t set_last_fat_entry(Fat_manips const*, uint32_t);
 uint32_t alloc_cluster(Fat_manips*);
+uint8_t fat_calc_checksum(Dir_entry const*);
 void free_cluster(Fat_manips*, uint32_t);
 bool is_valid_fsinfo(Fsinfo*);
 bool is_unused_fat_entry(uint32_t);

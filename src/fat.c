@@ -49,17 +49,6 @@ static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) 
 }
 
 
-static inline uint8_t calc_checksum(Dir_entry const* de) {
-    uint8_t sum = 0;
-
-    for (uint8_t i = 0; i < 11; i++) {
-        sum = (sum >> 1u) + (uint8_t)(sum << 7u) + de->name[i];
-    }
-
-    return sum;
-}
-
-
 static inline Fat_file* read_directory(Fat_file* ff) {
     if (ff->super.state_load == 1) {
         /* Already loaded. */
@@ -134,11 +123,11 @@ static inline Fat_file* read_directory(Fat_file* ff) {
             }
 
             /* This Entry is SFN entry. */
-            uint8_t checksum = calc_checksum(entry);
+            uint8_t checksum = fat_calc_checksum(entry);
             bool is_error = false;
 
             /* Set name */
-            char name[128];
+            char name[FAT_FILE_MAX_NAME_LEN];
             if (is_lfn(&de[i - 1]) == true) {
                 /* There are LFN before SFN. */
                 uint32_t j = i - 1;
