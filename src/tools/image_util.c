@@ -317,11 +317,6 @@ static inline int construct_fat(Fat_image* img) {
         fat_entry = 0xFFFFFFFF;
         fat_entry_access(fm, FILE_WRITE, 1, fat_entry);
 
-        /* Init root directory */
-        uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;
-        printf("entry %d\n", fat_make_directory(fm, rood_dir_cluster_num, "MultiMediaCard System Summary.pdf", DIR_ATTR_READ_ONLY));
-        set_last_fat_entry(fm, rood_dir_cluster_num);
-
         /* Init FSINFO structure. */
         fm->fsinfo->lead_signature = FSINFO_LEAD_SIG;
         fm->fsinfo->struct_signature = FSINFO_STRUCT_SIG;
@@ -329,6 +324,12 @@ static inline int construct_fat(Fat_image* img) {
         fm->fsinfo->next_free = 2;                                                       /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
         fm->fsinfo->trail_signature = FSINFO_TRAIL_SIG;
         fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
+
+        /* Init root directory */
+        uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;
+        printf("Root dir entry cluster: %d\n", rood_dir_cluster_num);
+        printf("make dir %d\n", fat_make_directory(fm, rood_dir_cluster_num, "bin", DIR_ATTR_READ_ONLY));
+        set_last_fat_entry(fm, rood_dir_cluster_num);
     } else if (img->manip.fat_type == FAT_TYPE16) {
         bpb->rsvd_area_sec_num = 1;
         /* TODO: */

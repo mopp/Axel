@@ -2,23 +2,38 @@
 #include "./include/fat_manip.h"
 #include "./include/macros.h"
 
+
 #ifdef FOR_IMG_UTIL
+
+
 
 /* this is used in img_util */
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
 
+
+
 #else
+
+
 
 /* this is used in Axel */
 #include <utils.h>
 
+
+
 #endif
+
 
 
 static inline void* alloc_clus_buf(Fat_manips const* fm) {
     return fm->alloc(fm->byte_per_cluster);
+}
+
+
+static inline void* clear_clus_buf(Fat_manips const* fm, void* buffer) {
+    return memset(buffer, 0, fm->byte_per_cluster);
 }
 
 
@@ -216,7 +231,7 @@ void free_cluster(Fat_manips* fm, uint32_t clus) {
 
 
 static inline void set_long_file_name(uint8_t* dst_p, char const** src_p, char const* src_last, uint8_t dst_max_len_16, bool* padding_flag) {
-    uint16_t* dst = (uint16_t*)dst_p;
+    uint16_t* dst = (void*)dst_p;
     char const* src = *src_p;
 
     for (uint8_t j = 0; j < dst_max_len_16; j++) {
@@ -260,55 +275,79 @@ static void set_fat_time(uint16_t* fat_time) {
     *fat_time = tmp;
 }
 
-// static inline void set_fat_date(uint16_t* date) {
-//     time_t short current_time = time(NULL);
-//     struct tm const *t_st = localtime(&current_time);
-//
-//     /* Set date */
-//     uint16_t tmp = 0;
-//     tmp |= (0x001F & (t_st->tm_mday));
-//     tmp |= (0x01E0 & ((t_st->tm_mon + 1) << 5));
-//     tmp |= (0xFE00 & ((t_st->tm_year + 1900 - 1980) << 11)); /* Base of tm_year is 1900. However, Base of FAT date is 1980. */
-//     *date = tmp;
-// }
+
+static inline void set_fat_date(uint16_t* date) {
+    time_t current_time = time(NULL);
+    struct tm const *t_st = localtime(&current_time);
+
+    /* Set date */
+    uint16_t tmp = 0;
+    tmp |= (0x001F & (t_st->tm_mday));
+    tmp |= (0x01E0 & ((t_st->tm_mon + 1) << 5));
+    tmp |= (0xFE00 & ((t_st->tm_year + 1900 - 1980) << 11)); /* Base of tm_year is 1900. However, Base of FAT date is 1980. */
+    *date = tmp;
+}
+
+
+static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_cluster, uint8_t attr) {
+    memset(short_dir, 0, sizeof(Dir_entry));
+    short_dir->attr = attr;
+    short_dir->first_clus_num_hi = first_cluster >> 16;
+    short_dir->first_clus_num_lo = first_cluster & 0xFFFF;
+    set_fat_date(&short_dir->last_access_date);
+    set_fat_date(&short_dir->create_date);
+    set_fat_time(&short_dir->create_time);
+    set_fat_date(&short_dir->write_date);
+    set_fat_time(&short_dir->write_time);
+}
 #endif
 
 
+/**
+ * @brief Create new directory
+ * @param  attr
+ * @param  name
+ * @param  parent_dir_cluster_number If parend directory is root directory in FAT16/12, It should be 0.
+ * @param  fm
+ * @return
+ */
 Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_number, char const* name, uint8_t attr) {
-    uint32_t fat_entry = fat_entry_read(fm, parent_dir_cluster_number);
-    if (is_valid_data_exist_fat_entry(fm, fat_entry) == true) {
+    size_t name_len = strlen(name);
+    if (fm->fat_type == FAT_TYPE32) {
+        if (FAT_FILE_MAX_NAME_LEN < name_len) {
+            return AXEL_FAILED;
+        }
+    } else {
+        /* Check 8.3 format */
+        /* TODO */
+    }
+
+    /* Check FAT entry. */
+    uint32_t parent_fat_entry = fat_entry_read(fm, parent_dir_cluster_number);
+    if (is_valid_data_exist_fat_entry(fm, parent_fat_entry) == true) {
         return AXEL_FAILED;
     }
 
+    /* Alloc new directory entry. */
     Dir_entry new_short_entry;
-    memset(&new_short_entry, 0, sizeof(Dir_entry));
-    new_short_entry.attr              = attr;
+    uint32_t new_short_entry_cluster = alloc_cluster(fm);
+    set_last_fat_entry(fm, new_short_entry_cluster);
 #ifdef FOR_IMG_UTIL
-    //set_fat_date(&new_short_entry.last_access_date);
-    //set_fat_date(&new_short_entry.create_date);
-    //set_fat_time(&new_short_entry.create_time);
-    //set_fat_date(&new_short_entry.write_date);
-    //set_fat_time(&new_short_entry.write_time);
-    //printf("mop 0x%x\n", new_short_entry.write_time);
+    init_short_dir_entry(&new_short_entry, new_short_entry_cluster, attr);
 #endif
-    return 0;
 
     if (fm->fat_type != FAT_TYPE32) {
         /* TODO */
         return AXEL_FAILED;
     }
 
-    size_t name_len = strlen(name);
-    if (FAT_FILE_MAX_NAME_LEN < name_len) {
-        return AXEL_FAILED;
-    }
-
-    /* Assume the number of long dir entry to used */
+    /* Calculate the number of long dir entry to used */
     uint8_t long_dir_entry_nr = (uint8_t)(name_len / FAT_LONG_DIR_MAX_NAME_LEN);
     if (name_len % FAT_LONG_DIR_MAX_NAME_LEN != 0) {
         ++long_dir_entry_nr;
     }
 
+    /* Create new long directory entries. */
     Long_dir_entry new_long_entries[long_dir_entry_nr];
     char const* const name_last = name + name_len;
     bool padding_flag = false;
@@ -325,18 +364,59 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
     }
     new_long_entries[long_dir_entry_nr - 1].order |= LFN_LAST_ENTRY_FLAG;
 
-    /* MultiMediaCard System Summary.pdf */
-
-
     void* buffer = alloc_clus_buf(fm);
+    if (buffer == NULL) {
+        return AXEL_FAILED;
+    }
+
+    /* Load directory entry table. */
     void* result = fat_data_cluster_access(fm, FILE_READ, parent_dir_cluster_number, buffer);
     if (result == NULL) {
         fm->free(buffer);
         return AXEL_FAILED;
     }
+    Dir_entry* short_dentry_table = result;
+    size_t max_entry_index = fm->byte_per_cluster / sizeof(Dir_entry);
+    size_t unused_entry_count = 0;
+    size_t entry_start_index = 0;
+    for (size_t i = 0; i < max_entry_index; i++) {
+        uint8_t signature = short_dentry_table[i].name[0];
+        if (signature == DIR_FREE) {
+            /* FIXME */
+            ++unused_entry_count;
+            if (unused_entry_count == (long_dir_entry_nr + 1)) {
+                entry_start_index = i;
+                break;
+            }
+        }
+    }
 
-    Long_dir_entry const* long_dirs = (Long_dir_entry const*)buffer;
-    Dir_entry const* dirs = (Dir_entry const*)buffer;
+
+    /*
+     * Create dot entries ("." and "..")
+     * New directory should have these entry at head of its directory entry.
+     */
+    Dir_entry dot_entry[2];
+#ifdef FOR_IMG_UTIL
+    init_short_dir_entry(&dot_entry[0], new_short_entry_cluster, DIR_ATTR_DIRECTORY);
+    uint32_t root_cluster = (fm->fat_type == FAT_TYPE32) ? (fm->bpb->fat32.rde_clus_num) : (0);
+    init_short_dir_entry(&dot_entry[1], (root_cluster == parent_dir_cluster_number) ? 0 : parent_dir_cluster_number, DIR_ATTR_DIRECTORY);
+#endif
+    dot_entry[0].name[0] = '.';
+    dot_entry[0].name[1] = '\0';
+
+    dot_entry[1].name[0] = '.';
+    dot_entry[1].name[1] = '.';
+    dot_entry[1].name[2] = '\0';
+
+    /* Write two entries into directory entry of new directory. */
+    clear_clus_buf(fm, buffer);
+    memcpy(buffer, dot_entry, sizeof(Dir_entry) * 2);
+    result = fat_data_cluster_access(fm, FILE_WRITE, new_short_entry_cluster, buffer);
+    if (result == NULL) {
+        fm->free(buffer);
+        return AXEL_FAILED;
+    }
 
     return AXEL_SUCCESS;
 }

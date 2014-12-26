@@ -245,7 +245,7 @@ static inline Axel_state_code fat_access_file(uint8_t direction, File const* con
         /* Allocate new cluster because file size becomes bigger. */
         uint32_t alloc_clus;
         do {
-            alloc_clus = alloc_cluster(fm);
+            alloc_clus = alloc_cluster(&fm->manip);
 
             /* Set FAT chain. */
             if (alloc_clus == 0 || fat_entry_access(&fm->manip, FILE_WRITE, clus, alloc_clus) == 0) {

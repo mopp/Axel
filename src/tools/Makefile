@@ -16,3 +16,13 @@ run: $(IMG_PROG)
 check:
 	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=67580
 	fsck.fat -v -n tmp
+
+.PHONY: mount
+mount:
+	sudo losetup -o1024 /dev/loop0 ./disk.img
+	sudo mount /dev/loop0 /mnt
+
+.PHONY: umount
+umount:
+	sudo losetup -d /dev/loop0
+	sudo umount /mnt
