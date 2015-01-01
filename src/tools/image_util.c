@@ -327,9 +327,14 @@ static inline int construct_fat(Fat_image* img) {
 
         /* Init root directory */
         uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;
-        printf("Root dir entry cluster: %d\n", rood_dir_cluster_num);
-        printf("make dir %d\n", fat_make_directory(fm, rood_dir_cluster_num, "bin", DIR_ATTR_READ_ONLY));
         set_last_fat_entry(fm, rood_dir_cluster_num);
+        printf("Root dir entry cluster: %d\n", rood_dir_cluster_num);
+        int r = fat_make_directory(fm, rood_dir_cluster_num, "bin", DIR_ATTR_READ_ONLY);
+        if (r != AXEL_SUCCESS) {
+            printf("make dir failed\n");
+        } else {
+            printf("make dir success\n");
+        }
     } else if (img->manip.fat_type == FAT_TYPE16) {
         bpb->rsvd_area_sec_num = 1;
         /* TODO: */
