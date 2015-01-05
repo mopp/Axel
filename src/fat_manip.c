@@ -263,11 +263,19 @@ uint8_t fat_calc_checksum(Dir_entry const* entry) {
 }
 
 
+static inline bool is_83_format(char const* name) {
+    if (12 <= strlen(name)) {
+        return false;
+    }
+    return true;
+}
+
+
 #ifdef FOR_IMG_UTIL
 static inline char* create_short_file_name(char const* name, char* sfn_buffer) {
     bool irreversible_conversion_flag = false;
     size_t len = strlen(name);
-    char work_buffer[255];
+    char work_buffer[FAT_FILE_MAX_NAME_LEN];
     strcpy(work_buffer, name);
 
     /* Remove head period. */
@@ -411,6 +419,10 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
         }
     } else {
         /* Check 8.3 format */
+        if (is_83_format(name) == false) {
+            return AXEL_FAILED;
+        }
+
         /* TODO */
     }
 
@@ -420,6 +432,7 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
     set_last_fat_entry(fm, new_short_entry_cluster);
 #ifdef FOR_IMG_UTIL
     init_short_dir_entry(&new_short_entry, new_short_entry_cluster, attr);
+    create_short_file_name(name, (char*)new_short_entry.name);
 #endif
 
     if (fm->fat_type != FAT_TYPE32) {
@@ -455,17 +468,19 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
         return AXEL_FAILED;
     }
 
-    /* Load directory entry table. */
+    /* Search location to store new entries. */
     /* FIXME: Used two clusters case */
     bool break_flag = false;
     Dir_entry* short_dentry_table;
     size_t const max_entry_index = fm->byte_per_cluster / sizeof(Dir_entry);
-    size_t const request_entry_num = long_dir_entry_nr + 1;
+    size_t const request_entry_num = long_dir_entry_nr + 1; /* " + 1" means that adding short directory entry. */
     size_t entry_start_index = 0;
-    uint32_t cluster_number = parent_dir_cluster_number;
+    uint32_t cluster_number;
+    uint32_t fat_entry = parent_dir_cluster_number;
     while (break_flag == false) {
         /* Check FAT entry. */
-        uint32_t fat_entry = fat_entry_read(fm, cluster_number);
+        cluster_number = fat_entry;
+        fat_entry = fat_entry_read(fm, cluster_number);
         if (is_valid_data_exist_fat_entry(fm, fat_entry) == false) {
             fm->free(buffer);
             return AXEL_FAILED;
@@ -476,16 +491,14 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
         }
 
         /* Load directory entry table. */
-        void* load_data = fat_data_cluster_access(fm, FILE_READ, cluster_number, buffer);
-        if (load_data == NULL) {
+        if (fat_data_cluster_access(fm, FILE_READ, cluster_number, buffer) == NULL) {
             fm->free(buffer);
             return AXEL_FAILED;
         }
 
-        cluster_number = fat_entry;
 
         /* Search enough free space. */
-        short_dentry_table = load_data;
+        short_dentry_table = buffer;
         size_t unused_entry_count = 0;
         for (size_t i = 0; i < max_entry_index; i++) {
             uint8_t signature = short_dentry_table[i].name[0];
@@ -508,9 +521,10 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
         }
     }
 
-    for (size_t i = entry_start_index, cnt = 0; cnt != long_dir_entry_nr; --i, ++cnt) {
-        printf("0x%x\n", short_dentry_table[i].name[0]);
-    }
+    /* Write new entries. */
+    short_dentry_table[entry_start_index] = new_short_entry;
+    memcpy(&buffer[entry_start_index - 1 - long_dir_entry_nr], new_long_entries, sizeof(Long_dir_entry) * long_dir_entry_nr);
+    fat_data_cluster_access(fm, FILE_WRITE, cluster_number, buffer);
 
     /*
      * Create dot entries ("." and "..")

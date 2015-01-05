@@ -324,6 +324,7 @@ static inline int construct_fat(Fat_image* img) {
         fm->fsinfo->next_free = 2;                                                       /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
         fm->fsinfo->trail_signature = FSINFO_TRAIL_SIG;
         fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
+        printf("fsinfo free_cnt: %d\n", fm->fsinfo->free_cnt);
 
         /* Init root directory */
         uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;
