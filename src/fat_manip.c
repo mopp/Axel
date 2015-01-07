@@ -134,7 +134,7 @@ uint32_t set_last_fat_entry(Fat_manips const* fm, uint32_t n) {
             last = 0x0FFFFFFF;
     }
 
-    return fat_entry_access(fm, FILE_WRITE, n, last);
+    return fat_entry_write(fm, n, last);
 }
 
 
@@ -187,7 +187,7 @@ uint32_t alloc_cluster(Fat_manips* fm) {
     uint32_t i, select_clus = 0;
 
     for (i = begin; i < end; i++) {
-        uint32_t fe = fat_entry_access(fm, FILE_READ, i, 0);
+        uint32_t fe = fat_entry_read(fm, i);
         if (is_unused_fat_entry(fe) == true) {
             /* Found unused cluster. */
             select_clus = i;
@@ -212,10 +212,10 @@ uint32_t alloc_cluster(Fat_manips* fm) {
 void free_cluster(Fat_manips* fm, uint32_t clus) {
     uint32_t fe;
     do {
-        fe = fat_entry_access(fm, FILE_READ, clus, 0);
+        fe = fat_entry_read(fm, clus);
         bool f = is_unused_fat_entry(fe);
         if (f == false || is_last_fat_entry(fm, fe) == true) {
-            fat_entry_access(fm, FILE_WRITE, clus, 0);
+            fat_entry_write(fm, clus, 0);
         }
 
         if (f == true) {
@@ -224,11 +224,6 @@ void free_cluster(Fat_manips* fm, uint32_t clus) {
         clus = fe;
     } while (1);
 }
-
-
-/* Axel_state_code access_fat_file(Fat_manips* fm, uint8_t direction, ) { */
-/* } */
-
 
 
 static inline void set_long_file_name(uint8_t* dst_p, char const** src_p, char const* src_last, uint8_t dst_max_len_16, bool* padding_flag) {
@@ -388,11 +383,12 @@ static inline void set_fat_date(uint16_t* date) {
 }
 
 
-static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_cluster, uint8_t attr) {
+static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_cluster, uint8_t attr, uint32_t size) {
     memset(short_dir, 0, sizeof(Dir_entry));
     short_dir->attr = attr;
     short_dir->first_clus_num_hi = first_cluster >> 16;
     short_dir->first_clus_num_lo = first_cluster & 0xFFFF;
+    short_dir->file_size = size;
     set_fat_date(&short_dir->last_access_date);
     set_fat_date(&short_dir->create_date);
     set_fat_time(&short_dir->create_time);
@@ -406,11 +402,11 @@ static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_clu
  * @brief Create new directory
  * @param  attr
  * @param  name
- * @param  parent_dir_cluster_number If parend directory is root directory in FAT16/12, It should be 0.
+ * @param  parent_dir_cluster If parend directory is root directory in FAT16/12, It should be 0.
  * @param  fm
  * @return
  */
-Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_number, char const* name, uint8_t attr) {
+Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr, void* file_content, size_t file_size) {
     size_t name_len = strlen(name);
     if (fm->fat_type == FAT_TYPE32) {
         if (FAT_FILE_MAX_NAME_LEN < name_len) {
@@ -423,6 +419,7 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
         }
 
         /* TODO */
+        return AXEL_FAILED;
     }
 
     /* Alloc new directory entry. */
@@ -430,14 +427,9 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
     uint32_t new_short_entry_cluster = alloc_cluster(fm);
     set_last_fat_entry(fm, new_short_entry_cluster);
 #ifdef FOR_IMG_UTIL
-    init_short_dir_entry(&new_short_entry, new_short_entry_cluster, DIR_ATTR_DIRECTORY);
+    init_short_dir_entry(&new_short_entry, new_short_entry_cluster, attr, file_size);
     create_short_file_name(name, (char*)new_short_entry.name);
 #endif
-
-    if (fm->fat_type != FAT_TYPE32) {
-        /* TODO */
-        return AXEL_FAILED;
-    }
 
     /* Calculate the number of long dir entry to used */
     uint8_t long_dir_entry_nr = (uint8_t)(name_len / FAT_LONG_DIR_MAX_NAME_LEN);
@@ -469,14 +461,14 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
 
     /* Search location to store new entries. */
     /* FIXME: Used two clusters case */
-    bool break_flag = false;
+    bool is_found_enough_entries = false;
     Dir_entry* short_dentry_table;
     size_t const max_entry_index = fm->byte_per_cluster / sizeof(Dir_entry);
     size_t const request_entry_num = long_dir_entry_nr + 1; /* " + 1" means that adding short directory entry. */
     size_t free_entry_start_index = 0;
     uint32_t cluster_number;
-    uint32_t fat_entry = parent_dir_cluster_number;
-    while (break_flag == false) {
+    uint32_t fat_entry = parent_dir_cluster;
+    while (is_found_enough_entries == false) {
         /* Check FAT entry. */
         cluster_number = fat_entry;
         fat_entry = fat_entry_read(fm, cluster_number);
@@ -485,9 +477,9 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
             return AXEL_FAILED;
         }
 
+        bool is_last_entry = false;
         if (is_last_fat_entry(fm, fat_entry) == true) {
-            /* FIXME: alloc new cluster. */
-            break_flag = true;
+            is_last_entry = true;
         }
 
         /* Load directory entry table. */
@@ -495,7 +487,6 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
             fm->free(buffer);
             return AXEL_FAILED;
         }
-
 
         /* Search enough free space. */
         short_dentry_table = buffer;
@@ -506,18 +497,26 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
                 ++unused_entry_count;
                 if (unused_entry_count == request_entry_num) {
                     free_entry_start_index = i;
-                    break_flag = true;
+                    is_found_enough_entries = true;
                     break;
                 }
             } else if (signature == DIR_LAST_FREE) {
                 /* This signature indicates that all remain entry is free. */
                 size_t remain_free_entry = max_entry_index - i;
                 if (request_entry_num <= (unused_entry_count + remain_free_entry)) {
-                    free_entry_start_index = i + (request_entry_num - unused_entry_count);
-                    break_flag = true;
+                    free_entry_start_index = i + (request_entry_num - unused_entry_count - 1);
+                    is_found_enough_entries = true;
                     break;
                 }
             }
+        }
+
+        if (is_last_entry == true && is_found_enough_entries == false) {
+            /* Alloc new cluster to expand. */
+            uint32_t prev_cluster = cluster_number;
+            cluster_number = alloc_cluster(fm);
+            fat_entry_write(fm, cluster_number, prev_cluster);
+            set_last_fat_entry(fm, cluster_number);
         }
     }
 
@@ -526,38 +525,177 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
      * First, long entries are written by descending order.
      * Next, short entry are written.
      */
+    Long_dir_entry* long_dentry_table = buffer;
     for (size_t i = long_dir_entry_nr; 0 < i; i--) {
-        *((Long_dir_entry*)&buffer[(sizeof(Long_dir_entry)) * (free_entry_start_index - i)]) = new_long_entries[i - 1];
+        long_dentry_table[free_entry_start_index - i] = new_long_entries[i - 1];
     }
     short_dentry_table[free_entry_start_index] = new_short_entry;
     fat_data_cluster_access(fm, FILE_WRITE, cluster_number, buffer);
 
-    /*
-     * Create dot entries (".",  ".." and terminal entry) in new directory.
-     * New directory should have these entry at head of its directory entry.
-     */
-    Dir_entry dot_entry[3];
+    if ((attr & DIR_ATTR_ARCHIVE) != 0) {
+        /*
+         * New entry is directory.
+         * Create dot entries (".",  ".." and terminal entry) in new directory.
+         * New directory should have these entry at head of its directory entry.
+         */
+        Dir_entry dot_entry[3];
 #ifdef FOR_IMG_UTIL
-    init_short_dir_entry(&dot_entry[0], new_short_entry_cluster, DIR_ATTR_DIRECTORY);
-    uint32_t root_cluster = (fm->fat_type == FAT_TYPE32) ? (fm->bpb->fat32.rde_clus_num) : (0);
-    init_short_dir_entry(&dot_entry[1], ((root_cluster == parent_dir_cluster_number) ? 0 : parent_dir_cluster_number), DIR_ATTR_DIRECTORY);
+        init_short_dir_entry(&dot_entry[0], new_short_entry_cluster, DIR_ATTR_DIRECTORY, 0);
+        uint32_t root_cluster = (fm->fat_type == FAT_TYPE32) ? (fm->bpb->fat32.rde_clus_num) : (0);
+        init_short_dir_entry(&dot_entry[1], ((root_cluster == parent_dir_cluster) ? 0 : parent_dir_cluster), DIR_ATTR_DIRECTORY, 0);
 #endif
-    memcpy(dot_entry[0].name, ".          ", 11);
-    memcpy(dot_entry[1].name, "..         ", 11);
-    dot_entry[2].name[0] = DIR_LAST_FREE;
+        memcpy(dot_entry[0].name, ".          ", 11);
+        memcpy(dot_entry[1].name, "..         ", 11);
+        dot_entry[2].name[0] = DIR_LAST_FREE;
 
-    /* Write two entries into directory entry of new directory. */
-    clear_clus_buf(fm, buffer);
-    memcpy(buffer, dot_entry, sizeof(Dir_entry) * 3);
-    void* result = fat_data_cluster_access(fm, FILE_WRITE, new_short_entry_cluster, buffer);
-    if (result == NULL) {
-        fm->free(buffer);
-        return AXEL_FAILED;
+        /* Write two entries into directory entry of new directory. */
+        clear_clus_buf(fm, buffer);
+        memcpy(buffer, dot_entry, sizeof(Dir_entry) * 3);
+        void* result = fat_data_cluster_access(fm, FILE_WRITE, new_short_entry_cluster, buffer);
+        if (result == NULL) {
+            fm->free(buffer);
+            return AXEL_FAILED;
+        }
+    } else {
+        /*
+         * New entry is file.
+         * Writing contents.
+         */
+        size_t enough_cluster_size = (1024 * 109) / fm->byte_per_cluster;
+        if (((1024 * 109) % fm->byte_per_cluster) != 0) {
+            ++enough_cluster_size;
+        }
+        size_t const byte_per_cluster = fm->byte_per_cluster;
+
+        /* Write first cluster. */
+        char* fc = (char*)file_content;
+        clear_clus_buf(fm, buffer);
+        memcpy(buffer, &fc[0], MIN(byte_per_cluster, file_size));
+        void* r = fat_data_cluster_access(fm, FILE_WRITE, new_short_entry_cluster, buffer);
+        if (r == NULL) {
+            fm->free(buffer);
+            return AXEL_FAILED;
+        }
+
+        /* Write remain clusters. */
+        uint32_t prev_cluster = new_short_entry_cluster;
+        for (size_t written_size = byte_per_cluster; written_size < file_size; written_size += fm->bpb->bytes_per_sec) {
+            uint32_t new_cluster = alloc_cluster(fm);
+            if (new_cluster == 0) {
+                /* Allocation error. */
+                return AXEL_FAILED;
+            }
+
+            /* Concatenate FAT chain. */
+            fat_entry_write(fm, prev_cluster, new_cluster);
+            prev_cluster = new_cluster;
+
+            /* Write content. */
+            size_t remain_size = file_size - written_size;
+            memcpy(buffer, &fc[written_size], MIN(byte_per_cluster, remain_size));
+            void* r = fat_data_cluster_access(fm, FILE_WRITE, new_cluster, buffer);
+            if (r == NULL) {
+                fm->free(buffer);
+                return AXEL_FAILED;
+            }
+        }
+        set_last_fat_entry(fm, prev_cluster);
     }
+
+    fm->free(buffer);
 
     return AXEL_SUCCESS;
 }
 
+
+static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) {
+    if ((ucs2_len & 0x1) == 1) {
+        /* invalid. */
+        return 0;
+    }
+
+    size_t cnt = 0;
+    for (size_t i = 0; i < ucs2_len; i++) {
+        uint8_t c = ucs2[i];
+        if ((0 < c) && (c < 127)) {
+            ascii[cnt++] = (char)ucs2[i];
+        }
+    }
+    ascii[cnt] = '\0';
+
+    return cnt;
+}
+
+
+uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const* name) {
+    if (is_valid_data_exist_fat_entry(fm, dir_cluster) == false) {
+        return 0;
+    }
+
+    size_t max_dentry_num = fm->byte_per_cluster / sizeof(Dir_entry);
+    uint32_t entry = dir_cluster;
+    void* buffer = alloc_clus_buf(fm);
+    bool is_finish = false;
+    uint32_t found_cluster = 0;
+    while (is_finish == false) {
+        if (NULL == fat_data_cluster_access(fm, FILE_READ, entry, buffer)) {
+            fm->free(buffer);
+            return 0;
+        }
+        Dir_entry* short_dentry_table = buffer;
+        Long_dir_entry* long_dentry_table = buffer;
+
+        for (size_t i = 0; i < max_dentry_num; i++) {
+            Dir_entry* short_entry = &short_dentry_table[i];
+            uint8_t signature = short_entry->name[0];
+            if (signature == DIR_FREE) {
+                break;
+            } else if (signature == DIR_LAST_FREE) {
+                /* All remaining entry are free.  */
+                is_finish = true;
+                break;
+            }
+
+            if (is_lfn(short_entry) == false) {
+                /* Short entry. */
+                uint8_t checksum = fat_calc_checksum(short_entry);
+
+                /* Check long entries. */
+                char file_name[FAT_FILE_MAX_NAME_LEN];
+                size_t index = 0;
+                for (ssize_t j = i - 1; 0 <= j; --j) {
+                    Long_dir_entry* long_entry = &long_dentry_table[j];
+                    if (long_entry->checksum != checksum) {
+                        /* Checksum error. */
+                        return 0;
+                    }
+                    index += ucs2_to_ascii(long_entry->name0, file_name + index, 10);
+                    index += ucs2_to_ascii(long_entry->name1, file_name + index, 12);
+                    index += ucs2_to_ascii(long_entry->name2, file_name + index, 4);
+                }
+
+                if (strcmp(file_name, name) == 0) {
+                    /* Found file. */
+                    is_finish = true;
+                    found_cluster = (uint32_t)((short_entry->first_clus_num_hi << 16) | (short_entry->first_clus_num_lo));
+                    break;
+                }
+            }
+        }
+
+        uint32_t new_entry = fat_entry_read(fm, entry);
+        if (is_last_fat_entry(fm, new_entry)) {
+            is_finish = true;
+        }
+    }
+
+    return found_cluster;
+}
+
+
+Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr) {
+    return fat_create_file(fm, parent_dir_cluster, name, attr | DIR_ATTR_DIRECTORY, NULL, 0);
+}
 
 bool is_valid_fsinfo(Fsinfo* fsi) {
     return ((fsi->lead_signature != FSINFO_LEAD_SIG) || (fsi->struct_signature != FSINFO_STRUCT_SIG) || (fsi->trail_signature != FSINFO_TRAIL_SIG)) ? false : true;
@@ -632,4 +770,9 @@ Fat_area* fat_calc_sectors(Bios_param_block const* bpb, Fat_area* fa) {
     fa->data.sec_nr = total_sec - fa->data.begin_sec;
 
     return fa;
+}
+
+
+bool is_lfn(Dir_entry const* de) {
+    return ((de->attr & DIR_ATTR_LONG_NAME_MASK) == DIR_ATTR_LONG_NAME) ? true : false;
 }

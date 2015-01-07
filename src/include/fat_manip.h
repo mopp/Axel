@@ -194,6 +194,7 @@ Fsinfo* fat_fsinfo_access(Fat_manips const*, uint8_t, Fsinfo*);
 uint8_t* fat_data_cluster_access(Fat_manips const*, uint8_t, uint32_t, uint8_t*);
 Fat_area* fat_calc_sectors(Bios_param_block const*, Fat_area*);
 Axel_state_code fat_make_directory(Fat_manips*, uint32_t, char const*, uint8_t);
+Axel_state_code fat_create_file(Fat_manips*, uint32_t, char const*, uint8_t, void*, size_t);
 uint32_t set_last_fat_entry(Fat_manips const*, uint32_t);
 uint32_t alloc_cluster(Fat_manips*);
 uint8_t fat_calc_checksum(Dir_entry const*);
@@ -205,6 +206,8 @@ bool is_bad_clus_fat_entry(Fat_manips const*, uint32_t);
 bool is_valid_data_fat_entry(Fat_manips const*, uint32_t);
 bool is_valid_data_exist_fat_entry(Fat_manips const*, uint32_t);
 bool is_last_fat_entry(Fat_manips const*, uint32_t);
+bool is_lfn(Dir_entry const*);
+uint32_t fat_find_file_cluster(Fat_manips*, uint32_t, char const*);
 
 
 

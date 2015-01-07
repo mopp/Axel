@@ -25,11 +25,6 @@ static inline Axel_state_code access(void* p, uint8_t direction, uint32_t lba, u
 }
 
 
-static inline bool is_lfn(Dir_entry const* de) {
-    return ((de->attr & DIR_ATTR_LONG_NAME) == DIR_ATTR_LONG_NAME) ? true : false;
-}
-
-
 static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) {
     if ((ucs2_len & 0x1) == 1) {
         /* invalid. */

@@ -42,6 +42,8 @@ typedef struct {
     char const* img_path;
     char const* mbr_path;
     char const* loader2_path;
+    char* const* insert_files;
+    size_t insert_file_num;
     unsigned char active_partition;
     Fat_manips manip;
 } Fat_image;
@@ -51,8 +53,9 @@ static int set_options(Fat_image*, int, char* const[]);
 static int create_image(Fat_image*);
 static int load_loader(Fat_image*);
 static int construct_fat(Fat_image*);
+static int insert_files_into_image(Fat_image*, char const*);
 static Axel_state_code block_access(void*, uint8_t, uint32_t, uint8_t, uint8_t*);
-static long get_file_size(char const*);
+static size_t get_file_size(char const*);
 static void* load_file(char const*, void*, size_t);
 static size_t lba_to_byte(size_t);
 
@@ -74,10 +77,11 @@ int main(int argc, char* const argv[]) {
 
 
 static inline int set_options(Fat_image* img, int argc, char* const argv[]) {
-    img->img_path = NULL;
-    img->mbr_path = NULL;
-    img->loader2_path = NULL;
-    img->img_size = 0;
+    memset(&img->manip, 0, sizeof(Fat_manips));
+    img->img_path       = NULL;
+    img->mbr_path       = NULL;
+    img->loader2_path   = NULL;
+    img->img_size       = 0;
     img->manip.fat_type = FAT_TYPE32;
 
     while (1) {
@@ -109,28 +113,28 @@ static inline int set_options(Fat_image* img, int argc, char* const argv[]) {
             case 'v':
             case 'h':
                 puts(
-                    "Fat_image util for Axel.\n"
-                    "Usage: aim [-s IMAGE_SIZE MB] TARGET_FILE_NAME MBR FILE\n"
+                    "FAT filesystem image util for Axel.\n"
+                    "Usage: img_util [-s IMAGE_SIZE MB] TARGET_FILE_NAME MBR FILE\n"
                     "  default values\n"
                     "    IMAGE_SIZE: 32 MB");
                 return EXIT_FAILURE;
         }
     }
 
-    /* Deal with non-option arguments here */
-    for (size_t i = 0; optind < argc; i++, optind++) {
-        char const* t = argv[optind];
-        switch (i) {
-            case 0:
-                img->img_path = t;
-                break;
-            case 1:
-                img->mbr_path = t;
-                break;
-            case 2:
-                img->loader2_path = t;
-                break;
-        }
+    if ((argc - optind) < 3) {
+        error_echo("Too few arguments.\n");
+        return EXIT_FAILURE;
+    }
+
+    /* Deal with non-option arguments. */
+    img->img_path        = argv[optind];
+    img->mbr_path        = argv[optind + 1];
+    img->loader2_path    = argv[optind + 2];
+
+    /* Set remain arguments. */
+    img->insert_file_num = ((size_t)argc - (size_t)optind) - 3u;
+    if (0 < img->insert_file_num) {
+        img->insert_files = &argv[optind + 3];
     }
 
     if (img->img_size == 0) {
@@ -165,6 +169,7 @@ static inline int create_image(Fat_image* img) {
     }
     memset(img->img_buffer, 0, img->img_size * sizeof(char));
 
+    /* Loading boot loaders. */
     if (load_loader(img) != 0) {
         error_echo("Loading boot loader failed\n");
         goto failed;
@@ -176,6 +181,20 @@ static inline int create_image(Fat_image* img) {
     if (construct_fat(img) != 0) {
         error_echo("Setting FAT failed\n");
         goto failed;
+    }
+    puts("Construct FAT filesystem.");
+
+    /* Make "boot" direction in root directory. */
+    char const* dir = "boot";
+    int state = fat_make_directory(&img->manip, img->manip.bpb->fat32.rde_clus_num, dir, DIR_ATTR_READ_ONLY);
+    if (state != AXEL_SUCCESS) {
+        error_echo("Making boot directory failed\n");
+        return EXIT_FAILURE;
+    }
+
+    /* Insert file in arguments. */
+    if (insert_files_into_image(img, dir) != 0) {
+        return EXIT_FAILURE;
     }
 
     FILE* fp = fopen(img->img_path, "w+b");
@@ -198,7 +217,7 @@ static inline int load_loader(Fat_image* img) {
     uint8_t* const buf = img->img_buffer;
 
     /* Check size */
-    long tmp = get_file_size(img->mbr_path);
+    size_t tmp = get_file_size(img->mbr_path);
     if (tmp <= 0) {
         error_echo("Invalid MBR");
         return EXIT_FAILURE;
@@ -232,7 +251,7 @@ static inline int load_loader(Fat_image* img) {
         error_echo("Second loader size is invalid");
         return EXIT_FAILURE;
     }
-    size_t second_loader_size = (size_t)tmp;
+    size_t second_loader_size = tmp;
     r = load_file(img->loader2_path, buf + img_buf_idx, second_loader_size);
     if (r == NULL) {
         return EXIT_FAILURE;
@@ -256,35 +275,36 @@ static inline int load_loader(Fat_image* img) {
 
 
 static inline int construct_fat(Fat_image* img) {
-    Fat_manips* fm = &img->manip;
     Master_boot_record* mbr = img->mbr;
-    Bios_param_block* bpb = (Bios_param_block*)((uintptr_t)img->img_buffer + (lba_to_byte(mbr->p_entry[img->active_partition].lba_first)));
-
-    /* Set manipulator */
-    fm->bpb = bpb;
-    fm->b_access = block_access;
-    fm->alloc = malloc;
-    fm->free = free;
-    fm->obj = img;
 
     /* Setting BIOS Parameter Block */
+    Bios_param_block* bpb = (Bios_param_block*)((uintptr_t)img->img_buffer + (lba_to_byte(mbr->p_entry[img->active_partition].lba_first)));
     memcpy(bpb->oem_name, "AXELMOPP", 8);
     bpb->bytes_per_sec = SECTOR_SIZE;
-    bpb->sec_per_clus = 1;
-    bpb->num_fats = 2;
-    bpb->media = 0xf8;
+    bpb->sec_per_clus  = 1;
+    bpb->num_fats      = 2;
+    bpb->media         = 0xf8;
+
+    /* Init manipulator */
+    Fat_manips* fm = &img->manip;
+    fm->bpb              = bpb;
+    fm->b_access         = block_access;
+    fm->alloc            = malloc;
+    fm->free             = free;
+    fm->obj              = img;
+    fm->byte_per_cluster = bpb->sec_per_clus * bpb->bytes_per_sec;
 
     if (img->manip.fat_type == FAT_TYPE32) {
-        bpb->root_ent_cnt = 0;
-        bpb->total_sec16 = 0;
-        bpb->fat_size16 = 0;
+        bpb->root_ent_cnt      = 0;
+        bpb->total_sec16       = 0;
+        bpb->fat_size16        = 0;
         bpb->rsvd_area_sec_num = 4;
-        bpb->total_sec32 = mbr->p_entry[img->active_partition].sector_nr;
+        bpb->total_sec32       = mbr->p_entry[img->active_partition].sector_nr;
 
         /* Calculate the number of cluster. */
-        size_t spc = bpb->sec_per_clus;
-        size_t sectors = bpb->total_sec32 - bpb->rsvd_area_sec_num;
-        size_t fat_entry_nr = (sectors / spc);
+        size_t spc                = bpb->sec_per_clus;
+        size_t sectors            = bpb->total_sec32 - bpb->rsvd_area_sec_num;
+        size_t fat_entry_nr       = (sectors / spc);
         size_t all_fat_entry_size = ALIGN_UP(fat_entry_nr * 4u, SECTOR_SIZE);
 
         /* Assume FAT area size. */
@@ -299,17 +319,17 @@ static inline int construct_fat(Fat_image* img) {
 
         fat_calc_sectors(bpb, &fm->area);
 
-        printf("fat size: %d\n", bpb->fat32.fat_size32);
-        printf("fat entries %d\n", bpb->fat32.fat_size32 * SECTOR_SIZE / 4);
-        printf("Total cluster %d\n", bpb->total_sec32);
-        printf("rsvd begin   : %5d\n", fm->area.rsvd.begin_sec);
-        printf("rsvd    nr   : %5d\n", fm->area.rsvd.sec_nr);
-        printf("fat  begin   : %5d\n", fm->area.fat.begin_sec);
-        printf("fat     nr   : %5d\n", fm->area.fat.sec_nr);
-        printf("rdentry begin: %5d\n", fm->area.rdentry.begin_sec);
-        printf("rdentry    nr: %5d\n", fm->area.rdentry.sec_nr);
-        printf("data begin   : %5d\n", fm->area.data.begin_sec);
-        printf("data    nr   : %5d\n", fm->area.data.sec_nr);
+        // printf("fat size: %d\n", bpb->fat32.fat_size32);
+        // printf("fat entries %d\n", bpb->fat32.fat_size32 * SECTOR_SIZE / 4);
+        // printf("Total cluster %d\n", bpb->total_sec32);
+        // printf("rsvd begin   : %5d\n", fm->area.rsvd.begin_sec);
+        // printf("rsvd    nr   : %5d\n", fm->area.rsvd.sec_nr);
+        // printf("fat  begin   : %5d\n", fm->area.fat.begin_sec);
+        // printf("fat     nr   : %5d\n", fm->area.fat.sec_nr);
+        // printf("rdentry begin: %5d\n", fm->area.rdentry.begin_sec);
+        // printf("rdentry    nr: %5d\n", fm->area.rdentry.sec_nr);
+        // printf("data begin   : %5d\n", fm->area.data.begin_sec);
+        // printf("data    nr   : %5d\n", fm->area.data.sec_nr);
 
         /* Init FAT[0] and FAT[1]. */
         uint32_t fat_entry = 0xFFFFFF00 | bpb->media;
@@ -318,30 +338,41 @@ static inline int construct_fat(Fat_image* img) {
         fat_entry_access(fm, FILE_WRITE, 1, fat_entry);
 
         /* Init FSINFO structure. */
-        fm->fsinfo->lead_signature = FSINFO_LEAD_SIG;
+        fm->fsinfo->lead_signature   = FSINFO_LEAD_SIG;
         fm->fsinfo->struct_signature = FSINFO_STRUCT_SIG;
-        fm->fsinfo->free_cnt = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus) - 1; /* -1 for root directory entry. */
-        fm->fsinfo->next_free = 2;                                                       /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
-        fm->fsinfo->trail_signature = FSINFO_TRAIL_SIG;
+        fm->fsinfo->free_cnt         = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus) - 1; /* -1 for root directory entry. */
+        fm->fsinfo->next_free        = 2;                                                       /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
+        fm->fsinfo->trail_signature  = FSINFO_TRAIL_SIG;
         fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
-        printf("fsinfo free_cnt: %d\n", fm->fsinfo->free_cnt);
 
         /* Init root directory */
-        uint32_t rood_dir_cluster_num = bpb->fat32.rde_clus_num;
-        set_last_fat_entry(fm, rood_dir_cluster_num);
-        printf("Root dir entry cluster: %d\n", rood_dir_cluster_num);
-        int r = fat_make_directory(fm, rood_dir_cluster_num, "bin", DIR_ATTR_READ_ONLY);
-        if (r != AXEL_SUCCESS) {
-            printf("make dir failed\n");
-        } else {
-            printf("make dir success\n");
-        }
+        set_last_fat_entry(fm, bpb->fat32.rde_clus_num);
     } else if (img->manip.fat_type == FAT_TYPE16) {
         bpb->rsvd_area_sec_num = 1;
         /* TODO: */
     } else {
         bpb->rsvd_area_sec_num = 1;
         /* TODO: */
+    }
+
+    return 0;
+}
+
+
+static inline int insert_files_into_image(Fat_image* img, char const* base_dir_name) {
+    /* Find directory that are inserted files. */
+    uint32_t dir_cluster = fat_find_file_cluster(&img->manip, img->manip.bpb->fat32.rde_clus_num, base_dir_name);
+    if (dir_cluster == 0) {
+        return EXIT_FAILURE;
+    }
+
+    for (size_t i = 0; i < img->insert_file_num; i++) {
+        char* filename = img->insert_files[i];
+        size_t file_size = get_file_size(filename);
+        void* buffer = malloc(file_size);
+        load_file(filename, buffer, file_size);
+        fat_create_file(&img->manip, dir_cluster, filename, DIR_ATTR_READ_ONLY | DIR_ATTR_ARCHIVE, buffer, file_size);
+        free(buffer);
     }
 
     return 0;
@@ -369,7 +400,7 @@ static inline Axel_state_code block_access(void* p, uint8_t direction, uint32_t 
 }
 
 
-static inline long get_file_size(char const* fname) {
+static inline size_t get_file_size(char const* fname) {
     FILE* fp = fopen(fname, "rb");
     if (fp == NULL) {
         return 0;
@@ -380,7 +411,7 @@ static inline long get_file_size(char const* fname) {
 
     fclose(fp);
 
-    return s;
+    return (size_t)s;
 }
 
 

@@ -4,13 +4,14 @@ IMG_PROG     := img_util
 IMG_NAME     := disk.img
 MBR_FILE     := loader1
 LOADER2_FILE := loader1
+OS_EXE_FILE  := axel.bin
 
 $(IMG_PROG): $(IMG_SRC) $(C_DEPS)
-	clang -D FOR_IMG_UTIL $(C_DEPS) $(IMG_SRC) -o $(IMG_PROG)
+	clang -Wall -O2 -D FOR_IMG_UTIL $(C_DEPS) $(IMG_SRC) -o $(IMG_PROG)
 
 .PHONY: run
 run: $(IMG_PROG)
-	./$(IMG_PROG) $(IMG_NAME) $(MBR_FILE) $(LOADER2_FILE)
+	./$(IMG_PROG) $(IMG_NAME) $(MBR_FILE) $(LOADER2_FILE) $(OS_EXE_FILE)
 
 .PHONY: check
 check:
