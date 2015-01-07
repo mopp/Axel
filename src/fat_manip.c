@@ -240,7 +240,7 @@ static inline void set_long_file_name(uint8_t* dst_p, char const** src_p, char c
             if (*padding_flag == true) {
                 dst[j] = 0xFFFF;
             } else {
-                /* set terminal. */
+                /* Set terminal as null character. */
                 dst[j] = 0;
                 *padding_flag = true;
             }
@@ -249,6 +249,7 @@ static inline void set_long_file_name(uint8_t* dst_p, char const** src_p, char c
             dst[j] = ((*src++) & 0x00FF);
         }
     }
+    *src_p = src;
 }
 
 
@@ -357,8 +358,6 @@ static inline char* create_short_file_name(char const* name, char* sfn_buffer) {
         }
     }
 
-    sfn_buffer[sfn_copy_cnt] = '\0';
-
     return sfn_buffer;
 }
 
@@ -384,7 +383,7 @@ static inline void set_fat_date(uint16_t* date) {
     uint16_t tmp = 0;
     tmp |= (0x001F & (t_st->tm_mday));
     tmp |= (0x01E0 & ((t_st->tm_mon + 1) << 5));
-    tmp |= (0xFE00 & ((t_st->tm_year + 1900 - 1980) << 11)); /* Base of tm_year is 1900. However, Base of FAT date is 1980. */
+    tmp |= (0xFE00 & ((t_st->tm_year + 1900 - 1980) << 9)); /* Base of tm_year is 1900. However, Base of FAT date is 1980. */
     *date = tmp;
 }
 
@@ -431,7 +430,7 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
     uint32_t new_short_entry_cluster = alloc_cluster(fm);
     set_last_fat_entry(fm, new_short_entry_cluster);
 #ifdef FOR_IMG_UTIL
-    init_short_dir_entry(&new_short_entry, new_short_entry_cluster, attr);
+    init_short_dir_entry(&new_short_entry, new_short_entry_cluster, DIR_ATTR_DIRECTORY);
     create_short_file_name(name, (char*)new_short_entry.name);
 #endif
 
@@ -474,7 +473,7 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
     Dir_entry* short_dentry_table;
     size_t const max_entry_index = fm->byte_per_cluster / sizeof(Dir_entry);
     size_t const request_entry_num = long_dir_entry_nr + 1; /* " + 1" means that adding short directory entry. */
-    size_t entry_start_index = 0;
+    size_t free_entry_start_index = 0;
     uint32_t cluster_number;
     uint32_t fat_entry = parent_dir_cluster_number;
     while (break_flag == false) {
@@ -487,6 +486,7 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
         }
 
         if (is_last_fat_entry(fm, fat_entry) == true) {
+            /* FIXME: alloc new cluster. */
             break_flag = true;
         }
 
@@ -505,7 +505,7 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
             if (signature == DIR_FREE) {
                 ++unused_entry_count;
                 if (unused_entry_count == request_entry_num) {
-                    entry_start_index = i;
+                    free_entry_start_index = i;
                     break_flag = true;
                     break;
                 }
@@ -513,7 +513,7 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
                 /* This signature indicates that all remain entry is free. */
                 size_t remain_free_entry = max_entry_index - i;
                 if (request_entry_num <= (unused_entry_count + remain_free_entry)) {
-                    entry_start_index = i + (request_entry_num - unused_entry_count);
+                    free_entry_start_index = i + (request_entry_num - unused_entry_count);
                     break_flag = true;
                     break;
                 }
@@ -521,31 +521,34 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster_n
         }
     }
 
-    /* Write new entries. */
-    short_dentry_table[entry_start_index] = new_short_entry;
-    memcpy(&buffer[entry_start_index - 1 - long_dir_entry_nr], new_long_entries, sizeof(Long_dir_entry) * long_dir_entry_nr);
+    /*
+     * Write short and long entries.
+     * First, long entries are written by descending order.
+     * Next, short entry are written.
+     */
+    for (size_t i = long_dir_entry_nr; 0 < i; i--) {
+        *((Long_dir_entry*)&buffer[(sizeof(Long_dir_entry)) * (free_entry_start_index - i)]) = new_long_entries[i - 1];
+    }
+    short_dentry_table[free_entry_start_index] = new_short_entry;
     fat_data_cluster_access(fm, FILE_WRITE, cluster_number, buffer);
 
     /*
-     * Create dot entries ("." and "..")
+     * Create dot entries (".",  ".." and terminal entry) in new directory.
      * New directory should have these entry at head of its directory entry.
      */
-    Dir_entry dot_entry[2];
+    Dir_entry dot_entry[3];
 #ifdef FOR_IMG_UTIL
     init_short_dir_entry(&dot_entry[0], new_short_entry_cluster, DIR_ATTR_DIRECTORY);
     uint32_t root_cluster = (fm->fat_type == FAT_TYPE32) ? (fm->bpb->fat32.rde_clus_num) : (0);
     init_short_dir_entry(&dot_entry[1], ((root_cluster == parent_dir_cluster_number) ? 0 : parent_dir_cluster_number), DIR_ATTR_DIRECTORY);
 #endif
-    dot_entry[0].name[0] = '.';
-    dot_entry[0].name[1] = '\0';
-
-    dot_entry[1].name[0] = '.';
-    dot_entry[1].name[1] = '.';
-    dot_entry[1].name[2] = '\0';
+    memcpy(dot_entry[0].name, ".          ", 11);
+    memcpy(dot_entry[1].name, "..         ", 11);
+    dot_entry[2].name[0] = DIR_LAST_FREE;
 
     /* Write two entries into directory entry of new directory. */
     clear_clus_buf(fm, buffer);
-    memcpy(buffer, dot_entry, sizeof(Dir_entry) * 2);
+    memcpy(buffer, dot_entry, sizeof(Dir_entry) * 3);
     void* result = fat_data_cluster_access(fm, FILE_WRITE, new_short_entry_cluster, buffer);
     if (result == NULL) {
         fm->free(buffer);
