@@ -25,25 +25,6 @@ static inline Axel_state_code access(void* p, uint8_t direction, uint32_t lba, u
 }
 
 
-static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) {
-    if ((ucs2_len & 0x1) == 1) {
-        /* invalid. */
-        return 0;
-    }
-
-    size_t cnt = 0;
-    for (size_t i = 0; i < ucs2_len; i++) {
-        uint8_t c = ucs2[i];
-        if ((0 < c) && (c < 127)) {
-            ascii[cnt++] = (char)ucs2[i];
-        }
-    }
-    ascii[cnt] = '\0';
-
-    return cnt;
-}
-
-
 static inline Fat_file* read_directory(Fat_file* ff) {
     if (ff->super.state_load == 1) {
         /* Already loaded. */
@@ -126,16 +107,14 @@ static inline Fat_file* read_directory(Fat_file* ff) {
             if (is_lfn(&de[i - 1]) == true) {
                 /* There are LFN before SFN. */
                 uint32_t j = i - 1;
-                size_t char_num = 0;
+                size_t index = 0;
                 do {
                     if (checksum != lde[j].checksum) {
                         is_error = true;
                         break;
                     }
-                    char_num += ucs2_to_ascii(lde[j].name0, name + char_num, 10);
-                    char_num += ucs2_to_ascii(lde[j].name1, name + char_num, 12);
-                    char_num += ucs2_to_ascii(lde[j].name2, name + char_num, 4);
-                } while (j != 0 && (lde[j--].order & LFN_LAST_ENTRY_FLAG) == 0 && char_num < 102);
+                    fat_get_long_dir_name(&lde[j], name, &index);
+                } while (j != 0 && (lde[j--].order & LFN_LAST_ENTRY_FLAG) == 0 && index < 102);
             } else {
                 /* SFN stand alone. */
                 memcpy(name, entry->name, 11);

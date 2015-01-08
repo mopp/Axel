@@ -208,6 +208,7 @@ bool is_valid_data_exist_fat_entry(Fat_manips const*, uint32_t);
 bool is_last_fat_entry(Fat_manips const*, uint32_t);
 bool is_lfn(Dir_entry const*);
 uint32_t fat_find_file_cluster(Fat_manips*, uint32_t, char const*);
+char* fat_get_long_dir_name(Long_dir_entry*, char*, size_t*);
 
 
 

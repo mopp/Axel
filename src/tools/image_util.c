@@ -192,8 +192,9 @@ static inline int create_image(Fat_image* img) {
         return EXIT_FAILURE;
     }
 
-    /* Insert file in arguments. */
+    /* Insert files in arguments. */
     if (insert_files_into_image(img, dir) != 0) {
+        error_echo("Inserting files failed\n");
         return EXIT_FAILURE;
     }
 
@@ -371,8 +372,16 @@ static inline int insert_files_into_image(Fat_image* img, char const* base_dir_n
         size_t file_size = get_file_size(filename);
         void* buffer = malloc(file_size);
         load_file(filename, buffer, file_size);
-        fat_create_file(&img->manip, dir_cluster, filename, DIR_ATTR_READ_ONLY | DIR_ATTR_ARCHIVE, buffer, file_size);
+        Axel_state_code r = fat_create_file(&img->manip, dir_cluster, filename, DIR_ATTR_READ_ONLY | DIR_ATTR_ARCHIVE, buffer, file_size);
         free(buffer);
+
+        printf("\tFile: %s\n", filename);
+        printf("\tSize: %zu\n", file_size);
+        if (r == AXEL_SUCCESS) {
+            puts("\tInsert Success");
+        } else {
+            error_echo("\tInsert Failed");
+        }
     }
 
     return 0;

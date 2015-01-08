@@ -7,7 +7,7 @@
 
 
 
-/* this is used in img_util */
+/* This is used in img_util */
 #include <string.h>
 #include <time.h>
 #include <stdio.h>
@@ -19,7 +19,7 @@
 
 
 
-/* this is used in Axel */
+/* This is used in Axel */
 #include <utils.h>
 
 
@@ -259,6 +259,33 @@ uint8_t fat_calc_checksum(Dir_entry const* entry) {
 }
 
 
+static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) {
+    if ((ucs2_len & 0x1) == 1) {
+        /* invalid. */
+        return 0;
+    }
+
+    size_t cnt = 0;
+    for (size_t i = 0; i < ucs2_len; i++) {
+        uint8_t c = ucs2[i];
+        if ((0 < c) && (c < 127)) {
+            ascii[cnt++] = (char)ucs2[i];
+        }
+    }
+    ascii[cnt] = '\0';
+
+    return cnt;
+}
+
+
+char* fat_get_long_dir_name(Long_dir_entry* long_entry, char* buffer, size_t* index) {
+    *index += ucs2_to_ascii(long_entry->name0, buffer + *index, 10);
+    *index += ucs2_to_ascii(long_entry->name1, buffer + *index, 12);
+    *index += ucs2_to_ascii(long_entry->name2, buffer + *index, 4);
+    return buffer;
+}
+
+
 static inline bool is_83_format(char const* name) {
     if (12 <= strlen(name)) {
         return false;
@@ -357,7 +384,7 @@ static inline char* create_short_file_name(char const* name, char* sfn_buffer) {
 }
 
 
-static void set_fat_time(uint16_t* fat_time) {
+static inline void set_fat_time(uint16_t* fat_time) {
     time_t current_time = time(NULL);
     struct tm const *t_st = localtime(&current_time);
 
@@ -399,14 +426,16 @@ static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_clu
 
 
 /**
- * @brief Create new directory
- * @param  attr
- * @param  name
- * @param  parent_dir_cluster If parend directory is root directory in FAT16/12, It should be 0.
+ * @brief
  * @param  fm
+ * @param  parent_dir_cluster If parend directory is root directory in FAT16/12, It should be 0.
+ * @param  name File name
+ * @param  attr File attribute
+ * @param  file_content
+ * @param  file_size
  * @return
  */
-Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr, void* file_content, size_t file_size) {
+Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr, void* file_content, size_t const file_size) {
     size_t name_len = strlen(name);
     if (fm->fat_type == FAT_TYPE32) {
         if (FAT_FILE_MAX_NAME_LEN < name_len) {
@@ -532,7 +561,7 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
     short_dentry_table[free_entry_start_index] = new_short_entry;
     fat_data_cluster_access(fm, FILE_WRITE, cluster_number, buffer);
 
-    if ((attr & DIR_ATTR_ARCHIVE) != 0) {
+    if ((attr & DIR_ATTR_ARCHIVE) == 0) {
         /*
          * New entry is directory.
          * Create dot entries (".",  ".." and terminal entry) in new directory.
@@ -608,25 +637,6 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
 }
 
 
-static inline size_t ucs2_to_ascii(uint8_t* ucs2, char* ascii, size_t ucs2_len) {
-    if ((ucs2_len & 0x1) == 1) {
-        /* invalid. */
-        return 0;
-    }
-
-    size_t cnt = 0;
-    for (size_t i = 0; i < ucs2_len; i++) {
-        uint8_t c = ucs2[i];
-        if ((0 < c) && (c < 127)) {
-            ascii[cnt++] = (char)ucs2[i];
-        }
-    }
-    ascii[cnt] = '\0';
-
-    return cnt;
-}
-
-
 uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const* name) {
     if (is_valid_data_exist_fat_entry(fm, dir_cluster) == false) {
         return 0;
@@ -663,15 +673,13 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
                 /* Check long entries. */
                 char file_name[FAT_FILE_MAX_NAME_LEN];
                 size_t index = 0;
-                for (ssize_t j = i - 1; 0 <= j; --j) {
-                    Long_dir_entry* long_entry = &long_dentry_table[j];
+                for (size_t j = i; 0 < j; --j) {
+                    Long_dir_entry* long_entry = &long_dentry_table[j - 1];
                     if (long_entry->checksum != checksum) {
                         /* Checksum error. */
                         return 0;
                     }
-                    index += ucs2_to_ascii(long_entry->name0, file_name + index, 10);
-                    index += ucs2_to_ascii(long_entry->name1, file_name + index, 12);
-                    index += ucs2_to_ascii(long_entry->name2, file_name + index, 4);
+                    fat_get_long_dir_name(long_entry, file_name, &index);
                 }
 
                 if (strcmp(file_name, name) == 0) {
@@ -696,6 +704,7 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
 Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr) {
     return fat_create_file(fm, parent_dir_cluster, name, attr | DIR_ATTR_DIRECTORY, NULL, 0);
 }
+
 
 bool is_valid_fsinfo(Fsinfo* fsi) {
     return ((fsi->lead_signature != FSINFO_LEAD_SIG) || (fsi->struct_signature != FSINFO_STRUCT_SIG) || (fsi->trail_signature != FSINFO_TRAIL_SIG)) ? false : true;
