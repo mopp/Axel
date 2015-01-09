@@ -763,14 +763,14 @@ bool is_last_fat_entry(Fat_manips const* fm, uint32_t fe) {
 
 Fat_area* fat_calc_sectors(Bios_param_block const* bpb, Fat_area* fa) {
     /* These are logical sector number. */
-    uint32_t fat_size = (bpb->fat_size16 != 0) ? (bpb->fat_size16) : (bpb->fat32.fat_size32);
+    uint32_t fat_sector_size = (bpb->fat_sector_size16 != 0) ? (bpb->fat_sector_size16) : (bpb->fat32.fat_sector_size32);
     uint32_t total_sec = (bpb->total_sec16 != 0) ? (bpb->total_sec16) : (bpb->total_sec32);
 
     fa->rsvd.begin_sec = 0;
     fa->rsvd.sec_nr = bpb->rsvd_area_sec_num;
 
     fa->fat.begin_sec = fa->rsvd.begin_sec + fa->rsvd.sec_nr;
-    fa->fat.sec_nr = fat_size * bpb->fat_area_num;
+    fa->fat.sec_nr = fat_sector_size * bpb->fat_area_num;
 
     fa->rdentry.begin_sec = fa->fat.begin_sec + fa->fat.sec_nr;
     fa->rdentry.sec_nr = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;

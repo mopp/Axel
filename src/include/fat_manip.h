@@ -26,11 +26,11 @@ struct bios_param_block {
     uint16_t bytes_per_sec;     /* byte size of one sector. */
     uint8_t sec_per_clus;       /* The number of sector per cluster, this is power of 2. */
     uint16_t rsvd_area_sec_num; /* The number of sector of reserved area sector  */
-    uint8_t fat_area_num;           /* The number of FAT. */
-    uint16_t root_ent_cnt;      /* This is only used by FAT12 or FAT16. */
-    uint16_t total_sec16;       /* This is only used by FAT12 or FAT16. */
-    uint8_t media;              /* This is not used. */
-    uint16_t fat_size16;        /* This is only used by FAT12 or FAT16. */
+    uint8_t fat_area_num;       /* The number of FAT. */
+    uint16_t root_ent_cnt;      /* [FAT12/16] The number of directory entries in root directory table. */
+    uint16_t total_sec16;       /* [FAT12/16] The number of total sector in a partition. */
+    uint8_t media;              /* Media type setting. */
+    uint16_t fat_sector_size16; /* [FAT12/16] The number of sectors are used by one FAT area. */
     uint16_t sec_per_trk;       /* The number of sector of a track. */
     uint16_t num_heads;         /* The number of head. */
     uint32_t hidd_sec;          /* The number of physical sector that is located on before this volume. */
@@ -45,7 +45,7 @@ struct bios_param_block {
             uint8_t fs_type[8];
         } fat16;
         struct {
-            uint16_t fat_size32; /* The number of sector of one FAT. */
+            uint16_t fat_sector_size32; /* The number of sectors are used by one FAT area. */
             union {
                 uint16_t ext_flags;
                 struct {
@@ -190,7 +190,7 @@ enum {
     FAT32_MIN_CLUSTER_SIZE    = 65525,
 };
 
-#define GET_VALUE_BY_FAT_TYPE(type, fat12, fat16, fat32) ((type) == FAT_TYPE12) ? (fat12) : (((type) == FAT_TYPE16) ? (fat16) : (((type) == FAT_TYPE32) ? (fat32) : (0)))
+#define GET_VALUE_BY_FAT_TYPE(type, fat12, fat16, fat32) (((type) == FAT_TYPE12) ? (fat12) : (((type) == FAT_TYPE16) ? (fat16) : (((type) == FAT_TYPE32) ? (fat32) : (0))))
 
 uint32_t fat_entry_access(Fat_manips const*, uint8_t, uint32_t, uint32_t);
 uint32_t fat_entry_write(Fat_manips const*, uint32_t, uint32_t);
