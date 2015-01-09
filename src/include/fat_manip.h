@@ -26,7 +26,7 @@ struct bios_param_block {
     uint16_t bytes_per_sec;     /* byte size of one sector. */
     uint8_t sec_per_clus;       /* The number of sector per cluster, this is power of 2. */
     uint16_t rsvd_area_sec_num; /* The number of sector of reserved area sector  */
-    uint8_t num_fats;           /* The number of FAT. */
+    uint8_t fat_area_num;           /* The number of FAT. */
     uint16_t root_ent_cnt;      /* This is only used by FAT12 or FAT16. */
     uint16_t total_sec16;       /* This is only used by FAT12 or FAT16. */
     uint8_t media;              /* This is not used. */
@@ -184,8 +184,13 @@ enum {
     FAT_TYPE12                = 12,
     FAT_TYPE16                = 16,
     FAT_TYPE32                = 32,
+    FAT12_MAX_CLUSTER_SIZE    = 4084, /* FAT type must be determined by the number of cluster. */
+    FAT16_MIN_CLUSTER_SIZE    = 4085,
+    FAT16_MAX_CLUSTER_SIZE    = 65524,
+    FAT32_MIN_CLUSTER_SIZE    = 65525,
 };
 
+#define GET_VALUE_BY_FAT_TYPE(type, fat12, fat16, fat32) ((type) == FAT_TYPE12) ? (fat12) : (((type) == FAT_TYPE16) ? (fat16) : (((type) == FAT_TYPE32) ? (fat32) : (0)))
 
 uint32_t fat_entry_access(Fat_manips const*, uint8_t, uint32_t, uint32_t);
 uint32_t fat_entry_write(Fat_manips const*, uint32_t, uint32_t);

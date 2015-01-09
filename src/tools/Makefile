@@ -7,15 +7,15 @@ LOADER2_FILE := loader1
 OS_EXE_FILE  := axel.bin
 
 $(IMG_PROG): $(IMG_SRC) $(C_DEPS)
-	clang -Wall -O2 -D FOR_IMG_UTIL $(C_DEPS) $(IMG_SRC) -o $(IMG_PROG)
+	clang -std=c11 -Wall -O2 -D FOR_IMG_UTIL $(C_DEPS) $(IMG_SRC) -o $(IMG_PROG)
 
 .PHONY: run
 run: $(IMG_PROG)
-	./$(IMG_PROG) $(IMG_NAME) $(MBR_FILE) $(LOADER2_FILE) $(OS_EXE_FILE)
+	./$(IMG_PROG) -f 32 -t $(IMG_NAME) -m $(MBR_FILE) -l $(LOADER2_FILE) $(OS_EXE_FILE)
 
 .PHONY: check
 check:
-	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=67580
+	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=66553
 	fsck.fat -v -n tmp
 
 .PHONY: mount

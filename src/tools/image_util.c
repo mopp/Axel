@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <assert.h>
 #include "../include/fat.h"
 #include "../include/fat_manip.h"
 #include "../include/macros.h"
@@ -31,29 +32,38 @@
 
 
 enum {
-    SECTOR_SIZE = 512,
+    FAT_AREA_NUM              = 2,
+    BYTE_PER_SECTOR           = 512,
+    SECTOR_PER_CLUSTER        = 1,
+    BYTE_PER_CLUSTER          = BYTE_PER_SECTOR * SECTOR_PER_CLUSTER,
+    RESERVED_AREA_SECTOR_SIZE = 4,
+    ROOT_DIR_TABLE_ENTRY_NUM  = 64,
 };
+/* ROOT_DIR_TABLE_ENTRY_NUM should be an even multiple of BYTE_PER_SECTOR. */
+_Static_assert((ROOT_DIR_TABLE_ENTRY_NUM * 32) % BYTE_PER_SECTOR == 0, "ROOT_DIR_TABLE_ENTRY_NUM is invalid.");
 
 
 typedef struct {
     uint8_t* img_buffer;
     size_t img_size;
-    Master_boot_record* mbr;
     char const* img_path;
     char const* mbr_path;
     char const* loader2_path;
-    char* const* insert_files;
-    size_t insert_file_num;
-    unsigned char active_partition;
+    char* const* embedded_files;
+    size_t embedded_file_num;
+    Master_boot_record* mbr;
+    uint8_t active_partition;
     Fat_manips manip;
 } Fat_image;
 
+typedef int(*Worker_function)(void*, void*);
 
 static int set_options(Fat_image*, int, char* const[]);
-static int create_image(Fat_image*);
-static int load_loader(Fat_image*);
+static int malloc_work_wrapper(size_t, Worker_function, void*);
+static int create_image(void*, void*);
+static int set_partition_loader(Fat_image*);
 static int construct_fat(Fat_image*);
-static int insert_files_into_image(Fat_image*, char const*);
+static int embedded_files_into_image(Fat_image*, char const*);
 static Axel_state_code block_access(void*, uint8_t, uint32_t, uint8_t, uint8_t*);
 static size_t get_file_size(char const*);
 static void* load_file(char const*, void*, size_t);
@@ -62,30 +72,29 @@ static size_t lba_to_byte(size_t);
 
 int main(int argc, char* const argv[]) {
     Fat_image img;
+    memset(&img, 0, sizeof(Fat_image));
     if (set_options(&img, argc, argv) != 0) {
         return EXIT_FAILURE;
     }
 
-    if (create_image(&img) == 0) {
-        puts("Create image succeed");
+    if (malloc_work_wrapper(img.img_size, create_image, &img) == 0) {
+        puts("Create image succeed.");
         return 0;
     } else {
-        puts("Create image failed");
+        error_echo("Create image failed.");
         return EXIT_FAILURE;
     }
 }
 
 
 static inline int set_options(Fat_image* img, int argc, char* const argv[]) {
-    memset(&img->manip, 0, sizeof(Fat_manips));
     img->img_path       = NULL;
     img->mbr_path       = NULL;
     img->loader2_path   = NULL;
-    img->img_size       = 0;
-    img->manip.fat_type = FAT_TYPE32;
+    img->manip.fat_type = FAT_TYPE12;
 
     while (1) {
-        int opt = getopt(argc, argv, "hvs:");
+        int opt = getopt(argc, argv, "hvs:f:m:l:t:");
 
         if (opt == -1) {
             /* getopt() returns -1 when all command line options are parsed. */
@@ -97,90 +106,144 @@ static inline int set_options(Fat_image* img, int argc, char* const argv[]) {
             case 's':
                 t = atoi(optarg);
                 if (t <= 0) {
-                    error_msg("Size is invalid: %d", t);
+                    error_msg("Size is invalid: %d\n", t);
                     return EXIT_FAILURE;
                 }
                 img->img_size = (size_t)t;
                 break;
             case 'f':
                 t = atoi(optarg);
-                if ((t != 12) && (t != 16) && (t != 32)) {
-                    error_msg("Invalid FAT type: %d", t);
-                    return EXIT_FAILURE;
+                switch (t) {
+                    case 12:
+                        img->manip.fat_type = FAT_TYPE12;
+                        break;
+                    case 16:
+                        img->manip.fat_type = FAT_TYPE16;
+                        break;
+                    case 32:
+                        img->manip.fat_type = FAT_TYPE32;
+                        break;
+                    default:
+                        error_msg("Invalid FAT type: %d\n", t);
+                        return EXIT_FAILURE;
                 }
-                img->manip.fat_type = (unsigned char)t;
+                break;
+            case 't':
+                img->img_path = optarg;
+                break;
+            case 'm':
+                img->mbr_path = optarg;
+                break;
+            case 'l':
+                img->loader2_path = optarg;
                 break;
             case 'v':
             case 'h':
-                puts(
-                    "FAT filesystem image util for Axel.\n"
-                    "Usage: img_util [-s IMAGE_SIZE MB] TARGET_FILE_NAME MBR FILE\n"
-                    "  default values\n"
-                    "    IMAGE_SIZE: 32 MB");
+                puts("FAT filesystem image util for Axel.\n"
+                        "Usage: img_util [-s IMAGE_SIZE MB] [-f FAT_TYPE] -t TARGET_IMAGE_FILE -m MBR -l LOADER2 [EMBEDDED_FILES...]");
                 return EXIT_FAILURE;
         }
     }
 
-    if ((argc - optind) < 3) {
-        error_echo("Too few arguments.\n");
-        return EXIT_FAILURE;
-    }
-
-    /* Deal with non-option arguments. */
-    img->img_path        = argv[optind];
-    img->mbr_path        = argv[optind + 1];
-    img->loader2_path    = argv[optind + 2];
-
-    /* Set remain arguments. */
-    img->insert_file_num = ((size_t)argc - (size_t)optind) - 3u;
-    if (0 < img->insert_file_num) {
-        img->insert_files = &argv[optind + 3];
-    }
-
-    if (img->img_size == 0) {
-        img->img_size = 33 * 1024 * 1024;
-    }
-    img->img_size = ALIGN_UP(img->img_size, SECTOR_SIZE);
-
+    /* Check necessary arguments. */
     if (img->img_path == NULL) {
-        error_echo("Please input target file path\n");
+        error_echo("Please input target image file path.\n");
         return EXIT_FAILURE;
     }
 
     if (img->mbr_path == NULL) {
-        error_echo("Please input MBR file path\n");
+        error_echo("Please input MBR file path.\n");
         return EXIT_FAILURE;
     }
 
     if (img->loader2_path == NULL) {
-        error_echo("Please input second loader file path\n");
+        error_echo("Please input second loader file path.\n");
         return EXIT_FAILURE;
+    }
+
+    /*
+     * Calculate minimum disk image size for each FAT type.
+     * FAT12 - Set floppy image size.
+     * FAT16 - Set minimum FAT16 image size.
+     * FAT32 - Set minimum FAT32 image size.
+     */
+    size_t min_image_size;
+    if (img->manip.fat_type == FAT_TYPE12) {
+        min_image_size = 1440 * 1024;
+    } else {
+        /* MBR + loader2 + Reserved area. */
+        min_image_size = BYTE_PER_SECTOR + get_file_size(img->loader2_path) + (RESERVED_AREA_SECTOR_SIZE * BYTE_PER_SECTOR);
+        if (img->manip.fat_type == FAT_TYPE16) {
+            /* Adding FAT entry area and root directory entry. */
+            min_image_size += (FAT16_MIN_CLUSTER_SIZE * BYTE_PER_CLUSTER) + (2 * FAT16_MIN_CLUSTER_SIZE * FAT_AREA_NUM) + (ROOT_DIR_TABLE_ENTRY_NUM * 32);
+        } else {
+            /* Adding FAT entry area. */
+            min_image_size += (FAT32_MIN_CLUSTER_SIZE * BYTE_PER_CLUSTER) + (4 * FAT32_MIN_CLUSTER_SIZE * FAT_AREA_NUM);
+        }
+
+        min_image_size = ALIGN_UP(min_image_size, BYTE_PER_SECTOR);
+    }
+
+    /* Check image size. */
+    if (img->img_size == 0) {
+        img->img_size = min_image_size;
+    } else {
+        /* Validation FAT image size. */
+        img->img_size = ALIGN_UP(img->img_size, BYTE_PER_SECTOR);
+        if (img->img_size < min_image_size) {
+            error_msg("Image size(%zu) is too small.\n", img->img_size);
+            return EXIT_FAILURE;
+        }
+    }
+
+    assert(ALIGN_UP(img->img_size, BYTE_PER_SECTOR) == img->img_size);
+    printf("Image size: %zu KB\n", img->img_size / 1024);
+
+    /* Set embedded files */
+    img->embedded_file_num = ((size_t)argc - (size_t)optind);
+    if (0 < img->embedded_file_num) {
+        img->embedded_files = &argv[optind];
     }
 
     return 0;
 }
 
 
-static inline int create_image(Fat_image* img) {
-    img->img_buffer = malloc(img->img_size * sizeof(char));
-    if (img->img_buffer == NULL) {
-        error_msg("Alloc failed: size %zu", img->img_size);
-        goto failed;
+static inline int malloc_work_wrapper(size_t alloc_size, Worker_function f, void* object) {
+    void* mem = malloc(alloc_size);
+    if (mem == NULL) {
+        error_msg("Alloc failed: size %zu", alloc_size);
+        return EXIT_FAILURE;
     }
-    memset(img->img_buffer, 0, img->img_size * sizeof(char));
 
-    /* Loading boot loaders. */
-    if (load_loader(img) != 0) {
+    int result = f(mem, object);
+
+    free(mem);
+    return result;
+}
+
+
+static inline int create_image(void* buffer, void* object) {
+    Fat_image* img = object;
+    memset(buffer, 0, img->img_size);
+    img->img_buffer = buffer;
+
+    /* Set Partition info and boot loaders. */
+    if (set_partition_loader(img) != 0) {
         error_echo("Loading boot loader failed\n");
-        goto failed;
+        return EXIT_FAILURE;
     }
+    printf("FAT partition begin at sector %d.\n", img->mbr->p_entry[img->active_partition].lba_first);
+    printf("The number of FAT partition sector %d.\n", img->mbr->p_entry[img->active_partition].sector_nr);
 
+    /* Set FSINFO buffer. */
     Fsinfo mem_fsinfo;
     memset(&mem_fsinfo, 0, sizeof(Fsinfo));
     img->manip.fsinfo = &mem_fsinfo;
+
     if (construct_fat(img) != 0) {
         error_echo("Setting FAT failed\n");
-        goto failed;
+        return EXIT_FAILURE;
     }
     puts("Construct FAT filesystem.");
 
@@ -192,54 +255,49 @@ static inline int create_image(Fat_image* img) {
         return EXIT_FAILURE;
     }
 
-    /* Insert files in arguments. */
-    if (insert_files_into_image(img, dir) != 0) {
-        error_echo("Inserting files failed\n");
+    /* Embedded files in arguments. */
+    if (embedded_files_into_image(img, dir) != 0) {
+        error_echo("embeddeding files failed\n");
         return EXIT_FAILURE;
     }
 
     FILE* fp = fopen(img->img_path, "w+b");
     if (fp == NULL) {
+        error_msg("cannot open file %s\n", img->img_path);
+        return EXIT_FAILURE;
     }
-    size_t r = fwrite(img->img_buffer, sizeof(char), img->img_size, fp);
+    size_t written_size = fwrite(img->img_buffer, 1, img->img_size, fp);
     fclose(fp);
 
-    free(img->img_buffer);
-
-    return (r < img->img_size) ? EXIT_FAILURE : 0;
-
-failed:
-    free(img->img_buffer);
-    return EXIT_FAILURE;
+    return (written_size < img->img_size) ? EXIT_FAILURE : 0;
 }
 
 
-static inline int load_loader(Fat_image* img) {
-    uint8_t* const buf = img->img_buffer;
-
-    /* Check size */
-    size_t tmp = get_file_size(img->mbr_path);
-    if (tmp <= 0) {
-        error_echo("Invalid MBR");
+static inline int set_partition_loader(Fat_image* img) {
+    /* Check MBR size */
+    size_t file_size = get_file_size(img->mbr_path);
+    if (file_size <= 0) {
+        error_msg("Invalid MBR file %s", img->mbr_path);
         return EXIT_FAILURE;
     }
 
-    if (tmp != SECTOR_SIZE) {
-        error_msg("Sector size(%d) not equals MBR size(%lu)", SECTOR_SIZE, tmp);
+    if (file_size != BYTE_PER_SECTOR) {
+        error_msg("Sector size(%d) not equals MBR size(%lu)", BYTE_PER_SECTOR, file_size);
         return EXIT_FAILURE;
     }
+
+    /* This indicates tail of wrote area in image buffer. */
+    size_t img_buffer_idx = 0;
 
     /* Load MBR */
-    void* r = load_file(img->mbr_path, buf, SECTOR_SIZE);
-    if (r == NULL) {
+    void* result = load_file(img->mbr_path, img->img_buffer, BYTE_PER_SECTOR);
+    if (result == NULL) {
         return EXIT_FAILURE;
     }
-
-    /* This indicates tail of wrote area in buf. */
-    size_t img_buf_idx = SECTOR_SIZE;
+    img_buffer_idx += BYTE_PER_SECTOR;
 
     /* Check valid MBR */
-    Master_boot_record* mbr = (Master_boot_record*)buf;
+    Master_boot_record* mbr = (Master_boot_record*)img->img_buffer;
     img->mbr = mbr;
     if (mbr->boot_signature != BOOT_SIGNATURE) {
         error_echo("MBR is invalid.");
@@ -247,29 +305,32 @@ static inline int load_loader(Fat_image* img) {
     }
 
     /* Load second loader */
-    tmp = get_file_size(img->loader2_path);
-    if (tmp <= 0) {
+    file_size = get_file_size(img->loader2_path);
+    if (file_size <= 0) {
         error_echo("Second loader size is invalid");
         return EXIT_FAILURE;
     }
-    size_t second_loader_size = tmp;
-    r = load_file(img->loader2_path, buf + img_buf_idx, second_loader_size);
-    if (r == NULL) {
+    size_t second_loader_size = file_size;
+    result = load_file(img->loader2_path, img->img_buffer + img_buffer_idx, second_loader_size);
+    if (result == NULL) {
         return EXIT_FAILURE;
     }
 
-    /* Roundup */
-    second_loader_size = ALIGN_UP(second_loader_size, SECTOR_SIZE);
+    /*
+     * FAT structure begin at after second loader.
+     * Therefore, Roundup second loader size.
+     */
+    second_loader_size = ALIGN_UP(second_loader_size, BYTE_PER_SECTOR);
 
     /*
-     * Set MBR config to make first partition FAT32.
+     * Set MBR configure to make first partition.
      * Allocate second loader before first Partition
      */
-    img->active_partition = 0;
-    mbr->p_entry[img->active_partition].bootable = 0x80;
-    mbr->p_entry[img->active_partition].type = PART_TYPE_FAT32_LBA;
-    mbr->p_entry[img->active_partition].lba_first = (uint32_t)((SECTOR_SIZE + second_loader_size) / SECTOR_SIZE);
-    mbr->p_entry[img->active_partition].sector_nr = (uint32_t)((img->img_size / SECTOR_SIZE) - mbr->p_entry[0].lba_first);
+    img->active_partition                         = 0;
+    mbr->p_entry[img->active_partition].bootable  = 0x80;
+    mbr->p_entry[img->active_partition].type      = GET_VALUE_BY_FAT_TYPE(img->manip.fat_type, PART_TYPE_FAT12, PART_TYPE_FAT16, PART_TYPE_FAT32_LBA);
+    mbr->p_entry[img->active_partition].lba_first = (uint32_t)((BYTE_PER_SECTOR + second_loader_size) / BYTE_PER_SECTOR);
+    mbr->p_entry[img->active_partition].sector_nr = (uint32_t)((img->img_size / BYTE_PER_SECTOR) - mbr->p_entry[0].lba_first);
 
     return 0;
 }
@@ -280,14 +341,14 @@ static inline int construct_fat(Fat_image* img) {
 
     /* Setting BIOS Parameter Block */
     Bios_param_block* bpb = (Bios_param_block*)((uintptr_t)img->img_buffer + (lba_to_byte(mbr->p_entry[img->active_partition].lba_first)));
+    bpb->bytes_per_sec    = BYTE_PER_SECTOR;
+    bpb->sec_per_clus     = SECTOR_PER_CLUSTER;
+    bpb->fat_area_num     = FAT_AREA_NUM;
+    bpb->media            = 0xf8;
     memcpy(bpb->oem_name, "AXELMOPP", 8);
-    bpb->bytes_per_sec = SECTOR_SIZE;
-    bpb->sec_per_clus  = 1;
-    bpb->num_fats      = 2;
-    bpb->media         = 0xf8;
 
-    /* Init manipulator */
-    Fat_manips* fm = &img->manip;
+    /* Init manipulator. */
+    Fat_manips* fm       = &img->manip;
     fm->bpb              = bpb;
     fm->b_access         = block_access;
     fm->alloc            = malloc;
@@ -299,29 +360,29 @@ static inline int construct_fat(Fat_image* img) {
         bpb->root_ent_cnt      = 0;
         bpb->total_sec16       = 0;
         bpb->fat_size16        = 0;
-        bpb->rsvd_area_sec_num = 4;
+        bpb->rsvd_area_sec_num = RESERVED_AREA_SECTOR_SIZE;
         bpb->total_sec32       = mbr->p_entry[img->active_partition].sector_nr;
 
         /* Calculate the number of cluster. */
         size_t spc                = bpb->sec_per_clus;
         size_t sectors            = bpb->total_sec32 - bpb->rsvd_area_sec_num;
         size_t fat_entry_nr       = (sectors / spc);
-        size_t all_fat_entry_size = ALIGN_UP(fat_entry_nr * 4u, SECTOR_SIZE);
+        size_t all_fat_entry_size = ALIGN_UP(fat_entry_nr * 4u, BYTE_PER_SECTOR);
 
         /* Assume FAT area size. */
-        size_t assumed_fat_sectors = (all_fat_entry_size * bpb->num_fats) / SECTOR_SIZE;
-        fat_entry_nr = (sectors - assumed_fat_sectors) / spc;
-        all_fat_entry_size = ALIGN_UP(fat_entry_nr * 4u, SECTOR_SIZE);
+        size_t assumed_fat_sectors = (all_fat_entry_size * bpb->fat_area_num) / BYTE_PER_SECTOR;
+        fat_entry_nr               = (sectors - assumed_fat_sectors) / spc;
+        all_fat_entry_size         = ALIGN_UP(fat_entry_nr * 4u, BYTE_PER_SECTOR);
 
         /* Calculate actual the number of sector per a FAT. */
-        bpb->fat32.fat_size32 = (uint16_t)(all_fat_entry_size / SECTOR_SIZE);
-        bpb->fat32.rde_clus_num = 2;
+        bpb->fat32.fat_size32     = (uint16_t)(all_fat_entry_size / BYTE_PER_SECTOR);
+        bpb->fat32.rde_clus_num   = 2;
         bpb->fat32.fsinfo_sec_num = 1;
 
         fat_calc_sectors(bpb, &fm->area);
 
         // printf("fat size: %d\n", bpb->fat32.fat_size32);
-        // printf("fat entries %d\n", bpb->fat32.fat_size32 * SECTOR_SIZE / 4);
+        // printf("fat entries %d\n", bpb->fat32.fat_size32 * BYTE_PER_SECTOR / 4);
         // printf("Total cluster %d\n", bpb->total_sec32);
         // printf("rsvd begin   : %5d\n", fm->area.rsvd.begin_sec);
         // printf("rsvd    nr   : %5d\n", fm->area.rsvd.sec_nr);
@@ -341,8 +402,8 @@ static inline int construct_fat(Fat_image* img) {
         /* Init FSINFO structure. */
         fm->fsinfo->lead_signature   = FSINFO_LEAD_SIG;
         fm->fsinfo->struct_signature = FSINFO_STRUCT_SIG;
-        fm->fsinfo->free_cnt         = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus) - 1; /* -1 for root directory entry. */
-        fm->fsinfo->next_free        = 2;                                                       /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
+        fm->fsinfo->free_cnt         = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus) - 1;    /* -1 for root directory entry. */
+        fm->fsinfo->next_free        = 2;                                                           /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
         fm->fsinfo->trail_signature  = FSINFO_TRAIL_SIG;
         fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
 
@@ -360,15 +421,15 @@ static inline int construct_fat(Fat_image* img) {
 }
 
 
-static inline int insert_files_into_image(Fat_image* img, char const* base_dir_name) {
-    /* Find directory that are inserted files. */
+static inline int embedded_files_into_image(Fat_image* img, char const* base_dir_name) {
+    /* Find directory that are embeddeded files. */
     uint32_t dir_cluster = fat_find_file_cluster(&img->manip, img->manip.bpb->fat32.rde_clus_num, base_dir_name);
     if (dir_cluster == 0) {
         return EXIT_FAILURE;
     }
 
-    for (size_t i = 0; i < img->insert_file_num; i++) {
-        char* filename = img->insert_files[i];
+    for (size_t i = 0; i < img->embedded_file_num; i++) {
+        char* filename = img->embedded_files[i];
         size_t file_size = get_file_size(filename);
         void* buffer = malloc(file_size);
         load_file(filename, buffer, file_size);
@@ -378,9 +439,9 @@ static inline int insert_files_into_image(Fat_image* img, char const* base_dir_n
         printf("\tFile: %s\n", filename);
         printf("\tSize: %zu\n", file_size);
         if (r == AXEL_SUCCESS) {
-            puts("\tInsert Success");
+            puts("\tembedded Success");
         } else {
-            error_echo("\tInsert Failed");
+            error_echo("\tembedded Failed");
         }
     }
 
@@ -392,9 +453,9 @@ static inline Axel_state_code block_access(void* p, uint8_t direction, uint32_t 
     Fat_image* ft = p;
 
     size_t base_lba = ft->mbr->p_entry[ft->active_partition].lba_first;
-    size_t offset = lba_to_byte(base_lba + lba);
-    size_t size = lba_to_byte(sec_cnt);
-    void* target = &ft->img_buffer[offset];
+    size_t offset   = lba_to_byte(base_lba + lba);
+    size_t size     = lba_to_byte(sec_cnt);
+    void* target    = &ft->img_buffer[offset];
 
     if (direction == FILE_READ) {
         memcpy(buf, target, size);
@@ -424,24 +485,19 @@ static inline size_t get_file_size(char const* fname) {
 }
 
 
-static inline void* load_file(char const* fname, void* buf, size_t read_size) {
-    FILE* fmbr = fopen(fname, "r+b");
-    if (fmbr == NULL) {
+static inline void* load_file(char const* file_name, void* buffer, size_t load_size) {
+    FILE* fp = fopen(file_name, "r+b");
+    if (fp == NULL) {
         return NULL;
     }
 
-    size_t r = fread(buf, 1, read_size, fmbr);
-    fclose(fmbr);
+    size_t r = fread(buffer, 1, load_size, fp);
 
-    if (r <= 0) {
-        error_msg("fread failed: %s\n", fname);
-        return NULL;
-    }
-
-    return buf;
+    fclose(fp);
+    return (r <= 0) ? (NULL) : (buffer);
 }
 
 
 static inline size_t lba_to_byte(size_t nr) {
-    return nr * SECTOR_SIZE;
+    return nr * BYTE_PER_SECTOR;
 }

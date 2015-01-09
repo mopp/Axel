@@ -770,7 +770,7 @@ Fat_area* fat_calc_sectors(Bios_param_block const* bpb, Fat_area* fa) {
     fa->rsvd.sec_nr = bpb->rsvd_area_sec_num;
 
     fa->fat.begin_sec = fa->rsvd.begin_sec + fa->rsvd.sec_nr;
-    fa->fat.sec_nr = fat_size * bpb->num_fats;
+    fa->fat.sec_nr = fat_size * bpb->fat_area_num;
 
     fa->rdentry.begin_sec = fa->fat.begin_sec + fa->fat.sec_nr;
     fa->rdentry.sec_nr = (32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec;
