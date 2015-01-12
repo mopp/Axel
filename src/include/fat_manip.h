@@ -55,16 +55,16 @@ struct bios_param_block {
                     uint8_t ext_reserved1;
                 };
             };
-            uint16_t fat32_version;   /* FAT32 volume version. */
-            uint32_t rde_clus_num;    /* First cluster number of root directory entry. */
-            uint16_t fsinfo_sec_num;  /* Sector number of FSINFO struct location in reserved area(always 1). */
-            uint16_t bk_boot_sec;     /* Backup of boot sector sector number. */
-            uint8_t reserved[12];     /* Reserved. */
-            uint8_t drive_num;        /* BIOS drive number. */
-            uint8_t reserved1;        /* Reserved. */
-            uint8_t boot_sig;         /* Extend boot signature. */
-            uint32_t volume_id;       /* Volume serial number. */
-            uint8_t volume_label[11]; /* Partition volume label */
+            uint16_t fat32_version;       /* FAT32 volume version. */
+            uint32_t root_dentry_cluster; /* First cluster number of root directory entry. */
+            uint16_t fsinfo_sector;       /* Sector number of FSINFO struct location in reserved area(always 1). */
+            uint16_t backup_boot_sector;  /* Backup boot sector. */
+            uint8_t reserved[12];         /* Reserved. */
+            uint8_t drive_num;            /* BIOS drive number. */
+            uint8_t reserved1;            /* Reserved. */
+            uint8_t boot_sig;             /* Extend boot signature. */
+            uint32_t volume_id;           /* Volume serial number. */
+            uint8_t volume_label[11];     /* Partition volume label */
             uint8_t fs_type[8];
         } fat32;
     };

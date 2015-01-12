@@ -39,7 +39,7 @@ enum {
     BYTE_PER_CLUSTER                = BYTE_PER_SECTOR * SECTOR_PER_CLUSTER,
     FAT12_RESERVED_AREA_SECTOR_SIZE = 1,
     FAT16_RESERVED_AREA_SECTOR_SIZE = 1,
-    FAT32_RESERVED_AREA_SECTOR_SIZE = 4,
+    FAT32_RESERVED_AREA_SECTOR_SIZE = 7,
     DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE = 64,
 };
 
@@ -253,7 +253,7 @@ static inline int create_image(void* buffer, void* object) {
 
     /* Make "boot" direction in root directory to store files. */
     char const* dir = "boot";
-    int state = fat_make_directory(&img->manip, img->manip.bpb->fat32.rde_clus_num, dir, DIR_ATTR_READ_ONLY);
+    int state = fat_make_directory(&img->manip, img->manip.bpb->fat32.root_dentry_cluster, dir, DIR_ATTR_READ_ONLY);
     if (state != AXEL_SUCCESS) {
         error_echo("Making boot directory failed\n");
         return EXIT_FAILURE;
@@ -352,8 +352,8 @@ static inline int construct_fat(Fat_image* img) {
     memcpy(bpb->oem_name, "AXELMOPP", 8);
     bpb->bytes_per_sec     = BYTE_PER_SECTOR;
     bpb->sec_per_clus      = SECTOR_PER_CLUSTER;
-    bpb->fat_area_num      = FAT_AREA_NUM;
     bpb->rsvd_area_sec_num = GET_VALUE_BY_FAT_TYPE(fat_type, FAT12_RESERVED_AREA_SECTOR_SIZE, FAT16_RESERVED_AREA_SECTOR_SIZE, FAT32_RESERVED_AREA_SECTOR_SIZE);
+    bpb->fat_area_num      = FAT_AREA_NUM;
     bpb->root_ent_cnt      = (fat_type == FAT_TYPE32) ? (0) : (DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE);
     bpb->media             = 0xf8;
 
@@ -371,20 +371,27 @@ static inline int construct_fat(Fat_image* img) {
      * Reference: "How mformat-3.9.10 and above calculates needed FAT size"
      *      http://www.gnu.org/software/mtools/manual/fat_size_calculation.pdf
      */
-    size_t byte_per_sec         = bpb->bytes_per_sec;
-    size_t sec_per_clus         = bpb->sec_per_clus;
-    size_t fat_area_num         = bpb->fat_area_num;
-    size_t remaining_sectors    = fat_partition->sector_nr - bpb->rsvd_area_sec_num - ((32 * bpb->root_ent_cnt + byte_per_sec - 1) / byte_per_sec);
-    size_t fat_nubbles_num      = GET_VALUE_BY_FAT_TYPE(fat_type, 3, 4, 8);
-    size_t one_fat_area_sectors = (size_t)ceil(((remaining_sectors + 2 * sec_per_clus) * fat_nubbles_num) / (2 * sec_per_clus * byte_per_sec + fat_area_num * fat_nubbles_num));
-    one_fat_area_sectors        = ALIGN_UP(one_fat_area_sectors, BYTE_PER_SECTOR);
-    uint16_t fat_areas_sectors  = (uint16_t)(fat_area_num * one_fat_area_sectors);
+    size_t byte_per_sec           = bpb->bytes_per_sec;
+    size_t sec_per_clus           = bpb->sec_per_clus;
+    size_t fat_area_num           = bpb->fat_area_num;
+    size_t remaining_sectors      = fat_partition->sector_nr - bpb->rsvd_area_sec_num - ((32 * bpb->root_ent_cnt + byte_per_sec - 1) / byte_per_sec);
+    size_t fat_nubbles_num        = GET_VALUE_BY_FAT_TYPE(fat_type, 3, 4, 8);
+    uint16_t one_fat_area_sectors = (uint16_t)ceil(((remaining_sectors + 2 * sec_per_clus) * fat_nubbles_num) / (2 * sec_per_clus * byte_per_sec + fat_area_num * fat_nubbles_num));
+    one_fat_area_sectors          = ALIGN_UP(one_fat_area_sectors, BYTE_PER_SECTOR);
 
     if (fat_type == FAT_TYPE32) {
-        bpb->total_sec32 = fat_partition->sector_nr;
-        bpb->fat32.fat_sector_size32 = fat_areas_sectors;
-        bpb->fat32.rde_clus_num      = 2;
-        bpb->fat32.fsinfo_sec_num    = 1;
+        bpb->total_sec32               = fat_partition->sector_nr;
+        bpb->fat32.fat_sector_size32   = one_fat_area_sectors;
+        bpb->fat32.root_dentry_cluster = 2;
+        bpb->fat32.fsinfo_sector       = 1;
+        bpb->fat32.backup_boot_sector  = 6;
+
+        /* Copy Backup boot sector. */
+        void* bpb_buf = malloc(BYTE_PER_SECTOR);
+        memset(bpb_buf, 0, BYTE_PER_SECTOR);
+        memcpy(bpb_buf, bpb, sizeof(Bios_param_block));
+        block_access(img, FILE_WRITE, bpb->fat32.backup_boot_sector, 1, bpb_buf);
+        free(bpb_buf);
 
         fat_calc_sectors(bpb, &fm->area);
 
@@ -397,21 +404,21 @@ static inline int construct_fat(Fat_image* img) {
         fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
 
         /* Set root directory FAT entry. */
-        set_last_fat_entry(fm, bpb->fat32.rde_clus_num);
+        set_last_fat_entry(fm, bpb->fat32.root_dentry_cluster);
     } else {
         if (0x10000 <= fat_partition->sector_nr) {
             bpb->total_sec32 = fat_partition->sector_nr;
         } else {
             bpb->total_sec16 = fat_partition->sector_nr & 0xffffu;
         }
-        bpb->fat_sector_size16 = fat_areas_sectors;
+        bpb->fat_sector_size16 = one_fat_area_sectors;
+
+        fat_calc_sectors(bpb, &fm->area);
     }
 
     /* Init FAT[0] and FAT[1]. */
-    uint32_t fat_entry = 0xFFFFFF00 | bpb->media;
-    fat_entry_access(fm, FILE_WRITE, 0, fat_entry);
-    fat_entry = 0xFFFFFFFF;
-    fat_entry_access(fm, FILE_WRITE, 1, fat_entry);
+    fat_entry_write(fm, 0, 0xFFFFFF00 | bpb->media);
+    fat_entry_write(fm, 1, 0xFFFFFFFF);
 
     return 0;
 }
@@ -419,7 +426,7 @@ static inline int construct_fat(Fat_image* img) {
 
 static inline int embed_files_into_image(Fat_image* img, char const* base_dir_name) {
     /* Find directory that are embeddeded files. */
-    uint32_t dir_cluster = fat_find_file_cluster(&img->manip, img->manip.bpb->fat32.rde_clus_num, base_dir_name);
+    uint32_t dir_cluster = fat_find_file_cluster(&img->manip, img->manip.bpb->fat32.root_dentry_cluster, base_dir_name);
     if (dir_cluster == 0) {
         return EXIT_FAILURE;
     }
@@ -445,7 +452,7 @@ static inline int embed_files_into_image(Fat_image* img, char const* base_dir_na
 }
 
 
-static inline Axel_state_code block_access(void* p, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
+static Axel_state_code block_access(void* p, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
     Fat_image* ft = p;
 
     size_t base_lba = ft->mbr->p_entry[ft->active_partition].lba_first;

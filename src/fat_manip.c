@@ -47,35 +47,40 @@ static inline void* clear_clus_buf(Fat_manips const* fm, void* buffer) {
  * @return Value of FAT entry.
  */
 uint32_t fat_entry_access(Fat_manips const* fm, uint8_t direction, uint32_t n, uint32_t write_entry) {
-    uint32_t offset = n * ((fm->fat_type == FAT_TYPE32) ? 4 : 2);
-    uint32_t bps = fm->bpb->bytes_per_sec;
-    uint32_t sec_num = fm->bpb->rsvd_area_sec_num + (offset / bps);
+    uint32_t fat_type     = fm->fat_type;
+    uint32_t offset       = GET_VALUE_BY_FAT_TYPE(fm->fat_type, (n + n / 2), (n * 2), (n * 4));
+    uint32_t bps          = fm->bpb->bytes_per_sec;
+    uint32_t sec_num      = fm->bpb->rsvd_area_sec_num + (offset / bps);
     uint32_t entry_offset = offset % bps;
-    void* buf = alloc_clus_buf(fm);
+    void* buf = fm->alloc(bps * 2);
     if (buf == NULL) {
         return 0;
     }
 
-    if (fm->b_access(fm->obj, FILE_READ, sec_num, 1, buf) != AXEL_SUCCESS) {
-        goto failed;
+    if (fm->b_access(fm->obj, FILE_READ, sec_num, 2, buf) != AXEL_SUCCESS) {
+        fm->free(buf);
+        return 0;
     }
-    uint32_t* b = (uint32_t*)((uintptr_t)buf + entry_offset);
-    uint32_t read_entry = 0;
+    uint32_t* target_entry = (uint32_t*)((uintptr_t)buf + entry_offset);
+    uint32_t read_entry = *target_entry;
 
     /* Filter */
-    switch (fm->fat_type) {
+    switch (fat_type) {
         case FAT_TYPE12:
-            read_entry = (*b & 0xFFF);
+            if ((n & 1) == 1) {
+                /* Odd cluster number. */
+                *target_entry = (*target_entry & 0x0000FFFF) >> 4;
+            } else {
+                /* Even cluster number. */
+                *target_entry &= 0x00000FFF;
+            }
             break;
         case FAT_TYPE16:
-            read_entry = (*b & 0xFFFF);
+            *target_entry &= 0x0000FFFF;
             break;
         case FAT_TYPE32:
-            read_entry = (*b & 0x0FFFFFFF);
+            *target_entry &= 0x0FFFFFFF;
             break;
-        default:
-            /* Error */
-            goto failed;
     }
 
     if (direction == FILE_READ) {
@@ -84,31 +89,25 @@ uint32_t fat_entry_access(Fat_manips const* fm, uint8_t direction, uint32_t n, u
     }
 
     /* Change FAT entry. */
-    switch (fm->fat_type) {
+    switch (fat_type) {
         case FAT_TYPE12:
-            *b = (write_entry & 0xFFF);
+            *target_entry = (write_entry & 0xFFF);
             break;
         case FAT_TYPE16:
-            *b = (write_entry & 0xFFFF);
+            *target_entry = (write_entry & 0xFFFF);
             break;
         case FAT_TYPE32:
             /* keep upper bits */
-            *b = (*b & 0xF0000000) | (write_entry & 0x0FFFFFFF);
+            *target_entry = (*target_entry & 0xF0000000) | (write_entry & 0x0FFFFFFF);
             break;
-        default:
-            /* Error */
-            goto failed;
     }
 
-    if (fm->b_access(fm->obj, FILE_WRITE, sec_num, 1, buf) != AXEL_SUCCESS) {
-        goto failed;
+    if (fm->b_access(fm->obj, FILE_WRITE, sec_num, 2, buf) != AXEL_SUCCESS) {
+        fm->free(buf);
+        return 0;
     }
 
-    return *b;
-
-failed:
-    fm->free(buf);
-    return 0;
+    return *target_entry;
 }
 
 
@@ -149,7 +148,7 @@ Fsinfo* fat_fsinfo_access(Fat_manips const* fm, uint8_t direction, Fsinfo* fsi) 
     }
 
     /* Access FSINFO structure. */
-    if (fm->b_access(fm->obj, direction, fm->bpb->fat32.fsinfo_sec_num, 1, buf) != AXEL_SUCCESS) {
+    if (fm->b_access(fm->obj, direction, fm->bpb->fat32.fsinfo_sector, 1, buf) != AXEL_SUCCESS) {
         fm->free(buf);
         return NULL;
     }
@@ -367,17 +366,17 @@ static inline char* create_short_file_name(char const* name, char* sfn_buffer) {
     }
 
     if (irreversible_conversion_flag == true) {
-        /* FIXME: check filename collision. */
-        char number = '1';
-        /* Search space */
-        if (8 <= sfn_copy_cnt) {
-            sfn_buffer[6] = '~';
-            sfn_buffer[7] = number;
-        } else {
-            sfn_buffer[sfn_copy_cnt] = '~';
-            sfn_buffer[sfn_copy_cnt + 1] = number;
-            sfn_copy_cnt += 2;
-        }
+        // /* FIXME: check filename collision. */
+        // char number = '1';
+        // /* Search space */
+        // if (8 <= sfn_copy_cnt) {
+        //     sfn_buffer[6] = '~';
+        //     sfn_buffer[7] = number;
+        // } else {
+        //     sfn_buffer[sfn_copy_cnt] = '~';
+        //     sfn_buffer[sfn_copy_cnt + 1] = number;
+        //     sfn_copy_cnt += 2;
+        // }
     }
 
     return sfn_buffer;
@@ -436,19 +435,18 @@ static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_clu
  * @return
  */
 Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr, void* file_content, size_t const file_size) {
+    uint32_t fat_type = fm->fat_type;
     size_t name_len = strlen(name);
-    if (fm->fat_type == FAT_TYPE32) {
+    if (fat_type == FAT_TYPE32) {
         if (FAT_FILE_MAX_NAME_LEN < name_len) {
             return AXEL_FAILED;
         }
     } else {
         /* Check 8.3 format */
         if (is_83_format(name) == false) {
+            printf("failed\n");
             return AXEL_FAILED;
         }
-
-        /* TODO */
-        return AXEL_FAILED;
     }
 
     /* Alloc new directory entry. */
@@ -460,28 +458,33 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
     create_short_file_name(name, (char*)new_short_entry.name);
 #endif
 
-    /* Calculate the number of long dir entry to used */
-    uint8_t long_dir_entry_nr = (uint8_t)(name_len / FAT_LONG_DIR_MAX_NAME_LEN);
-    if (name_len % FAT_LONG_DIR_MAX_NAME_LEN != 0) {
-        ++long_dir_entry_nr;
+    uint8_t long_dir_entry_nr = 0;
+    if (fat_type == FAT_TYPE32) {
+        /* Calculate the number of long dir entry to used */
+        long_dir_entry_nr = (uint8_t)(name_len / FAT_LONG_DIR_MAX_NAME_LEN);
+        if (name_len % FAT_LONG_DIR_MAX_NAME_LEN != 0) {
+            ++long_dir_entry_nr;
+        }
     }
 
-    /* Create new long directory entries. */
     Long_dir_entry new_long_entries[long_dir_entry_nr];
-    char const* const name_last = name + name_len;
-    bool padding_flag = false;
-    uint8_t const checksum = fat_calc_checksum(&new_short_entry);
-    for (uint8_t i = 0; i < long_dir_entry_nr; i++) {
-        new_long_entries[i].order = i + 1;
-        new_long_entries[i].attr = DIR_ATTR_LONG_NAME;
-        new_long_entries[i].type = 0;
-        new_long_entries[i].first_clus_num_lo = 0;
-        new_long_entries[i].checksum = checksum;
-        set_long_file_name(new_long_entries[i].name0, &name, name_last, 5, &padding_flag);
-        set_long_file_name(new_long_entries[i].name1, &name, name_last, 6, &padding_flag);
-        set_long_file_name(new_long_entries[i].name2, &name, name_last, 2, &padding_flag);
+    if (fat_type == FAT_TYPE32) {
+        /* Create new long directory entries. */
+        char const* const name_last = name + name_len;
+        bool padding_flag = false;
+        uint8_t const checksum = fat_calc_checksum(&new_short_entry);
+        for (uint8_t i = 0; i < long_dir_entry_nr; i++) {
+            new_long_entries[i].order = i + 1;
+            new_long_entries[i].attr = DIR_ATTR_LONG_NAME;
+            new_long_entries[i].type = 0;
+            new_long_entries[i].first_clus_num_lo = 0;
+            new_long_entries[i].checksum = checksum;
+            set_long_file_name(new_long_entries[i].name0, &name, name_last, 5, &padding_flag);
+            set_long_file_name(new_long_entries[i].name1, &name, name_last, 6, &padding_flag);
+            set_long_file_name(new_long_entries[i].name2, &name, name_last, 2, &padding_flag);
+        }
+        new_long_entries[long_dir_entry_nr - 1].order |= LFN_LAST_ENTRY_FLAG;
     }
-    new_long_entries[long_dir_entry_nr - 1].order |= LFN_LAST_ENTRY_FLAG;
 
     void* buffer = alloc_clus_buf(fm);
     if (buffer == NULL) {
@@ -554,9 +557,11 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
      * First, long entries are written by descending order.
      * Next, short entry are written.
      */
-    Long_dir_entry* long_dentry_table = buffer;
-    for (size_t i = long_dir_entry_nr; 0 < i; i--) {
-        long_dentry_table[free_entry_start_index - i] = new_long_entries[i - 1];
+    if (fat_type == FAT_TYPE32) {
+        Long_dir_entry* long_dentry_table = buffer;
+        for (size_t i = long_dir_entry_nr; 0 < i; i--) {
+            long_dentry_table[free_entry_start_index - i] = new_long_entries[i - 1];
+        }
     }
     short_dentry_table[free_entry_start_index] = new_short_entry;
     fat_data_cluster_access(fm, FILE_WRITE, cluster_number, buffer);
@@ -570,7 +575,7 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
         Dir_entry dot_entry[3];
 #ifdef FOR_IMG_UTIL
         init_short_dir_entry(&dot_entry[0], new_short_entry_cluster, DIR_ATTR_DIRECTORY, 0);
-        uint32_t root_cluster = (fm->fat_type == FAT_TYPE32) ? (fm->bpb->fat32.rde_clus_num) : (0);
+        uint32_t root_cluster = (fm->fat_type == FAT_TYPE32) ? (fm->bpb->fat32.root_dentry_cluster) : (0);
         init_short_dir_entry(&dot_entry[1], ((root_cluster == parent_dir_cluster) ? 0 : parent_dir_cluster), DIR_ATTR_DIRECTORY, 0);
 #endif
         memcpy(dot_entry[0].name, ".          ", 11);
@@ -590,8 +595,8 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
          * New entry is file.
          * Writing contents.
          */
-        size_t enough_cluster_size = (1024 * 109) / fm->byte_per_cluster;
-        if (((1024 * 109) % fm->byte_per_cluster) != 0) {
+        size_t enough_cluster_size = file_size / fm->byte_per_cluster;
+        if ((file_size % fm->byte_per_cluster) != 0) {
             ++enough_cluster_size;
         }
         size_t const byte_per_cluster = fm->byte_per_cluster;

@@ -15,7 +15,7 @@ run: $(IMG_PROG)
 
 .PHONY: check
 check:
-	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=66553
+	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=2878
 	fsck.fat -v -n tmp
 
 .PHONY: mount

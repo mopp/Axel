@@ -387,7 +387,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
             /* TODO: set last allocated cluster number. */
         }
 
-        root->clus_num = bpb->fat32.rde_clus_num;
+        root->clus_num = bpb->fat32.root_dentry_cluster;
     }
 
     /* Load root directory entry. */
