@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <assert.h>
+#include <math.h>
 #include "../include/fat.h"
 #include "../include/fat_manip.h"
 #include "../include/macros.h"
@@ -39,8 +40,10 @@ enum {
     FAT12_RESERVED_AREA_SECTOR_SIZE = 1,
     FAT16_RESERVED_AREA_SECTOR_SIZE = 1,
     FAT32_RESERVED_AREA_SECTOR_SIZE = 4,
-    DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE        = 64,
+    DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE = 64,
 };
+
+
 /* DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE should be an even multiple of BYTE_PER_SECTOR. */
 _Static_assert((DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE * 32) % BYTE_PER_SECTOR == 0, "DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE is invalid.");
 
@@ -174,15 +177,14 @@ static inline int set_options(Fat_image* img, int argc, char* const argv[]) {
         min_image_size = 1440 * 1024;
     } else {
         /* minimum image size = MBR + loader2. */
-        min_image_size = BYTE_PER_SECTOR + get_file_size(img->loader2_path);
+        min_image_size = BYTE_PER_SECTOR + ALIGN_UP(get_file_size(img->loader2_path), BYTE_PER_SECTOR);
         if (img->manip.fat_type == FAT_TYPE16) {
-            /* +  reserved area + FAT entry area + root directory entry. */
-            min_image_size += (FAT16_RESERVED_AREA_SECTOR_SIZE * BYTE_PER_SECTOR) + (FAT16_MIN_CLUSTER_SIZE * BYTE_PER_CLUSTER) + (2 * FAT16_MIN_CLUSTER_SIZE * FAT_AREA_NUM) + (DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE * 32);
+            /* + reserved area + FAT entry area + root directory entry. */
+            min_image_size += (FAT16_RESERVED_AREA_SECTOR_SIZE * BYTE_PER_SECTOR) + (FAT16_MIN_CLUSTER_SIZE * BYTE_PER_CLUSTER) + (2u * (size_t)FAT16_MIN_CLUSTER_SIZE * (size_t)FAT_AREA_NUM) + (DIR_ENTRY_NUM_IN_ROOT_DIR_TABLE * 32);
         } else {
-            /* +  reserved area + FAT entry area. */
-            min_image_size += (FAT16_RESERVED_AREA_SECTOR_SIZE * BYTE_PER_SECTOR) + (FAT32_MIN_CLUSTER_SIZE * BYTE_PER_CLUSTER) + (4 * FAT32_MIN_CLUSTER_SIZE * FAT_AREA_NUM);
+            /* + reserved area + FAT entry area. */
+            min_image_size += (size_t)(FAT32_RESERVED_AREA_SECTOR_SIZE * BYTE_PER_SECTOR) + (size_t)(FAT32_MIN_CLUSTER_SIZE * BYTE_PER_CLUSTER) + (4u * (size_t)FAT32_MIN_CLUSTER_SIZE * (size_t)FAT_AREA_NUM);
         }
-
         min_image_size = ALIGN_UP(min_image_size, BYTE_PER_SECTOR);
     }
 
@@ -365,25 +367,22 @@ static inline int construct_fat(Fat_image* img) {
     fm->byte_per_cluster = bpb->sec_per_clus * bpb->bytes_per_sec;
 
     /*
-     * Calculate the number of cluster to assume FAT area size.
-     * Total sector = sectors of this partition - reserved area - root directory area.
+     * Calculate the number of sectors of FAT area.
+     * Reference: "How mformat-3.9.10 and above calculates needed FAT size"
+     *      http://www.gnu.org/software/mtools/manual/fat_size_calculation.pdf
      */
-    size_t total_sector  = fat_partition->sector_nr - bpb->rsvd_area_sec_num - ((32 * bpb->root_ent_cnt + bpb->bytes_per_sec - 1) / bpb->bytes_per_sec);
-    size_t cluster_nr    = total_sector / bpb->sec_per_clus;
-    size_t fat_area_byte_size = cluster_nr * 4;
-    uint16_t fat_area_sectors = (uint16_t)((fat_area_byte_size * bpb->fat_area_num) / BYTE_PER_SECTOR);
-    printf("FAT entries: %zu\n", cluster_nr);
-    cluster_nr = (total_sector - fat_area_sectors) / bpb->sec_per_clus;
-    printf("FAT entries: %zu\n", cluster_nr);
-
-    /* Calculate enough the number of sector are used by one FAT. */
-    fat_area_byte_size  = cluster_nr * 4;
-    fat_area_sectors = (uint16_t)(fat_area_byte_size / BYTE_PER_SECTOR);
-    printf("FAT entries: %zu\n", (size_t)(fat_area_byte_size / GET_VALUE_BY_FAT_TYPE(fat_type, 1.5, 2, 4)));
+    size_t byte_per_sec         = bpb->bytes_per_sec;
+    size_t sec_per_clus         = bpb->sec_per_clus;
+    size_t fat_area_num         = bpb->fat_area_num;
+    size_t remaining_sectors    = fat_partition->sector_nr - bpb->rsvd_area_sec_num - ((32 * bpb->root_ent_cnt + byte_per_sec - 1) / byte_per_sec);
+    size_t fat_nubbles_num      = GET_VALUE_BY_FAT_TYPE(fat_type, 3, 4, 8);
+    size_t one_fat_area_sectors = (size_t)ceil(((remaining_sectors + 2 * sec_per_clus) * fat_nubbles_num) / (2 * sec_per_clus * byte_per_sec + fat_area_num * fat_nubbles_num));
+    one_fat_area_sectors        = ALIGN_UP(one_fat_area_sectors, BYTE_PER_SECTOR);
+    uint16_t fat_areas_sectors  = (uint16_t)(fat_area_num * one_fat_area_sectors);
 
     if (fat_type == FAT_TYPE32) {
         bpb->total_sec32 = fat_partition->sector_nr;
-        bpb->fat32.fat_sector_size32 = fat_area_sectors;
+        bpb->fat32.fat_sector_size32 = fat_areas_sectors;
         bpb->fat32.rde_clus_num      = 2;
         bpb->fat32.fsinfo_sec_num    = 1;
 
@@ -405,7 +404,7 @@ static inline int construct_fat(Fat_image* img) {
         } else {
             bpb->total_sec16 = fat_partition->sector_nr & 0xffffu;
         }
-        bpb->fat_sector_size16 = fat_area_sectors;
+        bpb->fat_sector_size16 = fat_areas_sectors;
     }
 
     /* Init FAT[0] and FAT[1]. */

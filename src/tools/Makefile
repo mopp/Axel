@@ -7,7 +7,7 @@ LOADER2_FILE := loader1
 OS_EXE_FILE  := axel.bin
 
 $(IMG_PROG): $(IMG_SRC) $(C_DEPS)
-	clang -std=c11 -Wall -O2 -D FOR_IMG_UTIL $(C_DEPS) $(IMG_SRC) -o $(IMG_PROG)
+	clang -std=c11 -lm -Wall -O2 -D FOR_IMG_UTIL $(C_DEPS) $(IMG_SRC) -o $(IMG_PROG)
 
 .PHONY: run
 run: $(IMG_PROG)
