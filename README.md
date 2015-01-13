@@ -11,9 +11,9 @@ And support architecture is only x86.
 - [x] Mouse, Keyboard
 - [x] Graphic(VBE)
 - [x] ATA device control
-- [ ] (WIP) User process
-- [ ] (WIP) System call
-- [ ] (WIP) Virtual filesystem
+- [ ] User process      (WIP)
+- [ ] System call       (WIP)
+- [ ] Virtual filesystem(WIP)
 - [ ] Support ARM
 
 ## Requirements
