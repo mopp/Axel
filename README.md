@@ -11,16 +11,10 @@ And support architecture is only x86.
 - [x] Mouse, Keyboard
 - [x] Graphic(VBE)
 - [x] ATA device control
-- [@] User process
-- [@] System call
-- [@] Virtual filesystem
+- [ ] (WIP) User process
+- [ ] (WIP) System call
+- [ ] (WIP) Virtual filesystem
 - [ ] Support ARM
-
-
-[x] - Almost finish (Not complete).  
-[ ] - No implementation.  
-[@] - Work in progress.
-
 
 ## Requirements
 nasm, qemu(VBE), grub
@@ -37,11 +31,9 @@ If your clang is NOT enable cross-compiling, Please enable it.
 And If your host architecture is 64bit environment, You should install 32bit libc and etc.  
 Because, Axel is 32bit yet :(
 
-
 ## ScreenShot
 ![ss](./ss.png)
 ![ss2](./ss2.png)
 
-
 ## :)
-![girl](./axel_tan.png)
+![personification](./axel_tan.png)
