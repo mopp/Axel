@@ -246,24 +246,24 @@ static inline int create_image(void* buffer, void* object) {
     img->manip.fsinfo = &mem_fsinfo;
 
     if (construct_fat(img) != 0) {
-        error_echo("Setting FAT failed\n");
+        error_echo("FAT construction failed\n");
         return EXIT_FAILURE;
     }
-    puts("Constructed FAT filesystem.");
 
     /* Make "boot" direction in root directory to store files. */
     char const* dir = "boot";
-    int state = fat_make_directory(&img->manip, img->manip.bpb->fat32.root_dentry_cluster, dir, DIR_ATTR_READ_ONLY);
+    uint32_t root_dir_cluster = GET_VALUE_BY_FAT_TYPE(img->manip.fat_type, img->manip.bpb->fat32.root_dentry_cluster, FAT16_ROOT_DIR_CLUSTER_SIGNATURE, FAT12_ROOT_DIR_CLUSTER_SIGNATURE);
+    int state = fat_make_directory(&img->manip, root_dir_cluster, dir, DIR_ATTR_READ_ONLY);
     if (state != AXEL_SUCCESS) {
         error_echo("Making boot directory failed\n");
         return EXIT_FAILURE;
     }
 
     /* Embedded files. */
-    if (embed_files_into_image(img, dir) != 0) {
-        error_echo("Embedded files failed\n");
-        return EXIT_FAILURE;
-    }
+    // if (embed_files_into_image(img, dir) != 0) {
+    //     error_echo("Embedded files failed\n");
+    //     return EXIT_FAILURE;
+    // }
 
     /* Create disk image file by image buffer. */
     FILE* fp = fopen(img->img_path, "w+b");
@@ -342,6 +342,7 @@ static inline int set_partition_loader(Fat_image* img) {
 
 
 static inline int construct_fat(Fat_image* img) {
+    puts("FAT filesystem construction");
     Partition_entry* fat_partition = &img->mbr->p_entry[img->active_partition];
     uint32_t fat_type = img->manip.fat_type;
 
@@ -415,6 +416,13 @@ static inline int construct_fat(Fat_image* img) {
 
         fat_calc_sectors(bpb, &fm->area);
     }
+
+    puts("\tFAT areas\n\t[Area name]: [Begin sector] - [End sector] [The number of sector]");
+    Fat_area* area = &fm->area;
+    printf("\tReserved area: %d - %d (%d)\n", area->rsvd.begin_sec, area->rsvd.sec_nr, area->rsvd.sec_nr);
+    printf("\tFAT area     : %d - %d (%d)\n", area->fat.begin_sec, area->fat.begin_sec + area->fat.sec_nr, area->fat.sec_nr);
+    printf("\tRoot dir area: %d - %d (%d)\n", area->rdentry.begin_sec, area->rdentry.begin_sec + area->rdentry.sec_nr, area->rdentry.sec_nr);
+    printf("\tDATA area    : %d - %d (%d)\n", area->data.begin_sec, area->data.begin_sec + area->data.sec_nr, area->data.sec_nr);
 
     /* Init FAT[0] and FAT[1]. */
     fat_entry_write(fm, 0, 0xFFFFFF00 | bpb->media);

@@ -188,6 +188,8 @@ enum {
     FAT16_MIN_CLUSTER_SIZE    = 4085,
     FAT16_MAX_CLUSTER_SIZE    = 65524,
     FAT32_MIN_CLUSTER_SIZE    = 65525,
+    FAT12_ROOT_DIR_CLUSTER_SIGNATURE = 0,
+    FAT16_ROOT_DIR_CLUSTER_SIGNATURE = 0,
 };
 
 #define GET_VALUE_BY_FAT_TYPE(type, fat12, fat16, fat32) (((type) == FAT_TYPE12) ? (fat12) : (((type) == FAT_TYPE16) ? (fat16) : (((type) == FAT_TYPE32) ? (fat32) : (0))))

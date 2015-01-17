@@ -6,12 +6,12 @@ MBR_FILE     := loader1
 LOADER2_FILE := loader1
 OS_EXE_FILE  := axel.bin
 
-$(IMG_PROG): $(IMG_SRC) $(C_DEPS)
+$(IMG_PROG): $(IMG_SRC) $(C_DEPS) Makefile
 	clang -std=c11 -lm -Wall -O2 -D FOR_IMG_UTIL $(C_DEPS) $(IMG_SRC) -o $(IMG_PROG)
 
 .PHONY: run
 run: $(IMG_PROG)
-	./$(IMG_PROG) -f 32 -t $(IMG_NAME) -m $(MBR_FILE) -l $(LOADER2_FILE) $(OS_EXE_FILE)
+	./$(IMG_PROG) -f 12 -t $(IMG_NAME) -m $(MBR_FILE) -l $(LOADER2_FILE) $(OS_EXE_FILE)
 
 .PHONY: check
 check:
