@@ -159,6 +159,7 @@ struct fat_manips {
     Fat_area area;
     uint32_t byte_per_cluster;
     uint32_t fat_type;
+    uint32_t max_fat_entry_number;
 };
 typedef struct fat_manips Fat_manips;
 
@@ -206,6 +207,7 @@ uint32_t set_last_fat_entry(Fat_manips const*, uint32_t);
 uint32_t alloc_cluster(Fat_manips*);
 uint8_t fat_calc_checksum(Dir_entry const*);
 void free_cluster(Fat_manips*, uint32_t);
+uint32_t fat_get_root_dir_cluster(Fat_manips*);
 bool is_valid_fsinfo(Fsinfo*);
 bool is_unused_fat_entry(uint32_t);
 bool is_rsvd_fat_entry(uint32_t);

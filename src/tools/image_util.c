@@ -86,7 +86,7 @@ int main(int argc, char* const argv[]) {
         puts("Create image succeed.");
         return 0;
     } else {
-        error_echo("Create image failed.");
+        error_echo("Create image failed.\n");
         return EXIT_FAILURE;
     }
 }
@@ -252,7 +252,7 @@ static inline int create_image(void* buffer, void* object) {
 
     /* Make "boot" direction in root directory to store files. */
     char const* dir = "boot";
-    uint32_t root_dir_cluster = GET_VALUE_BY_FAT_TYPE(img->manip.fat_type, img->manip.bpb->fat32.root_dentry_cluster, FAT16_ROOT_DIR_CLUSTER_SIGNATURE, FAT12_ROOT_DIR_CLUSTER_SIGNATURE);
+    uint32_t root_dir_cluster = GET_VALUE_BY_FAT_TYPE(img->manip.fat_type, FAT12_ROOT_DIR_CLUSTER_SIGNATURE, FAT16_ROOT_DIR_CLUSTER_SIGNATURE, img->manip.bpb->fat32.root_dentry_cluster);
     int state = fat_make_directory(&img->manip, root_dir_cluster, dir, DIR_ATTR_READ_ONLY);
     if (state != AXEL_SUCCESS) {
         error_echo("Making boot directory failed\n");
@@ -260,10 +260,10 @@ static inline int create_image(void* buffer, void* object) {
     }
 
     /* Embedded files. */
-    // if (embed_files_into_image(img, dir) != 0) {
-    //     error_echo("Embedded files failed\n");
-    //     return EXIT_FAILURE;
-    // }
+    if (embed_files_into_image(img, dir) != 0) {
+        error_echo("Embedded files failed\n");
+        return EXIT_FAILURE;
+    }
 
     /* Create disk image file by image buffer. */
     FILE* fp = fopen(img->img_path, "w+b");
@@ -395,11 +395,12 @@ static inline int construct_fat(Fat_image* img) {
         free(bpb_buf);
 
         fat_calc_sectors(bpb, &fm->area);
+        fm->max_fat_entry_number = fm->area.data.sec_nr / bpb->sec_per_clus;
 
         /* Init FSINFO structure. */
         fm->fsinfo->lead_signature   = FSINFO_LEAD_SIG;
         fm->fsinfo->struct_signature = FSINFO_STRUCT_SIG;
-        fm->fsinfo->free_cnt         = (uint32_t)(fm->area.data.sec_nr / bpb->sec_per_clus) - 1;    /* -1 for root directory entry. */
+        fm->fsinfo->free_cnt         = fm->max_fat_entry_number - 1;    /* -1 for root directory entry. */
         fm->fsinfo->next_free        = 2;                                                           /* FAT[0], FAT[1] are reserved FAT entry, Thus start point is FAT[2]. */
         fm->fsinfo->trail_signature  = FSINFO_TRAIL_SIG;
         fat_fsinfo_access(fm, FILE_WRITE, fm->fsinfo);
@@ -415,6 +416,7 @@ static inline int construct_fat(Fat_image* img) {
         bpb->fat_sector_size16 = one_fat_area_sectors;
 
         fat_calc_sectors(bpb, &fm->area);
+        fm->max_fat_entry_number = fm->area.data.sec_nr / bpb->sec_per_clus;
     }
 
     puts("\tFAT areas\n\t[Area name]: [Begin sector] - [End sector] [The number of sector]");
@@ -434,7 +436,7 @@ static inline int construct_fat(Fat_image* img) {
 
 static inline int embed_files_into_image(Fat_image* img, char const* base_dir_name) {
     /* Find directory that are embeddeded files. */
-    uint32_t dir_cluster = fat_find_file_cluster(&img->manip, img->manip.bpb->fat32.root_dentry_cluster, base_dir_name);
+    uint32_t dir_cluster = fat_find_file_cluster(&img->manip, fat_get_root_dir_cluster(&img->manip), base_dir_name);
     if (dir_cluster == 0) {
         return EXIT_FAILURE;
     }

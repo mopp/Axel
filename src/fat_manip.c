@@ -62,24 +62,24 @@ uint32_t fat_entry_access(Fat_manips const* fm, uint8_t direction, uint32_t n, u
         return 0;
     }
     uint32_t* target_entry = (uint32_t*)((uintptr_t)buf + entry_offset);
-    uint32_t read_entry = *target_entry;
+    uint32_t read_entry = 0;
 
     /* Filter */
     switch (fat_type) {
         case FAT_TYPE12:
             if ((n & 1) == 1) {
-                /* Odd cluster number. */
-                *target_entry = (*target_entry & 0x0000FFFF) >> 4;
+                /* Odd entry number. */
+                read_entry = (*target_entry >> 4 ) & 0x00000FFF;
             } else {
-                /* Even cluster number. */
-                *target_entry &= 0x00000FFF;
+                /* Even entry number. */
+                read_entry = *target_entry & 0x00000FFF;
             }
             break;
         case FAT_TYPE16:
-            *target_entry &= 0x0000FFFF;
+            read_entry = *target_entry & 0x0000FFFF;
             break;
         case FAT_TYPE32:
-            *target_entry &= 0x0FFFFFFF;
+            read_entry = *target_entry & 0x0FFFFFFF;
             break;
     }
 
@@ -91,10 +91,16 @@ uint32_t fat_entry_access(Fat_manips const* fm, uint8_t direction, uint32_t n, u
     /* Change FAT entry. */
     switch (fat_type) {
         case FAT_TYPE12:
-            *target_entry = (write_entry & 0xFFF);
+            if ((n & 1) == 1) {
+                /* Odd entry number. */
+                *target_entry = ((write_entry & 0xFFF) << 4) | (*target_entry & 0xFFFF000F);
+            } else {
+                /* Even entry number. */
+                *target_entry = (write_entry & 0xFFF) | (*target_entry & 0xFFFFF000);
+            }
             break;
         case FAT_TYPE16:
-            *target_entry = (write_entry & 0xFFFF);
+            *target_entry = (write_entry & 0xFFFF) | (*target_entry & 0xFFFF0000);
             break;
         case FAT_TYPE32:
             /* keep upper bits */
@@ -186,7 +192,16 @@ uint8_t* fat_root_dir_area_access(Fat_manips const* fm, uint8_t direction, uint3
 
 uint32_t alloc_cluster(Fat_manips* fm) {
     if (fm->fat_type != FAT_TYPE32) {
-        /* FAT12/16 TODO: */
+        /*
+         * FAT12/16
+         * FAT entry begin at index 2 (0 and 1 is reserved).
+         */
+        for (uint32_t i = 2; i < fm->max_fat_entry_number; i++) {
+            if (is_unused_fat_entry(fat_entry_read(fm, i)) == true) {
+                return i;
+            }
+        }
+        return AXEL_FAILED;
     }
 
     /* FAT32 */
@@ -450,7 +465,7 @@ static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_clu
 Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr, void* file_content, size_t const file_size) {
     uint32_t const fat_type         = fm->fat_type;
     size_t const name_len           = strlen(name);
-    uint32_t const root_dir_cluster = GET_VALUE_BY_FAT_TYPE(fm->fat_type, fm->bpb->fat32.root_dentry_cluster, FAT16_ROOT_DIR_CLUSTER_SIGNATURE, FAT12_ROOT_DIR_CLUSTER_SIGNATURE);
+    uint32_t const root_dir_cluster = fat_get_root_dir_cluster(fm);
     bool const is_parent_root = (root_dir_cluster == parent_dir_cluster) ? (true) : (false);
 
     if (fat_type == FAT_TYPE32) {
@@ -512,7 +527,7 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
     }
 
     size_t const byte_per_sector = fm->bpb->bytes_per_sec;
-    size_t const dentry_per_sector = byte_per_sector / 32;
+    size_t const dentry_per_sector = byte_per_sector / sizeof(Dir_entry);
 
     /* Search location to store new entries. */
     /* FIXME: Used two clusters case */
@@ -550,7 +565,6 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
             fm->free(buffer);
             return AXEL_FAILED;
         }
-        printf("debug\n");
     } else {
         /* Access normal directory entry. */
         bool is_found_enough_entries = false;
@@ -680,6 +694,7 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
 
             /* Concatenate FAT chain. */
             fat_entry_write(fm, prev_cluster, new_cluster);
+            set_last_fat_entry(fm, new_cluster);
             prev_cluster = new_cluster;
 
             /* Write content. */
@@ -701,6 +716,48 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
 
 
 uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const* name) {
+    if ((fm->fat_type != FAT_TYPE32) && (dir_cluster == fat_get_root_dir_cluster(fm))) {
+        /* Case of FAT12/16 root directory. */
+        char short_file_name[11];
+        create_short_file_name(name, short_file_name);
+
+        uint32_t const max_root_dir_sector_size = fm->area.rdentry.sec_nr;
+        size_t const dentry_per_sector = fm->bpb->bytes_per_sec / sizeof(Dir_entry);
+        void* buffer = alloc_clus_buf(fm);
+        if (buffer == NULL) {
+            return AXEL_FAILED;
+        }
+
+        bool is_found = false;
+        uint32_t cluster = 0;
+        for (uint32_t sector = 0; (sector < max_root_dir_sector_size) && (is_found == false); sector++) {
+            if (fat_root_dir_area_access(fm, FILE_READ, sector, buffer) == NULL) {
+                fm->free(buffer);
+                return AXEL_FAILED;
+            }
+
+            Dir_entry* short_dentry_table = buffer;
+            for (size_t i = 0; i < dentry_per_sector; i++) {
+                uint8_t signature = short_dentry_table[i].name[0];
+                if (signature == DIR_FREE) {
+                    continue;
+                } else if (signature == DIR_LAST_FREE) {
+                    /* Not found. */
+                    is_found = true;
+                    break;
+                } else if (memcmp(short_file_name, short_dentry_table[i].name, 11) == 0) {
+                    /* Found. */
+                    is_found = true;
+                    cluster = short_dentry_table[i].first_clus_num_lo;
+                    break;
+                }
+            }
+        }
+
+        fm->free(buffer);
+        return cluster;
+    }
+
     if (is_valid_data_exist_fat_entry(fm, dir_cluster) == false) {
         return 0;
     }
@@ -768,6 +825,11 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster, 
     return fat_create_file(fm, parent_dir_cluster, name, attr | DIR_ATTR_DIRECTORY | DIR_ATTR_ARCHIVE, NULL, 0);
 }
 #endif
+
+
+uint32_t fat_get_root_dir_cluster(Fat_manips* fm) {
+    return GET_VALUE_BY_FAT_TYPE(fm->fat_type, FAT12_ROOT_DIR_CLUSTER_SIGNATURE, FAT16_ROOT_DIR_CLUSTER_SIGNATURE, fm->bpb->fat32.root_dentry_cluster);
+}
 
 
 bool is_valid_fsinfo(Fsinfo* fsi) {
