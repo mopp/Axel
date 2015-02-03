@@ -210,7 +210,7 @@ disk: $(MAKEFILE) $(AXEL_BIN) ./tools/image_util.c
 	$(NASM) -f bin -I$(BOOT_DIR) ./boot/loader1.asm
 	clang -I$(INCLUDE_DIR) -m32 -std=c11 -nostdlib -ffreestanding -fno-builtin -c ./boot/loader2.c -o ./boot/loader2.o
 	ld -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -T ./boot/loader2.ld -static -o ./boot/loader2 ./boot/loader2.o
-	./tools/img_util -f 12 -t $(DISK_IMG) -m ./boot/loader1 -l ./boot/loader2 $(AXEL_BIN)
+	./tools/img_util -f 12 -t $(DISK_IMG) -m ./boot/loader1 -l ./boot/loader2 $(AXEL_BIN) ./init
 
 
 .PHONY: write_fd
