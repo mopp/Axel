@@ -3,7 +3,6 @@
 ; File: src/asm_functions.asm
 ; Description:
 ;       It provides some assembly only functions to call those in C.
-;       It provides some assembly only functions to call those in C.
 ;---------------------------------------------------------------------
     bits 32
 
