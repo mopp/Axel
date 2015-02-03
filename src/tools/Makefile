@@ -12,12 +12,12 @@ $(IMG_PROG): $(IMG_SRC) $(C_DEPS) Makefile
 
 .PHONY: run
 run: $(IMG_PROG)
-	./$(IMG_PROG) -f 32 -t $(IMG_NAME) -m $(MBR_FILE) -l $(LOADER2_FILE) $(OS_EXE_FILE)
+	./$(IMG_PROG) -f 12 -t $(IMG_NAME) -m $(MBR_FILE) -l $(LOADER2_FILE) $(OS_EXE_FILE)
 
 .PHONY: check
 check:
-	# dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=2878
-	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=66553
+	dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=2878
+	# dd if=$(IMG_NAME) of=tmp bs=512 skip=2 count=66553
 	fsck.fat -v -n $(FOR_CHECK_FILE)
 
 .PHONY: mount
@@ -29,3 +29,11 @@ mount:
 umount:
 	sudo losetup -d /dev/loop0
 	sudo umount /mnt
+
+.PHONY: write_fd
+write_fd:
+	sudo dd if=$(IMG_NAME) of=/dev/sdb
+
+.PHONY: clean
+clean:
+	rm -rf $(IMG_PROG) $(IMG_NAME) $(FOR_CHECK_FILE)

@@ -63,9 +63,10 @@
 ;            |                                |
 ; 0x00100000 +--------------------------------+
 ;
-;
 ; In above, 0x0500 - 0xA0000 is free.
-; After, this program(at the moment jumping second loader) map is here.
+; Therefore, loader1 are moved to this free area by yourself.
+; Then, loader1 loads loader2 and jump to it.
+; See img_util source for location of loader2.
 ;
 ; 0x00000500 +--------------------------------+
 ;            |            loader1             |
@@ -75,10 +76,9 @@
 ;            |                                |
 ; 0x00007C00 +--------------------------------+
 ;            |            loader2             |
-; 0x00007E00 +--------------------------------+
 ;            |                                |
 ;            |                                |
-;            ~          unused area           ~
+;            ~                                ~
 ;            |                                |
 ;            |                                |
 ; 0x000A0000 +--------------------------------+
@@ -90,6 +90,7 @@
 ; And expand at compile time.
 ; {{{
 MBR_SIZE         equ 512
+SECTOR_SIZE      equ 512
 STACK_TOP        equ 0x500
 STACK_SIZE       equ 0x1000
 STACK_BOTTOM     equ STACK_TOP + STACK_SIZE
@@ -102,22 +103,42 @@ BOOTABLE_FLAG    equ 0x80
 ; }}}
 
 
+; Print one character
+%macro putchar 1
+; {{{
+    push ax
+    mov al, %1
+    mov ah, 0x0E
+    int 0x10
+    pop ax
+%endmacro
+; }}}
+
+
+; Sub-routine print_string wrapper.
+%macro puts 1
+; {{{
+    push si
+    mov si, %1
+    call print_string
+    pop si
+%endmacro
+; }}}
+
+
 bits 16
 org RELOCATE_ADDR
 
 
 ; jump start code.
 ; It must be here before any data.
-jmp boot_loader1
-
-
-%include "loader_common.inc"
+jmp short main
 
 
 ; Start loader1
 ; DL is boot disk number
+main:
 ; {{{
-boot_loader1:
     cli
 
     ; Setting all segment selector.
@@ -130,7 +151,7 @@ boot_loader1:
 
     mov sp, STACK_BOTTOM
 
-    ; Copy this mbr from LOAD_ADDR to RELOCATE_ADDR.
+    ; Copy this MBR from LOAD_ADDR to RELOCATE_ADDR.
     mov cx, MBR_SIZE
     mov si, LOAD_ADDR
     mov di, RELOCATE_ADDR
@@ -139,98 +160,247 @@ boot_loader1:
     ; Calculate destination address.
     ; And push segment and addr to jump.
     push es
-    push RELOCATE_ADDR + (move - $$)
+    push RELOCATE_ADDR + (load_loader2 - $$)
     retf
+; }}}
 
-move:
-    puts str_start
-
-    ; Reset disk system.
-    push dx
-    xor ax, ax
-    int 0x13
-    pop dx
-
-    jc error
-
-    ; Scan partition entries.
-    mov bx, PART_TABLE_ADDR
-
-.find_bootable:
-    cmp byte [bx], BOOTABLE_FLAG
-    je load_loader2
-
-    add bx, PART_ENTRY_SIZE
-    loopne .find_bootable
-
-    ; Nothing bootable drive.
-    puts str_nothing_dev
-    jmp error
 
 ; Load next sector.
 load_loader2:
-    ; In this, bx has bootable partition entry addr.
-    push bx
+; {{{
+    puts start_msg
+    call print_newline
 
-    ; Check extend int 0x13 instruction.
-    ; The carry flag will be set if Extensions are not supported.
-    mov ah, 0x41
-    mov bx, 0x55AA
-    int 0x13
-    jmp error
+    mov [drive_number], dl
 
-    pop bx
-
-    ; Setting disk address packet.
-    mov word [disk_addr_pack + 0x6], cs
-    ; first sector number(LBA) of boot partition
-    mov eax, dword [bx + 0x08]
-    mov [disk_addr_pack + 0x08], eax
-
-    ; Clear ax for avoiding int 0x42 return code is broken.
+    ; Reset disk system.
+    ; If reset disk cause error, it jumps to boot_fault.
     xor ax, ax
-
-    ; Read sector.
-    mov si, disk_addr_pack
-    mov ah, 0x42
     int 0x13
+    jc boot_fault
 
-    ; Check return code
-    cmp al, 0x00
-    jne error
+    ; Get drive parameter.
+    ; The carry flag will be set if extensions are NOT supported.
+    mov ah, 0x08
+    int 0x13
+    jc boot_fault
+
+    ; Store the number of head.
+    add dh, 1
+    mov [head_num], dh
+
+    ; Store sector per track
+    mov eax, ecx
+    and eax, 0x0000001f
+    mov [sector_per_track], al
+
+    ; Store cylinder per platter
+    mov eax, ecx
+    and eax, 0x0000ffe0
+    shr al, 6
+    xchg al, ah
+    add ax, 1
+    mov [cylinder_num], ax
+
+    ; Set begin load segment.
+    mov dx, NEXT_LOADER_ADDR
+    shr dx, 4
+
+    ; Calculate the number of sector for loding.
+    mov eax, [loader2_size]
+    shr eax, 9  ; divide by 512
+    mov ecx, eax
+
+    ; Load sector.
+.load:
+    mov eax, ecx
+
+    mov es, dx
+    xor bx, bx
+    call load_sector
+    add dx, (SECTOR_SIZE >> 4)  ; Shift next segment
+    loop .load
+
+    mov dl, [drive_number]
 
     ; Jump to second loader.
     jmp NEXT_LOADER_ADDR
 ; }}}
 
 
-; Data
+; Load one sector into es:bx
+; @ax Begin sector(LBA)
+; @cx sector count
+; @es:bx pointer to target buffer
+load_sector:
 ; {{{
-str_nothing_dev: db 'Nothing bootable device', 0
-str_start:       db 'Start axel loader1', 0
+    push eax
+    push ecx
+    push edx
 
-; Disk address packet structure
-; Offset Byte Size Description
-; 0              1  Size of packet (16 bytes)
-; 1              1  Always 0
-; 2              2  The number of sectors to transfer (max 127 on some BIOSes)
-; 4              4  Transfer buffer address(splited by 16 bit segment:16 bit offset)
-;   4              2  segment offset
-;   6              2  segment
-; 8              4  Starting LBA
-; 12             4  Used for upper part of 48 bit LBAs
-align 4
-disk_addr_pack:
-    db 0x10
-    db 0x00
-    dw 0x0001           ; Load only 1 sector.
-    dw NEXT_LOADER_ADDR ; Destination segment offset
-    dw 0x00000000       ; Destination segment
-    dd 0x00000000       ; This field is dynamicaly set by loader.
-    dd 0x00000000
+    call lba_to_chs
+    mov ah, 0x02
+    mov al, 0x01
+
+    mov cx, [cylinder]
+    shl cx, 8
+    mov cl, byte [cylinder + 1]
+    shl cl, 6
+    or cl, [sector]
+    mov dh, [head]
+    mov dl, [drive_number]
+    int 0x13
+    jc boot_fault
+
+    pop edx
+    pop ecx
+    pop eax
+
+    ret
+;}}}
+
+
+; Convert LBA to CHS
+; @ax LBA
+; @return
+lba_to_chs:
+;{{{
+    push ebx
+    push edx
+    push ecx
+
+    mov ebx, eax
+    xor ecx, ecx
+    xor eax, eax
+
+    mov ax, [head_num]          ; Cylinder = LBA / (The number of head * Sector per track)
+    mul word [sector_per_track]
+    mov cx, ax
+    mov ax, bx
+    xor edx, edx                ; Clear for div instruction.
+    div cx
+    mov [cylinder], ax
+
+    mov ax, bx                  ; Head = (LBA / Sector per track) % The number of head
+    xor edx, edx                ; Clear for div instruction.
+    div word [sector_per_track]
+    xor edx, edx                ; Clear for div instruction.
+    div word [head_num]
+    mov [head], dx
+
+    mov ax, bx
+    xor edx, edx                ; Clear for div instruction.
+    div word [sector_per_track] ; Sector = (LBA % Sector per track) + 1
+    inc dx
+    mov [sector], dl
+
+    pop ecx
+    pop edx
+    pop ebx
+
+    ret
+cylinder: resw 1
+head:     resw 1
+sector:   resb 1
 ; }}}
 
 
+; Print newline.
+print_newline:
+;{{{
+    push ax
+
+    mov ah, 0x0E
+    mov al, 0x0D
+    int 0x10
+    mov al, 0x0A
+    int 0x10
+    pop ax
+
+    ret
+; }}}
+
+
+; Print string terminated by 0
+; @si pointer to string
+print_string:
+; {{{
+    push ax
+    mov ah, 0x0E
+.loop:
+    lodsb       ; Grab a byte from SI
+    or al, al   ; Check for 0
+    jz .done
+
+    int 0x10
+
+    jmp .loop
+.done:
+
+    pop ax
+    ret
+;}}}
+
+
+; Boot fault process (reboot).
+boot_fault:
+; {{{
+    puts boot_fault_msg
+
+    xor ax, ax
+    int 0x16
+    int 0x18    ; Boot Fault Routine
+boot_fault_msg:    db 'Boot Fault.', 0
+; }}}
+
+
+; Print 32bit
+; @eax Number to print
+%if 0
+print_hex:
+; {{{
+    push eax
+    push ecx
+    push edx
+
+    mov edx, eax
+    mov ecx, (32 / 4)
+    puts hex_prefix
+.loop:
+    rol edx, 4
+    lea bx, [hex_table] ; base addres
+    mov al, dl          ; index
+    and al, 0x0f
+    xlatb
+    putchar al
+    loop .loop
+
+    newline
+
+    pop edx
+    pop ecx
+    pop eax
+    ret
+; }}}
+%endif
+
+
+; Data
+; {{{
+start_msg:          db 'Start Axel Loader1', 0
+head_num:           dw 0
+sector_per_track:   dw 0
+cylinder_num:       dw 0
+drive_number:       db 0
+hex_table:          db '0123456789ABCDEF', 0
+hex_prefix:         db '0x'
+;}}}
+
 ; Fill the remain of area
-times (MBR_SIZE - 2) - ($ - $$) db 0
+; Partition table begin address is 0x01BE.
+; 440 refer to a 32-bit disk signature address on disk image.
+times (440 - ($ - $$)) db 0
+loader2_size: ; Size of Loader2 is written by img_util.
+resd 1
+times ((MBR_SIZE - 2) - ($ - $$)) db 0
 dw 0xAA55

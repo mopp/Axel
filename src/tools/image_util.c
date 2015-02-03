@@ -327,6 +327,10 @@ static inline int set_partition_loader(Fat_image* img) {
      */
     second_loader_size = ALIGN_UP(second_loader_size, BYTE_PER_SECTOR);
 
+    /* Set second loader size as disk signature. */
+    mbr->disk_signature32 = (uint32_t)second_loader_size;
+    printf("Second loader size: 0x%zx\n", second_loader_size);
+
     /*
      * Set MBR configure to make first partition.
      * Allocate second loader before first Partition

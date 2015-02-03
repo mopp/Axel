@@ -21,10 +21,10 @@ export MKDIR       := mkdir -p
 export ROOT_DIR    := $(PWD)/
 export INCLUDE_DIR := $(ROOT_DIR)include/
 
-OS_NAME     := $(shell uname -s)
-# DISK_IMG    := disk16.img
-DISK_IMG    := disk.img
-D_CYLINDER  := 100
+MAKE       := make
+OS_NAME    := $(shell uname -s)
+DISK_IMG   := disk.img
+D_CYLINDER := 100
 
 AXEL_BIN   := axel.bin
 AXEL_SYM   := axel.sym
@@ -37,6 +37,8 @@ ISO_NAME   := axel.iso
 BOOT_DIR    := boot/
 BOOT_OBJ    := $(BOOT_DIR)multiboot.o
 GRUB_CONFIG := $(BOOT_DIR)grub.cfg
+
+TOOL_DIR    := tools/
 
 WORK_DIR    := work/
 ISO_DIR     := $(WORK_DIR)iso/
@@ -135,24 +137,24 @@ __EOF__
 endef
 export FDISK
 
-$(DISK_IMG) :
-ifeq ($(OS_NAME), Linux)
-	@# $(DISK_IMG) is NOT exist.
-	@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder has 516096 bytes (16 * 63 * 512)
-	@# cylinder * 516096 = disk size
-	@# cylinder = (disk size) / 516096
-	dd if=/dev/zero of=$(DISK_IMG) bs=516096 count=$(D_CYLINDER)
-	@echo "$$FDISK" | $(SHELL)
-	@# Skip area of disk heads that include MBR.
-	@# Maybe, fdisk default first LBA is 2048.
-	@# 2048 * 512 = 1048576
-	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
-	@# sudo mkfs.msdos -F 16 /dev/loop0
-	sudo mkfs.msdos -F 32 /dev/loop0
-	sudo losetup -d /dev/loop0
-else
-	@echo "Please do on linux :("
-endif
+# $(DISK_IMG) :
+# ifeq ($(OS_NAME), Linux)
+# 	@# $(DISK_IMG) is NOT exist.
+# 	@# 16 heads, 63 sectors/track, 512 bytes/sector, -> each cylinder has 516096 bytes (16 * 63 * 512)
+# 	@# cylinder * 516096 = disk size
+# 	@# cylinder = (disk size) / 516096
+# 	dd if=/dev/zero of=$(DISK_IMG) bs=516096 count=$(D_CYLINDER)
+# 	@echo "$$FDISK" | $(SHELL)
+# 	@# Skip area of disk heads that include MBR.
+# 	@# Maybe, fdisk default first LBA is 2048.
+# 	@# 2048 * 512 = 1048576
+# 	sudo losetup -o1048576 /dev/loop0 $(DISK_IMG)
+# 	@# sudo mkfs.msdos -F 16 /dev/loop0
+# 	sudo mkfs.msdos -F 32 /dev/loop0
+# 	sudo losetup -d /dev/loop0
+# else
+# 	@echo "Please do on linux :("
+# endif
 
 
 $(INIT): $(INIT_FILE)
@@ -196,3 +198,22 @@ run_qemu_kernel: $(MAKEFILE) $(AXEL_BIN)
 .PHONY: run_bochs
 run_bochs: $(MAKEFILE) $(ISO_NAME)
 	$(BOCHS)
+
+
+.PHONY: disk
+disk: $(MAKEFILE) $(AXEL_BIN) ./tools/image_util.c
+	$(MAKE) -C $(TOOL_DIR)
+	$(NASM) -f bin -I$(BOOT_DIR) ./boot/loader1.asm
+	./tools/img_util -f 12 -t $(DISK_IMG) -m ./boot/loader1 -l ./boot/loader1 $(AXEL_BIN)
+
+
+.PHONY: write_fd
+write_fd:
+	# sudo dd if=$(DISK_IMG) of=/dev/sdb
+	sudo dd if=./boot/loader1 of=/dev/sdb
+
+
+.PHONY: run_fd
+run_fd: $(MAKEFILE) $(DISK_IMG)
+	$(MAKE) disk
+	$(QEMU) -fda $(DISK_IMG)
