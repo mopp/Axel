@@ -200,17 +200,23 @@ run_bochs: $(MAKEFILE) $(ISO_NAME)
 	$(BOCHS)
 
 
+LOADER2 := ./boot/loader2
+LOADER2_SRC := ./boot/loader2.c
+LOADER2_DEPS_OBJ := ./boot/loader2.o $(OBJS_DIR)asm_functions.o
+# $(LOADER2): $(OBJS_DIR)asm_functions.o $(LOADER2_SRC)
 .PHONY: disk
 disk: $(MAKEFILE) $(AXEL_BIN) ./tools/image_util.c
 	$(MAKE) -C $(TOOL_DIR)
 	$(NASM) -f bin -I$(BOOT_DIR) ./boot/loader1.asm
-	./tools/img_util -f 12 -t $(DISK_IMG) -m ./boot/loader1 -l ./boot/loader1 $(AXEL_BIN)
+	clang -I$(INCLUDE_DIR) -m32 -std=c11 -nostdlib -ffreestanding -fno-builtin -c ./boot/loader2.c -o ./boot/loader2.o
+	ld -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -T ./boot/loader2.ld -static -o ./boot/loader2 ./boot/loader2.o
+	./tools/img_util -f 12 -t $(DISK_IMG) -m ./boot/loader1 -l ./boot/loader2 $(AXEL_BIN)
 
 
 .PHONY: write_fd
 write_fd:
-	# sudo dd if=$(DISK_IMG) of=/dev/sdb
-	sudo dd if=./boot/loader1 of=/dev/sdb
+	$(MAKE) disk
+	sudo dd if=$(DISK_IMG) of=/dev/sdb
 
 
 .PHONY: run_fd
