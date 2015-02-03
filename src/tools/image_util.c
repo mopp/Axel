@@ -446,14 +446,27 @@ static inline int embed_files_into_image(Fat_image* img, char const* base_dir_na
     }
 
     for (size_t i = 0; i < img->embedded_file_num; i++) {
-        char* filename = img->embedded_files[i];
-        size_t file_size = get_file_size(filename);
+        char* filepath = img->embedded_files[i];
+        size_t file_size = get_file_size(filepath);
         void* buffer = malloc(file_size);
-        load_file(filename, buffer, file_size);
+        load_file(filepath, buffer, file_size);
+
+        char* index = strrchr(filepath, '/');
+        char* filename = NULL;
+        if (index == NULL) {
+            filename = filepath;
+        } else {
+            filename = malloc(strlen(filepath));
+            strcpy(filename, index + 1);
+        }
+
         Axel_state_code r = fat_create_file(&img->manip, dir_cluster, filename, DIR_ATTR_READ_ONLY | DIR_ATTR_ARCHIVE, buffer, file_size);
         free(buffer);
+        if (index != NULL) {
+            free(filename);
+        }
 
-        printf("\tFile: %s\n", filename);
+        printf("\tFile: %s\n", filepath);
         printf("\tSize: %zu\n", file_size);
         if (r == AXEL_SUCCESS) {
             puts("\tembedded Success");
