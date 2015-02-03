@@ -75,13 +75,14 @@
 ;            ~          unused area           ~
 ;            |                                |
 ; 0x00007C00 +--------------------------------+
-;            |            loader2             |
 ;            |                                |
 ;            |                                |
-;            ~                                ~
+;            ~            loader2             ~
 ;            |                                |
 ;            |                                |
 ; 0x000A0000 +--------------------------------+
+;
+; The maximum size of loader2 is 609KB (0xA0000 - 0x7C00)
 ;---------------------------------------------------------------------
 
 
@@ -91,7 +92,7 @@
 ; {{{
 MBR_SIZE         equ 512
 SECTOR_SIZE      equ 512
-STACK_TOP        equ 0x500
+STACK_TOP        equ 0x700
 STACK_SIZE       equ 0x1000
 STACK_BOTTOM     equ STACK_TOP + STACK_SIZE
 RELOCATE_ADDR    equ STACK_BOTTOM
@@ -168,9 +169,6 @@ main:
 ; Load next sector.
 load_loader2:
 ; {{{
-    puts start_msg
-    call print_newline
-
     mov [drive_number], dl
 
     ; Reset disk system.
@@ -222,9 +220,46 @@ load_loader2:
     loop .load
 
     mov dl, [drive_number]
+; }}}
 
-    ; Jump to second loader.
-    jmp NEXT_LOADER_ADDR
+
+enable_a20_gate:
+; {{{
+    call wait_Keyboard_out
+    mov al,0xD1
+    out 0x64, al
+    call wait_Keyboard_out
+    mov al, 0xDF
+    out 0x60, al
+    call wait_Keyboard_out
+; }}}
+
+
+set_vbe:
+    mov al, 0x13
+    mov ah, 0x00
+    int 0x10
+
+
+setup_gdt:
+; {{{
+    ; First, setup temporary GDT.
+    lgdt [for_load_gdt]
+
+    mov eax, CR0
+    or eax, 0x00000001
+    mov CR0, eax
+    jmp CODE_SEGMENT:enter_protected_mode
+; }}}
+
+
+wait_Keyboard_out:
+; {{{
+    in  al,0x64
+    and al,0x02
+    in  al,0x60
+    jnz wait_Keyboard_out
+    ret
 ; }}}
 
 
@@ -299,25 +334,17 @@ lba_to_chs:
     pop ebx
 
     ret
-cylinder: resw 1
-head:     resw 1
-sector:   resb 1
 ; }}}
 
 
-; Print newline.
-print_newline:
-;{{{
-    push ax
+; Boot fault process (reboot).
+boot_fault:
+; {{{
+    puts boot_fault_msg
 
-    mov ah, 0x0E
-    mov al, 0x0D
-    int 0x10
-    mov al, 0x0A
-    int 0x10
-    pop ax
-
-    ret
+    xor ax, ax
+    int 0x16
+    int 0x18    ; Boot Fault Routine
 ; }}}
 
 
@@ -342,21 +369,25 @@ print_string:
 ;}}}
 
 
-; Boot fault process (reboot).
-boot_fault:
-; {{{
-    puts boot_fault_msg
+%if 0
+; Print newline.
+print_newline:
+;{{{
+    push ax
 
-    xor ax, ax
-    int 0x16
-    int 0x18    ; Boot Fault Routine
-boot_fault_msg:    db 'Boot Fault.', 0
+    mov ah, 0x0E
+    mov al, 0x0D
+    int 0x10
+    mov al, 0x0A
+    int 0x10
+    pop ax
+
+    ret
 ; }}}
 
 
 ; Print 32bit
 ; @eax Number to print
-%if 0
 print_hex:
 ; {{{
     push eax
@@ -381,26 +412,77 @@ print_hex:
     pop ecx
     pop eax
     ret
+hex_table:  db '0123456789ABCDEF', 0
+hex_prefix: db '0x'
 ; }}}
 %endif
 
 
 ; Data
 ; {{{
-start_msg:          db 'Start Axel Loader1', 0
-head_num:           dw 0
-sector_per_track:   dw 0
-cylinder_num:       dw 0
-drive_number:       db 0
-hex_table:          db '0123456789ABCDEF', 0
-hex_prefix:         db '0x'
-;}}}
+boot_fault_msg:   db 'Boot Fault', 0
+drive_number:     db 0
+sector:           db 0
+cylinder:         dw 0
+head:             dw 0
+head_num:         dw 0
+sector_per_track: dw 0
+cylinder_num:     dw 0
+
+for_load_gdt:
+    dw (3 * 8)
+    dd temporary_gdt
+
+CODE_SEGMENT equ (1 * 8)
+DATA_SEGMENT equ (2 * 8)
+temporary_gdt:
+    dw 0x0000 ; Null descriptor
+    dw 0x0000
+    dw 0x0000
+    dw 0x0000
+
+    ; Code descriptor
+    db 0xFF
+    db 0xFF
+    dw 0x0000
+    db 0x00
+    db 10011010b
+    db 11001111b
+    db 0
+
+    ; Data descriptor
+    db 0xFF
+    db 0xFF
+    dw 0x0000
+    db 0x00
+    db 10010010b
+    db 11001111b
+    db 0
+; }}}
+
+
+bits 32
+enter_protected_mode:
+;{{{
+    cli
+
+    mov ax, DATA_SEGMENT
+    mov ss, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ds, ax
+
+    ; Jump to second loader.
+    jmp NEXT_LOADER_ADDR
+; }}}
+
 
 ; Fill the remain of area
 ; Partition table begin address is 0x01BE.
 ; 440 refer to a 32-bit disk signature address on disk image.
 times (440 - ($ - $$)) db 0
 loader2_size: ; Size of Loader2 is written by img_util.
-resd 1
+dd 0
 times ((MBR_SIZE - 2) - ($ - $$)) db 0
 dw 0xAA55
