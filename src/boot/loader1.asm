@@ -86,268 +86,12 @@
 ;---------------------------------------------------------------------
 
 
-; Constant
-; These do not allocate in memory.
-; And expand at compile time.
+
+;---------------------------------------------------------------------
+; Debug functions.
+;---------------------------------------------------------------------
 ; {{{
-MBR_SIZE         equ 512
-SECTOR_SIZE      equ 512
-STACK_TOP        equ 0x700
-STACK_SIZE       equ 0x1000
-STACK_BOTTOM     equ STACK_TOP + STACK_SIZE
-RELOCATE_ADDR    equ STACK_BOTTOM
-LOAD_ADDR        equ 0x7C00
-NEXT_LOADER_ADDR equ LOAD_ADDR
-PART_TABLE_ADDR  equ RELOCATE_ADDR + MBR_SIZE - 66
-PART_ENTRY_SIZE  equ 16
-BOOTABLE_FLAG    equ 0x80
-; }}}
-
-
-; Print one character
-%macro putchar 1
-; {{{
-    push ax
-    mov al, %1
-    mov ah, 0x0E
-    int 0x10
-    pop ax
-%endmacro
-; }}}
-
-
-; Sub-routine print_string wrapper.
-%macro puts 1
-; {{{
-    push si
-    mov si, %1
-    call print_string
-    pop si
-%endmacro
-; }}}
-
-
-bits 16
-org RELOCATE_ADDR
-
-
-; jump start code.
-; It must be here before any data.
-jmp short main
-
-
-; Start loader1
-; DL is boot disk number
-main:
-; {{{
-    cli
-
-    ; Setting all segment selector.
-    mov ax, cs
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-
-    mov sp, STACK_BOTTOM
-
-    ; Copy this MBR from LOAD_ADDR to RELOCATE_ADDR.
-    mov cx, MBR_SIZE
-    mov si, LOAD_ADDR
-    mov di, RELOCATE_ADDR
-    rep movsb
-
-    ; Calculate destination address.
-    ; And push segment and addr to jump.
-    push es
-    push RELOCATE_ADDR + (load_loader2 - $$)
-    retf
-; }}}
-
-
-; Load next sector.
-load_loader2:
-; {{{
-    mov [drive_number], dl
-
-    ; Reset disk system.
-    ; If reset disk cause error, it jumps to boot_fault.
-    xor ax, ax
-    int 0x13
-    jc boot_fault
-
-    ; Get drive parameter.
-    ; The carry flag will be set if extensions are NOT supported.
-    mov ah, 0x08
-    int 0x13
-    jc boot_fault
-
-    ; Store the number of head.
-    add dh, 1
-    mov [head_num], dh
-
-    ; Store sector per track
-    mov eax, ecx
-    and eax, 0x0000001f
-    mov [sector_per_track], al
-
-    ; Store cylinder per platter
-    mov eax, ecx
-    and eax, 0x0000ffe0
-    shr al, 6
-    xchg al, ah
-    add ax, 1
-    mov [cylinder_num], ax
-
-    ; Set begin load segment.
-    mov dx, NEXT_LOADER_ADDR
-    shr dx, 4
-
-    ; Calculate the number of sector for loding.
-    mov eax, [loader2_size]
-    shr eax, 9  ; divide by 512
-    mov ecx, eax
-
-    ; Load sector.
-.load:
-    mov eax, ecx
-
-    mov es, dx
-    xor bx, bx
-    call load_sector
-    add dx, (SECTOR_SIZE >> 4)  ; Shift next segment
-    loop .load
-
-    mov dl, [drive_number]
-; }}}
-
-
-enable_a20_gate:
-; {{{
-    call wait_Keyboard_out
-    mov al,0xD1
-    out 0x64, al
-    call wait_Keyboard_out
-    mov al, 0xDF
-    out 0x60, al
-    call wait_Keyboard_out
-; }}}
-
-
-set_vbe:
-    mov al, 0x13
-    mov ah, 0x00
-    int 0x10
-
-
-setup_gdt:
-; {{{
-    ; First, setup temporary GDT.
-    lgdt [for_load_gdt]
-
-    mov eax, CR0
-    or eax, 0x00000001
-    mov CR0, eax
-    jmp CODE_SEGMENT:enter_protected_mode
-; }}}
-
-
-wait_Keyboard_out:
-; {{{
-    in  al,0x64
-    and al,0x02
-    in  al,0x60
-    jnz wait_Keyboard_out
-    ret
-; }}}
-
-
-; Load one sector into es:bx
-; @ax Begin sector(LBA)
-; @cx sector count
-; @es:bx pointer to target buffer
-load_sector:
-; {{{
-    push eax
-    push ecx
-    push edx
-
-    call lba_to_chs
-    mov ah, 0x02
-    mov al, 0x01
-
-    mov cx, [cylinder]
-    shl cx, 8
-    mov cl, byte [cylinder + 1]
-    shl cl, 6
-    or cl, [sector]
-    mov dh, [head]
-    mov dl, [drive_number]
-    int 0x13
-    jc boot_fault
-
-    pop edx
-    pop ecx
-    pop eax
-
-    ret
-;}}}
-
-
-; Convert LBA to CHS
-; @ax LBA
-; @return
-lba_to_chs:
-;{{{
-    push ebx
-    push edx
-    push ecx
-
-    mov ebx, eax
-    xor ecx, ecx
-    xor eax, eax
-
-    mov ax, [head_num]          ; Cylinder = LBA / (The number of head * Sector per track)
-    mul word [sector_per_track]
-    mov cx, ax
-    mov ax, bx
-    xor edx, edx                ; Clear for div instruction.
-    div cx
-    mov [cylinder], ax
-
-    mov ax, bx                  ; Head = (LBA / Sector per track) % The number of head
-    xor edx, edx                ; Clear for div instruction.
-    div word [sector_per_track]
-    xor edx, edx                ; Clear for div instruction.
-    div word [head_num]
-    mov [head], dx
-
-    mov ax, bx
-    xor edx, edx                ; Clear for div instruction.
-    div word [sector_per_track] ; Sector = (LBA % Sector per track) + 1
-    inc dx
-    mov [sector], dl
-
-    pop ecx
-    pop edx
-    pop ebx
-
-    ret
-; }}}
-
-
-; Boot fault process (reboot).
-boot_fault:
-; {{{
-    puts boot_fault_msg
-
-    xor ax, ax
-    int 0x16
-    int 0x18    ; Boot Fault Routine
-; }}}
-
-
+%if 0
 ; Print string terminated by 0
 ; @si pointer to string
 print_string:
@@ -369,7 +113,6 @@ print_string:
 ;}}}
 
 
-%if 0
 ; Print newline.
 print_newline:
 ;{{{
@@ -415,16 +158,273 @@ print_hex:
 hex_table:  db '0123456789ABCDEF', 0
 hex_prefix: db '0x'
 ; }}}
+
+
+; Print one character
+%macro putchar 1
+; {{{
+    push ax
+    mov al, %1
+    mov ah, 0x0E
+    int 0x10
+    pop ax
+%endmacro
+; }}}
+
+
+; Sub-routine print_string wrapper.
+%macro puts 1
+; {{{
+    push si
+    mov si, %1
+    call print_string
+    pop si
+%endmacro
+; }}}
+
 %endif
+; }}}
+;---------------------------------------------------------------------
+
+
+
+;---------------------------------------------------------------------
+; Constant
+; These do not allocate in memory.
+; And expand at compile time.
+;---------------------------------------------------------------------
+; {{{
+MBR_SIZE         equ 512
+SECTOR_SIZE      equ 512
+STACK_TOP        equ 0x700
+STACK_SIZE       equ 0x1000
+STACK_BOTTOM     equ STACK_TOP + STACK_SIZE
+RELOCATE_ADDR    equ STACK_BOTTOM
+LOAD_ADDR        equ 0x7C00
+NEXT_LOADER_ADDR equ LOAD_ADDR
+PART_TABLE_ADDR  equ RELOCATE_ADDR + MBR_SIZE - 66
+PART_ENTRY_SIZE  equ 16
+BOOTABLE_FLAG    equ 0x80
+; }}}
+;---------------------------------------------------------------------
+
+
+bits 16
+org RELOCATE_ADDR
+
+
+; jump start code.
+; It must be here before any data.
+begin:
+; {{{
+    jmp short main
+; }}}
+
+
+; Start loader1
+; DL is boot disk number
+main:
+; {{{
+    ; Setting all segment selector.
+    mov ax, cs
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    mov sp, STACK_BOTTOM
+
+    ; Copy this MBR from LOAD_ADDR to RELOCATE_ADDR.
+    mov cx, MBR_SIZE
+    mov si, LOAD_ADDR
+    mov di, RELOCATE_ADDR
+    rep movsb
+
+    ; Calculate destination address.
+    ; And push segment and addr to jump.
+    push es
+    push RELOCATE_ADDR + (load_loader2 - $$)
+    retf
+; }}}
+
+
+; Load next sector.
+load_loader2:
+; {{{
+    mov [drive_number], dl
+
+    ; Reset disk system.
+    ; If reset disk cause error, it jumps to boot_fault.
+    xor ax, ax
+    int 0x13
+    jc boot_fault
+
+    ; Get drive parameter.
+    ; The carry flag will be set if extensions are NOT supported.
+    ; CH ttttttttb  tttttttt is lower 8bit of the number of track (0-base).
+    ; CL ttssssssb  tt is upper 2bit of the number of track.
+    ;               ssssss: The number of sector (1-base).
+    ; DH The number of head (0-base)
+    ; DL The number of drive
+    mov ah, 0x08
+    int 0x13
+    jc boot_fault
+
+    ; Store the number of head.
+    add dh, 1
+    mov [head_num], dh
+
+    ; Store sector per track
+    mov eax, ecx
+    and eax, 0x0000001f
+    mov [sector_per_track], al
+
+    ; Store cylinder per platter
+    xchg cl, ch
+    shr cl, 6
+    add cx, 1
+    mov [cylinder_num], cx
+
+    ; Set begin load segment.
+    mov dx, (NEXT_LOADER_ADDR >> 4)
+
+    ; Calculate the number of sector for loding.
+    mov ecx, [loader2_size]
+    shr ecx, 9  ; divide by 512
+
+    ; Load sector.
+.loading:
+    mov ax, 1
+    mov es, dx
+    xor bx, bx
+    call load_sector
+    add dx, (SECTOR_SIZE >> 4)  ; Shift next segment
+    loop .loading
+; }}}
+
+
+enable_a20_gate:
+; {{{
+    call wait_Keyboard_out
+    mov al, 0xD1
+    out 0x64, al
+    call wait_Keyboard_out
+    mov al, 0xDF
+    out 0x60, al
+    call wait_Keyboard_out
+; }}}
+
+
+set_vbe:
+    mov al, 0x13
+    xor ah, ah
+    int 0x10
+
+
+setup_gdt:
+; {{{
+    ; First, setup temporary GDT.
+    lgdt [for_load_gdt]
+
+    mov eax, CR0
+    or eax, 0x00000001
+    mov CR0, eax
+    jmp CODE_SEGMENT:enter_protected_mode
+; }}}
+
+
+wait_Keyboard_out:
+; {{{
+    in  al, 0x64
+    and al, 0x02
+    in  al, 0x60
+    jnz wait_Keyboard_out
+    ret
+; }}}
+
+
+; Load one sector into es:bx
+; @ax Begin sector(LBA)
+; @es:bx pointer to target buffer
+load_sector:
+; {{{
+    push ecx
+    push edx
+
+    call lba_to_chs
+
+    mov ch, [cylinder]
+    mov cl, [cylinder + 1]
+    shl cl, 6
+    or cl, [sector]
+    mov dh, [head]
+    mov dl, [drive_number]
+    mov ax, 0x0201
+    int 0x13
+    jc boot_fault
+
+    pop edx
+    pop ecx
+
+    ret
+;}}}
+
+
+; Convert LBA to CHS
+; @ax LBA
+; @return
+lba_to_chs:
+;{{{
+    push ebx
+    push edx
+    push ecx
+
+    mov ebx, eax
+
+    mov ax, [head_num]          ; Cylinder = LBA / (The number of head * Sector per track)
+    mul word [sector_per_track]
+    mov cx, ax
+    mov ax, bx
+    xor dx, dx                  ; Clear for div instruction.
+    div cx
+    mov [cylinder], ax
+
+    mov ax, bx                  ; Head = (LBA / Sector per track) % The number of head
+    xor dx, dx                  ; Clear for div instruction.
+    div word [sector_per_track]
+    xor dx, dx                  ; Clear for div instruction.
+    div word [head_num]
+    mov [head], dl
+
+    mov ax, bx
+    xor dx, dx                  ; Clear for div instruction.
+    div word [sector_per_track] ; Sector = (LBA % Sector per track) + 1
+    inc dx
+    mov [sector], dl
+
+    pop ecx
+    pop edx
+    pop ebx
+
+    ret
+; }}}
+
+
+; Boot fault process (reboot).
+boot_fault:
+; {{{
+    int 0x18    ; Boot Fault Routine
+; }}}
 
 
 ; Data
 ; {{{
 boot_fault_msg:   db 'Boot Fault', 0
 drive_number:     db 0
+head:             db 0
 sector:           db 0
 cylinder:         dw 0
-head:             dw 0
 head_num:         dw 0
 sector_per_track: dw 0
 cylinder_num:     dw 0
@@ -472,6 +472,13 @@ enter_protected_mode:
     mov fs, ax
     mov gs, ax
     mov ds, ax
+
+    mov esp, NEXT_LOADER_ADDR
+
+    ; Set arguments of loader2()
+    mov dl, [drive_number]
+    push dx
+    push esp
 
     ; Jump to second loader.
     jmp NEXT_LOADER_ADDR
