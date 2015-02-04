@@ -229,12 +229,12 @@ begin:
 main:
 ; {{{
     ; Setting all segment selector.
-    ; mov ax, cs
-    ; mov ds, ax
-    ; mov es, ax
-    ; mov fs, ax
-    ; mov gs, ax
-    ; mov ss, ax
+    mov ax, cs
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
 
     mov sp, STACK_BOTTOM
 
@@ -279,8 +279,8 @@ load_loader2:
     mov [head_num], dh
 
     ; Store sector per track
-    mov eax, ecx
-    and eax, 0x0000001f
+    mov al, cl
+    and al, 0x1f
     mov [sector_per_track], al
 
     ; Store cylinder per platter
@@ -303,6 +303,7 @@ load_loader2:
     xor bx, bx
     call load_sector
     add dx, (SECTOR_SIZE >> 4)  ; Shift next segment
+    add ax, 1
     loop .loading
 ; }}}
 
@@ -356,7 +357,7 @@ detecting_memory_e820:
     cmp eax, edx                ; Check result.
     jne boot_fault
 
-    test ebx, ebx               ; if ebx resets to 0, list is complete
+    test ebx, ebx               ; If ebx resets to 0, list is complete
     je .finish
 
     ; If this entry is ACPI 3.x entry, jump for cheking flag.
@@ -382,7 +383,6 @@ detecting_memory_e820:
 
 .finish:
 ;}}}
-
 
 
 set_vbe:
@@ -499,7 +499,6 @@ boot_fault:
 ; Data
 ;---------------------------------------------------------------------
 ; {{{
-boot_fault_msg:   db 'Boot Fault', 0
 drive_number:     db 0
 head:             db 0
 sector:           db 0
