@@ -69,7 +69,9 @@
 ; See img_util source for location of loader2.
 ;
 ; 0x00000500 +--------------------------------+
-;            |            loader1             |
+;            |            stack               |
+; 0x00001500 +--------------------------------+
+;            ~            loader1             ~
 ; 0x00001700 +--------------------------------+
 ;            |                                |
 ;            ~          unused area           ~
@@ -196,13 +198,14 @@ hex_prefix: db '0x'
 ; {{{
 MBR_SIZE         equ 512
 SECTOR_SIZE      equ 512
-STACK_TOP        equ 0x700
+LOAD_ADDR        equ 0x7C00
+NEXT_LOADER_ADDR equ LOAD_ADDR
+STACK_TOP        equ 0x500
 STACK_SIZE       equ 0x1000
 STACK_BOTTOM     equ STACK_TOP + STACK_SIZE
 RELOCATE_ADDR    equ STACK_BOTTOM
-LOAD_ADDR        equ 0x7C00
-NEXT_LOADER_ADDR equ LOAD_ADDR
 PART_TABLE_ADDR  equ RELOCATE_ADDR + MBR_SIZE - 66
+MEMORY_INFOS     equ RELOCATE_ADDR + MBR_SIZE
 PART_ENTRY_SIZE  equ 16
 BOOTABLE_FLAG    equ 0x80
 ; }}}
@@ -226,12 +229,12 @@ begin:
 main:
 ; {{{
     ; Setting all segment selector.
-    mov ax, cs
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
+    ; mov ax, cs
+    ; mov ds, ax
+    ; mov es, ax
+    ; mov fs, ax
+    ; mov gs, ax
+    ; mov ss, ax
 
     mov sp, STACK_BOTTOM
 
@@ -316,10 +319,78 @@ enable_a20_gate:
 ; }}}
 
 
+; Memory infomation entry
+;   uint64_t Base address
+;   uint64_t Length of region (If this value is 0, ignore the entry)
+;   uint32_t Region "type"
+;       Type 1: Usable (normal) RAM
+;       Type 2: Reserved - unusable
+;       Type 3: ACPI reclaimable memory
+;       Type 4: ACPI NVS memory
+;       Type 5: Area containing bad memory
+;   uint32_t ACPI 3.0 Extended Attributes bitfield (If 24 bytes are returned, instead of 20).
+;       Bit 0 if this bit is clear, the entire entry should be ignored.
+;       Bit 1 if this bit is set, the entry is non-volatile.
+;       The remaining 30 bits are currently undefined.
+detecting_memory_e820:
+;{{{
+    mov ax, (MEMORY_INFOS >> 4) ; Destination buffer.
+    mov es, ax
+    xor di, di
+    xor ebx, ebx                ; First, ebx must be zero.
+    xor ebp, ebp                ; Store the number of entry.
+
+.loop:
+    mov [es:di + 20], byte 1   ; flag for validating ACPI 3.X entry.
+    mov ecx, 24                 ; Buffer size.
+    mov edx, 0x0534D4150        ; Place "SMAP" into edx.
+    mov eax, 0xE820
+    int 0x15
+    jc .finish
+    ; On first call, set carry flag means "unsupported function".
+    ; On the other, set carry flag means "end of list are reached".
+    ; In this, ebx are preserved for next function call.
+    ; And cl are stored buffer size of actual loaded by BIOS.
+    ; es, di is same input value.
+
+    cmp eax, edx                ; Check result.
+    jne boot_fault
+
+    test ebx, ebx               ; if ebx resets to 0, list is complete
+    je .finish
+
+    ; If this entry is ACPI 3.x entry, jump for cheking flag.
+    cmp cl, 20
+    jbe .not_acpi_entry
+
+    ; If ignore bit is set, skip this entry.
+    test [es:di + 20], byte 1
+    je .skip
+
+.not_acpi_entry:
+    ; Check length, length is 64bit.
+    ; if length uint64_t is 0, skip entry
+    mov ecx, [es:di + 8]
+    or ecx, [es:di + 12]
+    jz .skip
+
+    inc bp
+    add di, 24  ; Set next entry address.
+
+.skip:
+    jmp .loop
+
+.finish:
+;}}}
+
+
+
 set_vbe:
+;{{{
     mov al, 0x13
     xor ah, ah
     int 0x10
+; }}}
 
 
 setup_gdt:
@@ -334,6 +405,10 @@ setup_gdt:
 ; }}}
 
 
+;---------------------------------------------------------------------
+; Sub-routines
+;---------------------------------------------------------------------
+; {{{
 wait_Keyboard_out:
 ; {{{
     in  al, 0x64
@@ -416,9 +491,13 @@ boot_fault:
 ; {{{
     int 0x18    ; Boot Fault Routine
 ; }}}
+;}}}
+;---------------------------------------------------------------------
 
 
+;---------------------------------------------------------------------
 ; Data
+;---------------------------------------------------------------------
 ; {{{
 boot_fault_msg:   db 'Boot Fault', 0
 drive_number:     db 0
@@ -459,6 +538,7 @@ temporary_gdt:
     db 11001111b
     db 0
 ; }}}
+;---------------------------------------------------------------------
 
 
 bits 32
@@ -468,17 +548,21 @@ enter_protected_mode:
 
     mov ax, DATA_SEGMENT
     mov ss, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
     mov ds, ax
+    mov es, ax
+    ; mov fs, ax
+    ; mov gs, ax
 
     mov esp, NEXT_LOADER_ADDR
 
     ; Set arguments of loader2()
+    xor dh, dh
     mov dl, [drive_number]
     push dx
-    push esp
+    push ebp
+    mov eax, MEMORY_INFOS
+    push eax
+    add esp, -4 ; for return address.
 
     ; Jump to second loader.
     jmp NEXT_LOADER_ADDR
