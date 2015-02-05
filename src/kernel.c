@@ -39,13 +39,14 @@ static char cmd[256 + 1];
 static size_t cmd_idx = 0;
 
 
+static _Noreturn void no_op(Interrupt_frame*);
+static void set_idt(Gate_descriptor*, size_t);
 static void draw_desktop(void);
 static void decode_key(void);
 static void decode_mouse(void);
 static Segment_descriptor* set_segment_descriptor(Segment_descriptor*, uint32_t, uint32_t, uint32_t);
 static void init_gdt(void);
 static void clear_bss(void);
-
 
 /**
  * @brief This function is start entry.
@@ -63,7 +64,7 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
         /* TODO: panic */
     }
     init_gdt();
-    init_idt();
+    init_idt(set_idt, (uintptr_t)no_op);
     init_graphic(boot_info);
     if (AXEL_SUCCESS == init_window()) {
         draw_desktop();
@@ -119,6 +120,34 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
     }
 }
 
+
+static _Noreturn void hlt(Interrupt_frame* ic) {
+    printf("Interrupt_frame: %p\n", ic);
+
+    BOCHS_MAGIC_BREAK();
+    INF_LOOP();
+}
+
+
+static _Noreturn void no_op(Interrupt_frame* ic) {
+    puts("No Operation\n");
+    printf("Interrupt_frame: %p\n", ic);
+
+    /* TODO: kill caller process. */
+    BOCHS_MAGIC_BREAK();
+    INF_LOOP();
+}
+
+
+static void set_idt(Gate_descriptor* idts, size_t size) {
+    set_gate_descriptor(idts + 0x08, (uintptr_t)hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x0D, (uintptr_t)hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x0E, (uintptr_t)asm_exception_page_fault, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_TRAP);
+    set_gate_descriptor(idts + 0x20, (uintptr_t)asm_interrupt_timer,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x21, (uintptr_t)asm_interrupt_keybord,    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x2C, (uintptr_t)asm_interrupt_mouse,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x80, (uintptr_t)asm_syscall_enter,        KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_TRAP | GD_RING3);
+}
 
 static inline void draw_desktop(void) {
     Point2d p0, p1;

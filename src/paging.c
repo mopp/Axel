@@ -484,3 +484,40 @@ void set_phys_to_vir_addr(void* addr) {
     uintptr_t* p = (uintptr_t*)addr;
     *p = phys_to_vir_addr(*p);
 }
+
+
+void exception_page_fault(Interrupt_frame* ic) {
+    uintptr_t fault_addr = load_cr2();
+    printf("PF caused by proc %d\n", running_proc()->pid);
+    printf("Interrupt_frame: %p", ic);
+
+    if (fault_addr < KERNEL_VIRTUAL_BASE_ADDR) {
+        /* TODO: User space fault */
+        io_cli();
+        printf("\nfault_addr: 0x%zx\n", fault_addr);
+        puts("User space fault or Kernel space fault");
+        BOCHS_MAGIC_BREAK();
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x1);
+    }
+
+    /* Kernel space fault */
+    if (is_kernel_pdt((Page_directory_table)(phys_to_vir_addr(get_cpu_pdt()))) == true) {
+        /* Maybe kernel error */
+        /* TODO: panic */
+        io_cli();
+        printf("\nfault_addr: 0x%zx\n", fault_addr);
+        puts("Kernel space fault");
+        BOCHS_MAGIC_BREAK();
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x2);
+    }
+
+    Axel_state_code result = synchronize_pdt(fault_addr);
+    if (result != AXEL_SUCCESS) {
+        /* TODO: panic */
+        io_cli();
+        printf("\nfault_addr: 0x%zx\n", fault_addr);
+        puts("Synchronize fault");
+        BOCHS_MAGIC_BREAK();
+        DIRECTLY_WRITE_STOP(uintptr_t, KERNEL_VIRTUAL_BASE_ADDR, 0x3);
+    }
+}
