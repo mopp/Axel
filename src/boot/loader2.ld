@@ -1,8 +1,8 @@
 OUTPUT_FORMAT("binary")
 
-SECTIONS {
     /* loader2 entry point. */
     ENTRY(loader2)
+SECTIONS {
 
     /* loader2 is loaded 0x7C00 by loader1. */
     . = 0x7C00;
@@ -12,13 +12,13 @@ SECTIONS {
     }
 
 
-    .data : {
+    .data : ALIGN(0x1000) {
         *(.data*)
         *(.rodata*)
     }
 
 
-    .bss : {
+    .bss : ALIGN(0x1000) {
         LD_LOADER2_BSS_BEGIN = .;
         *(.bss*)
         *(COMMON)

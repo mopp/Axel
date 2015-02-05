@@ -33,28 +33,28 @@ INIT_SRC   := init.asm
 INIT_BIN   := init
 ISO_NAME   := axel.iso
 
-# Variables for tools
-BOOT_DIR       := ./boot/
-GRUB_CONFIG    := $(BOOT_DIR)grub.cfg
-MULTI_BOOT_SRC := $(BOOT_DIR)multiboot.asm
-MULTI_BOOT_OBJ := $(BOOT_DIR)multiboot.o
-LOADER1_SRC    := $(BOOT_DIR)loader1.asm
-LOADER1_BIN    := $(BOOT_DIR)loader1
-LOADER2_SRC    := $(BOOT_DIR)loader2.c
-LOADER2_OBJ    := $(BOOT_DIR)loader2.o
-LOADER2_LD     := $(BOOT_DIR)loader2.ld
-LOADER2_BIN    := $(BOOT_DIR)loader2
-
-# Variables for tools
-TOOL_DIR := tools/
-IMG_PROG := $(TOOL_DIR)img_util
-
+BOOT_DIR  := ./boot/
+TOOL_DIR  := tools/
 WORK_DIR  := $(SRC_DIR)work/
 ISO_DIR   := $(WORK_DIR)iso/
 OBJS_DIR  := $(WORK_DIR)objs/
 DEPS_DIR  := $(WORK_DIR)deps/
 WORK_DIRS := $(WORK_DIR) $(OBJS_DIR) $(DEPS_DIR) $(ISO_DIR) $(OBJS_DIR)dev $(DEPS_DIR)dev
 SUB_DIRS  := $(BOOT_DIR) $(TOOL_DIR)
+
+# Variables for boots
+GRUB_CONFIG       := $(BOOT_DIR)grub.cfg
+MULTI_BOOT_SRC    := $(BOOT_DIR)multiboot.asm
+MULTI_BOOT_OBJ    := $(BOOT_DIR)multiboot.o
+LOADER1_SRC       := $(BOOT_DIR)loader1.asm
+LOADER1_BIN       := $(BOOT_DIR)loader1
+LOADER2_SRC       := $(BOOT_DIR)loader2.c
+LOADER2_OBJ       := $(BOOT_DIR)loader2.o
+LOADER2_LD        := $(BOOT_DIR)loader2.ld
+LOADER2_BIN       := $(BOOT_DIR)loader2
+LOADER2_MAP       := $(BOOT_DIR)loader2.map
+LOADER2_DEPS_OBJS := $(OBJS_DIR)asm_functions.o $(OBJS_DIR)interrupt.o
+
 C_SRCS    :=      \
 	elf.c         \
 	time.c        \
@@ -89,6 +89,10 @@ A_SRCS := asm_functions.asm interrupt_asm.asm
 A_OBJS := $(addprefix $(OBJS_DIR), $(A_SRCS:%.asm=%.o))
 OBJS   := $(MULTI_BOOT_OBJ) $(A_OBJS) $(C_OBJS)
 
+# Variables for tools
+IMG_PROG := $(TOOL_DIR)img_util
+
+
 # CC          C compiler command
 # CFLAGS      C compiler flags
 # LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a nonstandard directory <lib dir>
@@ -98,21 +102,21 @@ OBJS   := $(MULTI_BOOT_OBJ) $(A_OBJS) $(C_OBJS)
 # CXXFLAGS    C++ compiler flags
 W_FLAGS         := -g -Wall -Wextra -Winit-self -Wconversion -Wno-unused-parameter -Wwrite-strings -Wno-sign-compare -Wno-pointer-sign -Wno-missing-field-initializers -Wcast-qual -Wformat=2 -Wstrict-aliasing=2 -Wdisabled-optimization -Wfloat-equal -Wpointer-arith -Wbad-function-cast -Wcast-align -Wredundant-decls -Winline
 export CPPFLAGS := -isystem$(INCLUDE_DIR)
-export CFLAGS   := --target=i686-elf -m32 -nostdlib -ffreestanding -fno-builtin $(W_FLAGS)
+export CFLAGS   := -m32 --target=i386-elf -nostdlib -ffreestanding -fno-builtin $(W_FLAGS)
 export LDFLAGS  :=
 export PP       := $(CC) $(CPPFLAGS) -x c -E -P
 
 
 define tmp_file_preprocess
-	$(eval TMP_FILE = $(shell mktemp))
-	$(PP) $1 > $(TMP_FILE)
+	@$(eval TMP_FILE = $(shell mktemp))
+	@$(PP) $1 > $(TMP_FILE)
 endef
 
 
 $(OBJS_DIR)%.o: %.c
 	@test -d $(OBJS_DIR) || $(MKDIR) $(WORK_DIRS)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MQ $@ -MF $(DEPS_DIR)$*.d -c $< -o $@
-	@# @echo $(patsubst -W%,,$(CC) -c $< -o $@)
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MQ $@ -MF $(DEPS_DIR)$*.d -c $< -o $@
+	@echo $(patsubst -W%,,$(CC) -c $< -o $(notdir $@))
 
 
 $(OBJS_DIR)%.o: %.asm
@@ -142,15 +146,15 @@ $(LOADER1_BIN): $(MAKEFILE) $(LOADER1_SRC)
 	$(NASM) -f bin -o $@ $(LOADER1_SRC)
 
 
-$(LOADER2_BIN): $(MAKEFILE) $(LOADER2_SRC)
-	$(CC) -m32 $(CPPFLAGS) $(CFLAGS) -c $(LOADER2_SRC) -o $(LOADER2_OBJ)
-	$(LD) -T $(LOADER2_LD) -o $@ $(LOADER2_OBJ)
+$(LOADER2_BIN): $(MAKEFILE) $(LOADER2_SRC) $(LOADER2_DEPS_OBJS)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(LOADER2_SRC) -o $(LOADER2_OBJ)
+	$(LD) -Map $(LOADER2_MAP) -T $(LOADER2_LD) -o $@ $(LOADER2_OBJ) $(LOADER2_DEPS_OBJS)
 
 
 $(AXEL_BIN): $(MAKEFILE) $(KERNEL_LD) $(OBJS)
 	$(call tmp_file_preprocess, $(KERNEL_LD))
-	@$(LD) --oformat elf32-i386 $(LDFLAGS) -Map $(KERNEL_MAP) -T $(TMP_FILE) -static -o $@ $(OBJS)
-	@echo $(LD) $(notdir $(OBJS)) $(LDFLAGS) -T $(TMP_FILE) -static -o $@
+	@$(LD) -Map $(KERNEL_MAP) -T $(TMP_FILE) -o $@ $(OBJS)
+	@echo $(LD) $(notdir $(OBJS)) -o $@
 	$(OBJCOPY) --only-keep-debug $(AXEL_BIN) $(AXEL_SYM)
 	$(OBJCOPY) --strip-debug $(AXEL_BIN)
 
@@ -176,7 +180,7 @@ $(DISK_IMG): $(MAKEFILE) $(AXEL_BIN) $(INIT_BIN) $(LOADER1_BIN) $(LOADER2_BIN)
 .PHONY: clean
 clean:
 	$(MAKE) -C $(TOOL_DIR) clean
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini $(MULTI_BOOT_OBJ) $(LOADER1_BIN) $(LOADER2_BIN)
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini $(MULTI_BOOT_OBJ) $(LOADER1_BIN) $(LOADER2_BIN) $(LOADER2_MAP) $(LOADER2_OBJ) $(DISK_IMG)
 	ctags -R ./*
 
 
@@ -197,7 +201,7 @@ run_qemu_fd: $(MAKEFILE) $(AXEL_BIN) $(DISK_IMG)
 
 
 .PHONY: run_bochs
-run_bochs: $(MAKEFILE) $(ISO_NAME)
+run_bochs: $(MAKEFILE) $(ISO_NAME) $(DISK_IMG)
 	$(BOCHS)
 
 
