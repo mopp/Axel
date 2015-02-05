@@ -60,7 +60,6 @@
 ;            |                                |
 ;            |             BIOS               |
 ;            |                                |
-;            |                                |
 ; 0x00100000 +--------------------------------+
 ;
 ; In above, 0x0500 - 0xA0000 is free.
@@ -296,13 +295,13 @@ load_loader2:
     mov ecx, [loader2_size]
     shr ecx, 9  ; divide by 512
 
-    ; Load sector.
-.loading:
+    ; Load sector. FIXME: Check segment boundary
     mov ax, 1
     mov es, dx
     xor bx, bx
+.loading:
     call load_sector
-    add dx, (SECTOR_SIZE >> 4)  ; Shift next segment
+    add bx, (SECTOR_SIZE)
     add ax, 1
     loop .loading
 ; }}}
@@ -424,8 +423,9 @@ wait_Keyboard_out:
 ; @es:bx pointer to target buffer
 load_sector:
 ; {{{
-    push ecx
-    push edx
+    push cx
+    push dx
+    push ax
 
     call lba_to_chs
 
@@ -439,8 +439,9 @@ load_sector:
     int 0x13
     jc boot_fault
 
-    pop edx
-    pop ecx
+    pop ax
+    pop dx
+    pop cx
 
     ret
 ;}}}
@@ -451,11 +452,11 @@ load_sector:
 ; @return
 lba_to_chs:
 ;{{{
-    push ebx
-    push edx
-    push ecx
+    push bx
+    push dx
+    push cx
 
-    mov ebx, eax
+    mov bx, ax
 
     mov ax, [head_num]          ; Cylinder = LBA / (The number of head * Sector per track)
     mul word [sector_per_track]
@@ -478,9 +479,9 @@ lba_to_chs:
     inc dx
     mov [sector], dl
 
-    pop ecx
-    pop edx
-    pop ebx
+    pop cx
+    pop dx
+    pop bx
 
     ret
 ; }}}
@@ -554,13 +555,19 @@ enter_protected_mode:
 
     mov esp, NEXT_LOADER_ADDR
 
-    ; Set arguments of loader2()
+    ; Set arguments of loader2
     xor dh, dh
     mov dl, [drive_number]
     push dx
+
+    mov eax, [loader2_size]
+    push eax
+
     push ebp
+
     mov eax, MEMORY_INFOS
     push eax
+
     add esp, -4 ; for return address.
 
     ; Jump to second loader.
