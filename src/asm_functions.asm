@@ -8,7 +8,6 @@
 
 ; for C Preprocessor.
 #define _ASSEMBLY_H_
-#include <paging.h>
 #include <segment.h>
 
 
