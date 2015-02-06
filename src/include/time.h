@@ -12,7 +12,9 @@
 
 
 #include <stdint.h>
+#include <stddef.h>
 #include <interrupt.h>
+#include <state_code.h>
 
 
 /*
@@ -40,7 +42,17 @@ enum PIT_constants {
 };
 
 
+typedef void (*On_tick_func)(Interrupt_frame*, void*);
+struct timer_handler {
+    On_tick_func on_tick;
+    size_t id;
+};
+typedef struct timer_handler Timer_handler;
+
+
 extern void init_pit(void);
+extern Axel_state_code timer_handler_add(Timer_handler*);
+extern Axel_state_code timer_handler_remove(Timer_handler*);
 extern void wait(uint32_t);
 extern void interrupt_timer(Interrupt_frame*);
 

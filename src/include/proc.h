@@ -81,8 +81,6 @@ extern Process* pdt_proc(void);
 extern Axel_state_code execve(char const *, char const * const*, char const * const*);
 extern int fork(void);
 
-extern bool is_enable_process;
-
 
 
 #endif

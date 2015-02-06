@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <fs.h>
 #include <elf.h>
+#include <time.h>
 
 
 enum Process_constants {
@@ -31,7 +32,7 @@ enum Process_constants {
 };
 
 
-bool is_enable_process = false;
+static Timer_handler proc_switcher;
 static Process* pdt_process;
 static Process* run_proc;
 static Process procs[MAX_PROC_NR];
@@ -421,6 +422,11 @@ int fork(void) {
 }
 
 
+static void on_tick(Interrupt_frame* ic, void* handler) {
+    switch_context(ic);
+}
+
+
 Axel_state_code init_process(void) {
     /* Current context is dealed with process 0. */
     run_proc = &procs[0];
@@ -428,7 +434,6 @@ Axel_state_code init_process(void) {
 
     init_user_process();
 
-    is_enable_process = true;
-
-    return AXEL_SUCCESS;
+    proc_switcher.on_tick = on_tick;
+    return timer_handler_add(&proc_switcher);
 }
