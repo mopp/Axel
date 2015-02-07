@@ -322,7 +322,6 @@ static inline bool is_83_format(char const* name) {
 }
 
 
-#ifdef FOR_IMG_UTIL
 static inline char* create_short_file_name(char const* name, char* sfn_buffer) {
     bool irreversible_conversion_flag = false;
     size_t len = strlen(name);
@@ -412,6 +411,7 @@ static inline char* create_short_file_name(char const* name, char* sfn_buffer) {
 }
 
 
+#ifdef FOR_IMG_UTIL
 static inline void set_fat_time(uint16_t* fat_time) {
     time_t current_time = time(NULL);
     struct tm const *t_st = localtime(&current_time);
@@ -436,6 +436,7 @@ static inline void set_fat_date(uint16_t* date) {
     tmp |= (0xFE00 & ((t_st->tm_year + 1900 - 1980) << 9)); /* Base of tm_year is 1900. However, Base of FAT date is 1980. */
     *date = tmp;
 }
+#endif
 
 
 static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_cluster, uint8_t attr, uint32_t size) {
@@ -444,11 +445,13 @@ static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_clu
     short_dir->first_clus_num_hi = first_cluster >> 16;
     short_dir->first_clus_num_lo = first_cluster & 0xFFFF;
     short_dir->file_size = size;
+#ifdef FOR_IMG_UTIL
     set_fat_date(&short_dir->last_access_date);
     set_fat_date(&short_dir->create_date);
     set_fat_time(&short_dir->create_time);
     set_fat_date(&short_dir->write_date);
     set_fat_time(&short_dir->write_time);
+#endif
 }
 
 
@@ -715,6 +718,11 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
 }
 
 
+Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr) {
+    return fat_create_file(fm, parent_dir_cluster, name, attr | DIR_ATTR_DIRECTORY | DIR_ATTR_ARCHIVE, NULL, 0);
+}
+
+
 uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const* name) {
     if ((fm->fat_type != FAT_TYPE32) && (dir_cluster == fat_get_root_dir_cluster(fm))) {
         /* Case of FAT12/16 root directory. */
@@ -819,12 +827,6 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
 
     return found_cluster;
 }
-
-
-Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr) {
-    return fat_create_file(fm, parent_dir_cluster, name, attr | DIR_ATTR_DIRECTORY | DIR_ATTR_ARCHIVE, NULL, 0);
-}
-#endif
 
 
 uint32_t fat_get_root_dir_cluster(Fat_manips* fm) {

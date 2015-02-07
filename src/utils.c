@@ -308,3 +308,13 @@ char* itoa(int value, char* s, int radix) {
 int isdigit(int c) {
     return ('0' <= c && c <= '9') ? 1 : 0;
 }
+
+
+int islower(int c) {
+    return ('a' <= c && c <= 'z') ? (1) : (0);
+}
+
+
+int toupper(int c) {
+    return (islower(c) != 0) ? (c + (int)('a' - 'A')) : (c);
+}

@@ -28,6 +28,8 @@ extern char *strrchr(char const*, int);
 extern char *strstr(char const *, char const *);
 extern size_t trim_tail(char *);
 extern int isdigit(int);
+extern int islower(int);
+extern int toupper(int);
 extern char* utoa(uint32_t, char*, uint8_t const);
 extern char* itoa_big(int32_t, char*, uint8_t);
 
