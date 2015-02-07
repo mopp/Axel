@@ -440,10 +440,11 @@ static inline int construct_fat(Fat_image* img) {
 
 static inline int embed_files_into_image(Fat_image* img, char const* base_dir_name) {
     /* Find directory that are embeddeded files. */
-    uint32_t dir_cluster = fat_find_file_cluster(&img->manip, fat_get_root_dir_cluster(&img->manip), base_dir_name);
-    if (dir_cluster == 0) {
+    Dir_entry entry;
+    if (AXEL_FAILED == fat_find_file_short_entry(&img->manip, fat_get_root_dir_cluster(&img->manip), base_dir_name , &entry)) {
         return EXIT_FAILURE;
     }
+    uint32_t dir_cluster = (img->manip.fat_type == FAT_TYPE32) ? ((uint32_t)((entry.first_clus_num_hi << 16) | (entry.first_clus_num_lo))) : (entry.first_clus_num_lo);
 
     for (size_t i = 0; i < img->embedded_file_num; i++) {
         char* filepath = img->embedded_files[i];

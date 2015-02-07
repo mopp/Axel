@@ -723,7 +723,8 @@ Axel_state_code fat_make_directory(Fat_manips* fm, uint32_t parent_dir_cluster, 
 }
 
 
-uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const* name) {
+Axel_state_code fat_find_file_short_entry(Fat_manips* fm, uint32_t dir_cluster, char const* name, Dir_entry* short_entry_dst) {
+    short_entry_dst->name[0] = 0;
     if ((fm->fat_type != FAT_TYPE32) && (dir_cluster == fat_get_root_dir_cluster(fm))) {
         /* Case of FAT12/16 root directory. */
         char short_file_name[11];
@@ -737,7 +738,6 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
         }
 
         bool is_found = false;
-        uint32_t cluster = 0;
         for (uint32_t sector = 0; (sector < max_root_dir_sector_size) && (is_found == false); sector++) {
             if (fat_root_dir_area_access(fm, FILE_READ, sector, buffer) == NULL) {
                 fm->free(buffer);
@@ -756,14 +756,14 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
                 } else if (memcmp(short_file_name, short_dentry_table[i].name, 11) == 0) {
                     /* Found. */
                     is_found = true;
-                    cluster = short_dentry_table[i].first_clus_num_lo;
+                    *short_entry_dst = short_dentry_table[i];
                     break;
                 }
             }
         }
 
         fm->free(buffer);
-        return cluster;
+        return AXEL_SUCCESS;
     }
 
     if (is_valid_data_exist_fat_entry(fm, dir_cluster) == false) {
@@ -774,11 +774,10 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
     uint32_t entry = dir_cluster;
     void* buffer = alloc_clus_buf(fm);
     bool is_finish = false;
-    uint32_t found_cluster = 0;
     while (is_finish == false) {
         if (NULL == fat_data_cluster_access(fm, FILE_READ, entry, buffer)) {
             fm->free(buffer);
-            return 0;
+            return AXEL_FAILED;
         }
         Dir_entry* short_dentry_table = buffer;
         Long_dir_entry* long_dentry_table = buffer;
@@ -805,7 +804,7 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
                     Long_dir_entry* long_entry = &long_dentry_table[j - 1];
                     if (long_entry->checksum != checksum) {
                         /* Checksum error. */
-                        return 0;
+                        return AXEL_FAILED;
                     }
                     fat_get_long_dir_name(long_entry, file_name, &index);
                 }
@@ -813,7 +812,7 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
                 if (strcmp(file_name, name) == 0) {
                     /* Found file. */
                     is_finish = true;
-                    found_cluster = (uint32_t)((short_entry->first_clus_num_hi << 16) | (short_entry->first_clus_num_lo));
+                    short_entry_dst = short_entry;
                     break;
                 }
             }
@@ -825,7 +824,7 @@ uint32_t fat_find_file_cluster(Fat_manips* fm, uint32_t dir_cluster, char const*
         }
     }
 
-    return found_cluster;
+    return AXEL_SUCCESS;
 }
 
 
