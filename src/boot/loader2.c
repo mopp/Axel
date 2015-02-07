@@ -44,40 +44,29 @@ _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size,
             );
     clear_bss();
 
-    BOCHS_MAGIC_BREAK();
     init_idt(set_idt, (uintptr_t)no_op);
-#if 1
-    /* init_pit */
-    io_out8(PIT_PORT_CONTROL, PIT_ICW);
-    io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_LOW);
-    io_out8(PIT_PORT_COUNTER0, PIT_COUNTER_VALUE_HIGH);
-    enable_pic_port(PIC_IMR_MASK_IRQ00);
-    /* io_sti(); */
-#endif
+    init_pit();
+    io_sti();
 
-    fill_screen(0x0c);
+    uint8_t color = 0xF;
     for (;;) {
+        wait(1000);
+        fill_screen(color++ & 0xF);
+#if 0
         __asm__ volatile(
                 "movl %%eax, %%edi\n"
-                "hlt\n"
                 :
                 : "a"(loader2_size)
                 :
                 );
+#endif
     }
 }
 
 
-static uint32_t tick_count = 0;
-static void timer(void) {
-    /* 1 tick is 10ms */
-    ++tick_count;
-    fill_screen(tick_count & 0xf);
-}
-
-
+extern void loader2_interrupt_timer(void);
 static void set_idt(Gate_descriptor* idts, size_t size) {
-    set_gate_descriptor(idts + 0x20, (uintptr_t)timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x20, (uintptr_t)loader2_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
 }
 
 
