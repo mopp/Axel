@@ -13,6 +13,7 @@
 
 
 #include <stddef.h>
+#include <stdint.h>
 
 
 extern void *memchr(void const*, int, size_t);
@@ -27,11 +28,8 @@ extern char *strrchr(char const*, int);
 extern char *strstr(char const *, char const *);
 extern size_t trim_tail(char *);
 extern int isdigit(int);
-
-extern int printf(char const*, ...);
-extern char *itoa(int, char *, int);
-extern int puts(char const*);
-extern int putchar(int);
+extern char* utoa(uint32_t, char*, uint8_t const);
+extern char* itoa_big(int32_t, char*, uint8_t);
 
 
 

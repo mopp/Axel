@@ -25,6 +25,7 @@
 #include <time.h>
 #include <tlsf.h>
 #include <utils.h>
+#include <print.h>
 #include <vbe.h>
 #include <window.h>
 

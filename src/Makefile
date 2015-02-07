@@ -53,7 +53,7 @@ LOADER2_OBJ       := $(BOOT_DIR)loader2.o
 LOADER2_LD        := $(BOOT_DIR)loader2.ld
 LOADER2_BIN       := $(BOOT_DIR)loader2
 LOADER2_MAP       := $(BOOT_DIR)loader2.map
-LOADER2_DEPS_OBJS := $(OBJS_DIR)asm_functions.o $(OBJS_DIR)interrupt.o
+LOADER2_DEPS_OBJS := $(OBJS_DIR)asm_functions.o $(OBJS_DIR)interrupt.o $(OBJS_DIR)utils.o $(OBJS_DIR)time.o
 
 C_SRCS    :=      \
 	elf.c         \
@@ -82,6 +82,7 @@ C_SRCS    :=      \
 	tlsf.c        \
 	utils.c       \
 	window.c      \
+	print.c      \
 	kernel.c
 C_OBJS := $(addprefix $(OBJS_DIR), $(C_SRCS:%.c=%.o))
 C_DEPS := $(addprefix $(DEPS_DIR), $(C_SRCS:%.c=%.d))
@@ -148,7 +149,8 @@ $(LOADER1_BIN): $(MAKEFILE) $(LOADER1_SRC)
 
 $(LOADER2_BIN): $(MAKEFILE) $(LOADER2_SRC) $(LOADER2_DEPS_OBJS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(LOADER2_SRC) -o $(LOADER2_OBJ)
-	$(LD) -Map $(LOADER2_MAP) -T $(LOADER2_LD) -o $@ $(LOADER2_OBJ) $(LOADER2_DEPS_OBJS)
+	$(NASM) -f elf32 ./boot/loader2.asm -o ./boot/loader2_asm.o
+	$(LD) -Map $(LOADER2_MAP) -T $(LOADER2_LD) -o $@ $(LOADER2_OBJ) $(LOADER2_DEPS_OBJS) ./boot/loader2_asm.o
 
 
 $(AXEL_BIN): $(MAKEFILE) $(KERNEL_LD) $(OBJS)
@@ -180,7 +182,8 @@ $(DISK_IMG): $(MAKEFILE) $(AXEL_BIN) $(INIT_BIN) $(LOADER1_BIN) $(LOADER2_BIN)
 .PHONY: clean
 clean:
 	$(MAKE) -C $(TOOL_DIR) clean
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini $(MULTI_BOOT_OBJ) $(LOADER1_BIN) $(LOADER2_BIN) $(LOADER2_MAP) $(LOADER2_OBJ) $(DISK_IMG)
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini $(DISK_IMG)
+	$(RM) $(LOADER1_BIN) $(LOADER2_BIN) $(BOOT_DIR)/*.o $(BOOT_DIR)/*.map $(BOOT_DIR)/*.lst
 	ctags -R ./*
 
 
