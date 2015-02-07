@@ -274,7 +274,7 @@ load_loader2:
     jc boot_fault
 
     ; Store the number of head.
-    add dh, 1
+    inc dh
     mov [head_num], dh
 
     ; Store sector per track
@@ -285,7 +285,7 @@ load_loader2:
     ; Store cylinder per platter
     xchg cl, ch
     shr cl, 6
-    add cx, 1
+    inc cx
     mov [cylinder_num], cx
 
     ; Set begin load segment.
@@ -301,8 +301,9 @@ load_loader2:
     xor bx, bx
 .loading:
     call load_sector
-    add bx, (SECTOR_SIZE)
-    add ax, 1
+    add dx, 0x20
+    mov es, dx
+    inc ax
     loop .loading
 ; }}}
 
