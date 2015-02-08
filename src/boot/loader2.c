@@ -13,11 +13,227 @@
 #include <segment.h>
 #include <time.h>
 #include <macros.h>
+#include <stdbool.h>
 
 
 enum {
-    LOADER2_ADDR = 0x7C00,
+    LOADER2_ADDR  = 0x7C00,
+    FDD_LOAD_AREA = 0x0500,
 };
+
+
+enum fdd_constants {
+    FD_MAX_RETRY_NUM               = 256,
+    FD_DRIVE0                      = 0,
+    FD_DRIVE1                      = 1,
+    FD_DRIVE2                      = 2,
+    FD_DRIVE3                      = 3,
+    STATUS_REGISTER_A              = 0x3F0, /* Read-only */
+    STATUS_REGISTER_B              = 0x3F1, /* Read-only */
+    DIGITAL_OUTPUT_REGISTER        = 0x3F2,
+    TAPE_DRIVE_REGISTER            = 0x3F3,
+    MAIN_STATUS_REGISTER           = 0x3F4, /* Read-only */
+    DATARATE_SELECT_REGISTER       = 0x3F4, /* Write-only */
+    DATA_FIFO_REGISTER             = 0x3F5,
+    DIGITAL_INPUT_REGISTER         = 0x3F7, /* Read-only */
+    CONFIGURATION_CONTROL_REGISTER = 0x3F7, /* Write-only */
+    READ_RACK                      = 0x02,  /* Generates IRQ6 */
+    SPECIFY                        = 0x03,  /* Set drive parameters */
+    SENSE_DRIVE_STATUS             = 0x04,  /* Get drive status */
+    WRITE_DATA                     = 0x05,  /* Write to the disk */
+    READ_DATA                      = 0x06,  /* Read from the disk */
+    RECALIBRATE                    = 0x07,  /* Seek to track 0  */
+    SENSE_INTERRUPT                = 0x08,  /* ack IRQ6, get status of last command */
+    WRITE_DELETED_DATA             = 0x09,
+    READ_ID                        = 0x0A,  /* Get head location, it generates IRQ6 */
+    READ_DELETED_DATA              = 0x0C,
+    FORMAT_TRACK                   = 0x0D,
+    SEEK                           = 0x0E,  /* Seek heads to the other track. */
+    VERSION                        = 0x10,
+    SCAN_EQUAL                     = 0x11,
+    PERPENDICULAR_MODE             = 0x12,
+    CONFIGURE                      = 0x13,  /* Set controller parameters */
+    LOCK                           = 0x14,  /* Protect controller params from a reset */
+    VERIFY                         = 0x16,
+    SCAN_LOW_OR_EQUAL              = 0x19,
+    SCAN_HIGH_OR_EQUAL             = 0x1D,
+    RELATIVE_SEEK                  = 0x8F,
+};
+typedef enum fdd_constants Fdd_constants;
+
+
+struct fd_status_register_a {
+    union {
+        struct {
+            uint8_t head_directon:1;
+            uint8_t write_protect:1;
+            uint8_t index:1;
+            uint8_t head:1;
+            uint8_t is_track0:1;
+            uint8_t step:1;
+            uint8_t has_second_drive:1;
+            uint8_t interrupt_pending:1;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_status_register_a Fd_status_register_a;
+_Static_assert(sizeof(Fd_status_register_a) == 1, "");
+
+
+struct fd_status_register_b {
+    union {
+        struct {
+            uint8_t enable_motor0:1;
+            uint8_t enable_motor1:1;
+            uint8_t enable_write:1;
+            uint8_t read_data_toggle:1;
+            uint8_t write_data_toggle:1;
+            uint8_t drive_selector0:1;
+            uint8_t reserved:2;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_status_register_b Fd_status_register_b;
+_Static_assert(sizeof(Fd_status_register_b) == 1, "");
+
+
+struct fd_datarate_select_register {
+    union {
+        struct  {
+            uint8_t datarate_selector:2;
+            uint8_t pre_complement:3;
+            uint8_t reserved:1;
+            uint8_t power_down:1;
+            uint8_t software_reset:1;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_datarate_select_register Fd_datarate_select_register;
+_Static_assert(sizeof(Fd_datarate_select_register) == 1, "");
+
+
+/*
+ * enable_motorX is exclusive.
+ * And We should choose same drive number and motor number.
+ */
+struct fd_digital_output_register {
+    union {
+        struct {
+            uint8_t drive_selector:2;
+            uint8_t not_reset:1; /* If this is 0,  FDD enters reset mode, Otherwise, FDD does normal operation. */
+            uint8_t dma_gate:1;
+            uint8_t enable_motor0:1;
+            uint8_t enable_motor1:1;
+            uint8_t enable_motor2:1;
+            uint8_t enable_motor3:1;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_digital_output_register Fd_digital_output_register;
+_Static_assert(sizeof(Fd_digital_output_register) == 1, "");
+
+
+struct fd_main_status_register {
+    union {
+        struct {
+            uint8_t is_drive0_busy:1;
+            uint8_t is_drive1_busy:1;
+            uint8_t is_drive2_busy:1;
+            uint8_t is_drive3_busy:1;
+            uint8_t is_command_busy:1;
+            uint8_t non_dma:1;
+            uint8_t dio:1;
+            uint8_t rqm:1;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_main_status_register Fd_main_status_register;
+_Static_assert(sizeof(Fd_main_status_register) == 1, "");
+
+
+struct fd_status_register_st0 {
+    union {
+        struct {
+            uint8_t selected_drive:2;
+            uint8_t selected_head:1;
+            uint8_t reserved:1;
+            uint8_t unit_check:1;
+            uint8_t is_seek_finish:1;
+            uint8_t interrupt_code:2;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_status_register_st0 Fd_status_register_st0;
+_Static_assert(sizeof(Fd_status_register_st0) == 1, "");
+
+
+struct fd_status_register_st1 {
+    union {
+        struct {
+            uint8_t is_missing_addr_mark:1;
+            uint8_t write_disable:1;
+            uint8_t no_data:1;
+            uint8_t reserved0:1;
+            uint8_t is_over_or_under_run:1;
+            uint8_t reserved1:1;
+            uint8_t is_detect_cylinder_limit:1;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_status_register_st1 Fd_status_register_st1;
+_Static_assert(sizeof(Fd_status_register_st1) == 1, "");
+
+
+struct fd_status_register_st2 {
+    union {
+        struct {
+            uint8_t missing_data_addr_mark:1;
+            uint8_t bad_cylinder:1;
+            uint8_t not_hit_scan_condition:1;
+            uint8_t hit_scan_condition:1;
+            uint8_t error_cylinder:1;
+            uint8_t data_field_crc_error:1;
+            uint8_t control_mark:1;
+            uint8_t reserved:1;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_status_register_st2 Fd_status_register_st2;
+_Static_assert(sizeof(Fd_status_register_st2) == 1, "");
+
+
+struct fd_status_register_st3 {
+    union {
+        struct {
+            uint8_t selected_drive:2;
+            uint8_t head_addr:1;
+            uint8_t reserved0:1;
+            uint8_t track0:1;
+            uint8_t reserved1:1;
+            uint8_t write_protect:1;
+            uint8_t reserved2:1;
+        };
+        uint8_t bit_expr;
+    };
+};
+typedef struct fd_status_register_st3 Fd_status_register_st3;
+_Static_assert(sizeof(Fd_status_register_st3) == 1, "");
+
+
+struct fd_dev {
+    bool is_initialize;
+    bool enable_motor;
+    Fdd_constants drive_number;
+};
+typedef struct fd_dev Fd_dev;
 
 
 struct memory_info {
@@ -29,14 +245,19 @@ struct memory_info {
 typedef struct memory_info_e820 Memory_info;
 
 
+static bool interrupt_fdd_iqr;
 static _Noreturn void no_op(void);
 static void set_idt(Gate_descriptor*, size_t);
 static void clear_bss(void);
 static void fill_screen(uint8_t);
+static Axel_state_code fd_init(Fd_dev*);
 
 
+
+static uint8_t color;
 _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size, uint16_t drive_number) {
     io_cli();
+    /* Set FS, GS segment. */
     __asm__ volatile(
             "mov $0x10, %ax \n"
             "mov %ax, %fs\n"
@@ -48,10 +269,18 @@ _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size,
     init_pit();
     io_sti();
 
-    uint8_t color = 0xF;
+    Fd_dev fdd;
+    Axel_state_code r = fd_init(&fdd);
+    if (r == AXEL_SUCCESS) {
+        fill_screen(0xF);
+    } else {
+        fill_screen(0x3);
+    }
+
+    /* uint8_t color = 0xF; */
     for (;;) {
         wait(1000);
-        fill_screen(color++ & 0xF);
+        /* fill_screen(color++ & 0xF); */
 #if 0
         __asm__ volatile(
                 "movl %%eax, %%edi\n"
@@ -64,9 +293,237 @@ _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size,
 }
 
 
+static inline void fd_set_motor(Fd_dev* fdd, bool is_on) {
+    if (is_on == fdd->enable_motor) {
+        return;
+    }
+
+    Fd_digital_output_register dor = { .bit_expr = 0, };
+    dor.drive_selector = (fdd->drive_number) & 0xF;
+    dor.not_reset = 1;
+    uint8_t flag = (is_on == true) ? (1) : (0);
+    switch (fdd->drive_number) {
+        case FD_DRIVE0:
+            dor.enable_motor0 = flag;
+            break;
+        case FD_DRIVE1:
+            dor.enable_motor1 = flag;
+            break;
+        case FD_DRIVE2:
+            dor.enable_motor2 = flag;
+            break;
+        case FD_DRIVE3:
+            dor.enable_motor3 = flag;
+            break;
+        default:
+            break;
+    }
+
+    io_out8(DIGITAL_OUTPUT_REGISTER, dor.bit_expr);
+
+    wait(300);
+    fdd->enable_motor = is_on;
+}
+
+
+static inline Fd_main_status_register fd_read_main_status_register(void) {
+    Fd_main_status_register msr;
+    msr.bit_expr = io_in8(MAIN_STATUS_REGISTER);
+    return msr;
+}
+
+
+static inline Axel_state_code fd_wait_busy(Fdd_constants drive_number) {
+    Fd_main_status_register msr;
+
+    for (size_t i = 0; i < FD_MAX_RETRY_NUM; i++) {
+        msr = fd_read_main_status_register();
+        if ((msr.bit_expr & (1 << drive_number)) == 0) {
+            return AXEL_SUCCESS;
+        }
+    }
+
+    return AXEL_FAILED;
+}
+
+
+static inline Axel_state_code fd_write_command(Fdd_constants cmd) {
+    for (size_t i = 0; i < FD_MAX_RETRY_NUM; i++) {
+        Fd_main_status_register msr = fd_read_main_status_register();
+        if (msr.rqm == 1 && msr.dio == 0) {
+            io_out8(DATA_FIFO_REGISTER, cmd & 0xFF);
+            return AXEL_SUCCESS;
+        }
+    }
+    return AXEL_FAILED;
+}
+
+
+static inline Axel_state_code fd_read_result(uint8_t* result) {
+    for (size_t i = 0; i < FD_MAX_RETRY_NUM; i++) {
+        Fd_main_status_register msr = fd_read_main_status_register();
+        if ((msr.rqm == 1) && (msr.dio == 1)) {
+            *result = io_in8(DATA_FIFO_REGISTER);
+            return AXEL_SUCCESS;
+        }
+    }
+
+    return AXEL_FAILED;
+}
+
+
+static inline void fd_wait_irq(void) {
+    while (interrupt_fdd_iqr == false) {
+    }
+    interrupt_fdd_iqr = false;
+}
+
+
+static inline Axel_state_code fd_cmd_sense_interrupt(Fd_status_register_st0* st0, uint8_t* present_cylinder_number) {
+    if ((st0 == NULL) && (present_cylinder_number == NULL)) {
+        return AXEL_FAILED;
+    }
+
+    if (AXEL_SUCCESS != fd_write_command(SENSE_INTERRUPT)) {
+        return AXEL_FAILED;
+    }
+
+    if (AXEL_SUCCESS != fd_read_result(&st0->bit_expr)) {
+        return AXEL_FAILED;
+    }
+
+    if (AXEL_SUCCESS != fd_read_result(present_cylinder_number)) {
+        return AXEL_FAILED;
+    }
+
+    return AXEL_SUCCESS;
+}
+
+
+static inline Axel_state_code fd_cmd_specify(bool is_set_dma) {
+    if (AXEL_SUCCESS != fd_write_command(SPECIFY)) {
+        return AXEL_FAILED;
+    }
+
+    /* Assumed 3.5 inch floppy drive. */
+
+    /* Set step rate and head unload time. */
+    uint8_t parameter = 0xD2;
+    if (AXEL_SUCCESS != fd_write_command(parameter)) {
+        return AXEL_FAILED;
+    }
+
+    /* Set head load time and Non-DMA. */
+    parameter = 0x20 + ((is_set_dma == true) ? (0) : (1));
+    if (AXEL_SUCCESS != fd_write_command(parameter)) {
+        return AXEL_FAILED;
+    }
+
+    return AXEL_SUCCESS;
+}
+
+
+static inline Axel_state_code fd_cmd_recalibrate(Fd_dev* fdd) {
+    fd_set_motor(fdd, true);
+
+    for (size_t i = 0; i < FD_MAX_RETRY_NUM; i++) {
+        if (AXEL_SUCCESS != fd_write_command(RECALIBRATE)) {
+            continue;
+        }
+        if (AXEL_SUCCESS != fd_write_command(fdd->drive_number & 0x03)) {
+            continue;
+        }
+        fd_wait_irq();
+
+        Fd_status_register_st0 st0;
+        uint8_t present_cylinder_number;
+        fd_cmd_sense_interrupt(&st0, &present_cylinder_number);
+        if ((AXEL_SUCCESS != fd_cmd_sense_interrupt(&st0, &present_cylinder_number)) || (st0.interrupt_code != 0)) {
+            continue;
+        }
+
+        if (present_cylinder_number == 0) {
+            /* If head moves to 0, break */
+            break;
+        }
+    }
+
+    fd_set_motor(fdd, false);
+
+    return AXEL_SUCCESS;
+}
+
+
+static inline Axel_state_code fd_reset_controller(Fd_dev* fdd) {
+    Fd_digital_output_register dor = { .bit_expr = 0, };
+    dor.drive_selector = fdd->drive_number & 0xF;
+
+    /* Reset controller. */
+    dor.not_reset = 0;
+    io_out8(DIGITAL_OUTPUT_REGISTER, dor.bit_expr);
+
+    /* Enable controller. */
+    dor.not_reset = 1;
+    io_out8(DIGITAL_OUTPUT_REGISTER, dor.bit_expr);
+
+    fd_wait_irq();
+    Fd_status_register_st0 st0;
+    uint8_t present_cylinder_number;
+
+    for (uint8_t i = 0; i < 4; i++) {
+        if (AXEL_SUCCESS != fd_cmd_sense_interrupt(&st0, &present_cylinder_number)) {
+            return AXEL_FAILED;
+        }
+    }
+
+    /* Set time configuration. */
+    if (AXEL_SUCCESS != fd_cmd_specify(false)) {
+        return AXEL_FAILED;
+    }
+
+    /* Set data transfer rate. */
+    io_out8(CONFIGURATION_CONTROL_REGISTER, 0x00);
+
+    /* Calibrate a head position. */
+    return fd_cmd_recalibrate(fdd);
+}
+
+
+static inline Axel_state_code fd_init(Fd_dev* fdd) {
+    enable_pic_port(PIC_IMR_MASK_IRQ06);
+
+    fdd->drive_number = FD_DRIVE0;
+    if (fd_reset_controller(fdd) == AXEL_FAILED) {
+        return AXEL_FAILED;
+    }
+    fdd->is_initialize = true;
+
+    return AXEL_SUCCESS;
+}
+
+
+static Axel_state_code fd_block_access(void* p, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
+    Fd_dev* fdd = p;
+
+    if (fdd->is_initialize == false) {
+    }
+
+    return AXEL_FAILED;
+}
+
+
+void interrupt_fdd(void) {
+    interrupt_fdd_iqr = true;
+    send_done_pic_master();
+}
+
+
 extern void loader2_interrupt_timer(void);
+extern void loader2_interrupt_fdd(void);
 static void set_idt(Gate_descriptor* idts, size_t size) {
     set_gate_descriptor(idts + 0x20, (uintptr_t)loader2_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x26, (uintptr_t)loader2_interrupt_fdd, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    interrupt_fdd_iqr = false;
 }
 
 

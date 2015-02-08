@@ -15,3 +15,12 @@ extern interrupt_timer
     call interrupt_timer
     popad
     iret
+
+
+global loader2_interrupt_fdd
+loader2_interrupt_fdd:
+extern interrupt_fdd
+    pushad
+    call interrupt_fdd
+    popad
+    iret
