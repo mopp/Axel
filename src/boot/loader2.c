@@ -23,7 +23,7 @@ enum {
 
 
 enum fdd_constants {
-    FD_MAX_RETRY_NUM               = 256,
+    FD_MAX_RETRY_NUM               = 512,
     FD_DRIVE0                      = 0,
     FD_DRIVE1                      = 1,
     FD_DRIVE2                      = 2,
@@ -124,7 +124,7 @@ struct fd_digital_output_register {
         struct {
             uint8_t drive_selector:2;
             uint8_t not_reset:1; /* If this is 0,  FDD enters reset mode, Otherwise, FDD does normal operation. */
-            uint8_t dma_gate:1;
+            uint8_t enable_iqr_dma:1;
             uint8_t enable_motor0:1;
             uint8_t enable_motor1:1;
             uint8_t enable_motor2:1;
@@ -257,6 +257,7 @@ static Axel_state_code fd_init(Fd_dev*);
 static uint8_t color;
 _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size, uint16_t drive_number) {
     io_cli();
+    fill_screen(0x9);
     /* Set FS, GS segment. */
     __asm__ volatile(
             "mov $0x10, %ax \n"
@@ -270,11 +271,10 @@ _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size,
     io_sti();
 
     Fd_dev fdd;
-    Axel_state_code r = fd_init(&fdd);
-    if (r == AXEL_SUCCESS) {
-        fill_screen(0xF);
+    if (fd_init(&fdd) == AXEL_SUCCESS) {
+        fill_screen(0xf);
     } else {
-        fill_screen(0x3);
+        fill_screen(0x90);
     }
 
     /* uint8_t color = 0xF; */
@@ -362,7 +362,7 @@ static inline Axel_state_code fd_write_command(Fdd_constants cmd) {
 static inline Axel_state_code fd_read_result(uint8_t* result) {
     for (size_t i = 0; i < FD_MAX_RETRY_NUM; i++) {
         Fd_main_status_register msr = fd_read_main_status_register();
-        if ((msr.rqm == 1) && (msr.dio == 1)) {
+        if ((msr.rqm == 1) && ((msr.dio == 1) || (msr.non_dma == 1))) {
             *result = io_in8(DATA_FIFO_REGISTER);
             return AXEL_SUCCESS;
         }
@@ -384,15 +384,37 @@ static inline Axel_state_code fd_cmd_sense_interrupt(Fd_status_register_st0* st0
         return AXEL_FAILED;
     }
 
-    if (AXEL_SUCCESS != fd_write_command(SENSE_INTERRUPT)) {
+    /* FAILED_RETURN(fd_write_command(SENSE_INTERRUPT)); */
+    if (fd_write_command(SENSE_INTERRUPT) != AXEL_SUCCESS) {
         return AXEL_FAILED;
     }
 
-    if (AXEL_SUCCESS != fd_read_result(&st0->bit_expr)) {
+    if (fd_read_result(&st0->bit_expr) != AXEL_SUCCESS) {
         return AXEL_FAILED;
     }
 
-    if (AXEL_SUCCESS != fd_read_result(present_cylinder_number)) {
+    if (fd_read_result(present_cylinder_number) != AXEL_SUCCESS) {
+        return AXEL_FAILED;
+    }
+
+    return AXEL_SUCCESS;
+}
+
+
+static inline Axel_state_code fd_cmd_configure(void) {
+    if (fd_write_command(CONFIGURE) != AXEL_SUCCESS) {
+        return AXEL_FAILED;
+    }
+
+    if (fd_write_command(0) != AXEL_SUCCESS) {
+        return AXEL_FAILED;
+    }
+
+    if (fd_write_command(0x41) != AXEL_SUCCESS) {
+        return AXEL_FAILED;
+    }
+
+    if (fd_write_command(0) != AXEL_SUCCESS) {
         return AXEL_FAILED;
     }
 
@@ -401,23 +423,17 @@ static inline Axel_state_code fd_cmd_sense_interrupt(Fd_status_register_st0* st0
 
 
 static inline Axel_state_code fd_cmd_specify(bool is_set_dma) {
-    if (AXEL_SUCCESS != fd_write_command(SPECIFY)) {
-        return AXEL_FAILED;
-    }
+    FAILED_RETURN(fd_write_command(SPECIFY));
 
     /* Assumed 3.5 inch floppy drive. */
 
     /* Set step rate and head unload time. */
     uint8_t parameter = 0xD2;
-    if (AXEL_SUCCESS != fd_write_command(parameter)) {
-        return AXEL_FAILED;
-    }
+    FAILED_RETURN(fd_write_command(parameter));
 
     /* Set head load time and Non-DMA. */
     parameter = 0x20 + ((is_set_dma == true) ? (0) : (1));
-    if (AXEL_SUCCESS != fd_write_command(parameter)) {
-        return AXEL_FAILED;
-    }
+    FAILED_RETURN(fd_write_command(parameter));
 
     return AXEL_SUCCESS;
 }
@@ -454,6 +470,22 @@ static inline Axel_state_code fd_cmd_recalibrate(Fd_dev* fdd) {
 }
 
 
+static inline Axel_state_code fd_cmd_version(Fd_dev* fdd, uint8_t* v) {
+    FAILED_RETURN(fd_write_command(VERSION));
+    FAILED_RETURN(fd_read_result(v));
+
+    return AXEL_SUCCESS;
+}
+
+
+/*
+ * The BIOS probably leaves the controller in its default state.
+ *  Drive polling mode on
+ *  FIFO off
+ *  threshold = 1
+ *  implied seek off
+ *  lock off
+ */
 static inline Axel_state_code fd_reset_controller(Fd_dev* fdd) {
     Fd_digital_output_register dor = { .bit_expr = 0, };
     dor.drive_selector = fdd->drive_number & 0xF;
@@ -462,20 +494,28 @@ static inline Axel_state_code fd_reset_controller(Fd_dev* fdd) {
     dor.not_reset = 0;
     io_out8(DIGITAL_OUTPUT_REGISTER, dor.bit_expr);
 
+    wait(10);
+
     /* Enable controller. */
-    dor.not_reset = 1;
+    dor.not_reset      = 1;
+    dor.enable_iqr_dma = 1;
     io_out8(DIGITAL_OUTPUT_REGISTER, dor.bit_expr);
 
     fd_wait_irq();
-    Fd_status_register_st0 st0;
-    uint8_t present_cylinder_number;
 
-    for (uint8_t i = 0; i < 4; i++) {
-        if (AXEL_SUCCESS != fd_cmd_sense_interrupt(&st0, &present_cylinder_number)) {
-            return AXEL_FAILED;
+    Fd_status_register_st0 st0;
+    uint8_t c = 0x3;
+    uint8_t present_cylinder_number;
+    int i;
+    for (i = 0; i < 4; i++) {
+        int tmp = i;
+        if (AXEL_FAILED == fd_cmd_sense_interrupt(&st0, &present_cylinder_number)) {
+            i = tmp - 1;
+            fill_screen(c++);
         }
     }
 
+    /* Reset command erases some settings */
     /* Set time configuration. */
     if (AXEL_SUCCESS != fd_cmd_specify(false)) {
         return AXEL_FAILED;
@@ -485,20 +525,35 @@ static inline Axel_state_code fd_reset_controller(Fd_dev* fdd) {
     io_out8(CONFIGURATION_CONTROL_REGISTER, 0x00);
 
     /* Calibrate a head position. */
-    return fd_cmd_recalibrate(fdd);
+    /* return fd_cmd_recalibrate(fdd); */
+    return AXEL_SUCCESS;
 }
 
 
 static inline Axel_state_code fd_init(Fd_dev* fdd) {
+    uint8_t ver = 0;
+    FAILED_RETURN(fd_cmd_version(fdd, &ver));
+    if (ver != 0x90) {
+        /* Not supported FDD. */
+        return AXEL_FAILED;
+    }
+
     enable_pic_port(PIC_IMR_MASK_IRQ06);
 
     fdd->drive_number = FD_DRIVE0;
+
+    fd_set_motor(fdd, false);
+
+    if (fd_cmd_configure() == AXEL_FAILED) {
+        return AXEL_FAILED;
+    }
+
     if (fd_reset_controller(fdd) == AXEL_FAILED) {
         return AXEL_FAILED;
     }
     fdd->is_initialize = true;
 
-    return AXEL_SUCCESS;
+    return fd_cmd_recalibrate(fdd);
 }
 
 
