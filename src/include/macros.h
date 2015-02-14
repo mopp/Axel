@@ -56,7 +56,7 @@
         return ret_val;          \
     }
 
-#define FAILED_RETURN(exp) EXP_RETURN(exp == AXEL_FAILED, AXEL_FAILED)
+#define FAILED_RETURN(exp) EXP_RETURN((exp) != AXEL_SUCCESS, AXEL_FAILED)
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
