@@ -24,6 +24,9 @@ enum {
 
 enum fdd_constants {
     FD_MAX_RETRY_NUM               = 512,
+    FD_SECTOR_SIZE                 = 512,
+    FD_SECTOR_PER_TRACK            = 18,
+    FD_HEAD                        = 2,
     FD_DRIVE0                      = 0,
     FD_DRIVE1                      = 1,
     FD_DRIVE2                      = 2,
@@ -48,7 +51,8 @@ enum fdd_constants {
     READ_ID                        = 0x0A,  /* Get head location, it generates IRQ6 */
     READ_DELETED_DATA              = 0x0C,
     FORMAT_TRACK                   = 0x0D,
-    SEEK                           = 0x0E,  /* Seek heads to the other track. */
+    DUMPREG                        = 0x0E,  /* Get register value for debuging. */
+    SEEK                           = 0x0F,  /* Seek heads to the other track. */
     VERSION                        = 0x10,
     SCAN_EQUAL                     = 0x11,
     PERPENDICULAR_MODE             = 0x12,
@@ -251,13 +255,13 @@ static void set_idt(Gate_descriptor*, size_t);
 static void clear_bss(void);
 static void fill_screen(uint8_t);
 static Axel_state_code fd_init(Fd_dev*);
+static Axel_state_code fd_cmd_seek(Fd_dev* , uint8_t , uint8_t );
+static void fd_set_motor(Fd_dev*, bool);
 
 
 
-static uint8_t color;
 _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size, uint16_t drive_number) {
     io_cli();
-    fill_screen(0x9);
     /* Set FS, GS segment. */
     __asm__ volatile(
             "mov $0x10, %ax \n"
@@ -265,22 +269,27 @@ _Noreturn void loader2(Memory_info* infos, uint32_t size, uint32_t loader2_size,
             "mov %ax, %gs\n"
             );
     clear_bss();
+    fill_screen(0x1);
 
     init_idt(set_idt, (uintptr_t)no_op);
     init_pit();
     io_sti();
 
     Fd_dev fdd;
-    if (fd_init(&fdd) == AXEL_SUCCESS) {
-        fill_screen(0xf);
-    } else {
-        fill_screen(0x90);
+    if (fd_init(&fdd) != AXEL_SUCCESS) {
+        fill_screen(0x4);
     }
 
-    /* uint8_t color = 0xF; */
+    if (fd_cmd_seek(&fdd, 0, 4) != AXEL_SUCCESS) {
+        fill_screen(0x4);
+    }
+
+    fd_set_motor(&fdd, false);
+
+    uint8_t color = 0xF;
     for (;;) {
-        wait(1000);
-        /* fill_screen(color++ & 0xF); */
+        wait(500);
+        fill_screen(color++ & 0xF);
 #if 0
         __asm__ volatile(
                 "movl %%eax, %%edi\n"
@@ -355,6 +364,7 @@ static inline Axel_state_code fd_write_command(Fdd_constants cmd) {
             return AXEL_SUCCESS;
         }
     }
+
     return AXEL_FAILED;
 }
 
@@ -372,10 +382,8 @@ static inline Axel_state_code fd_read_result(uint8_t* result) {
 }
 
 
-static inline void fd_wait_irq(void) {
-    while (interrupt_fdd_iqr == false) {
-    }
-    interrupt_fdd_iqr = false;
+static void fd_wait_irq(void) {
+    while (interrupt_fdd_iqr == false);
 }
 
 
@@ -384,39 +392,26 @@ static inline Axel_state_code fd_cmd_sense_interrupt(Fd_status_register_st0* st0
         return AXEL_FAILED;
     }
 
-    /* FAILED_RETURN(fd_write_command(SENSE_INTERRUPT)); */
-    if (fd_write_command(SENSE_INTERRUPT) != AXEL_SUCCESS) {
-        return AXEL_FAILED;
-    }
-
-    if (fd_read_result(&st0->bit_expr) != AXEL_SUCCESS) {
-        return AXEL_FAILED;
-    }
-
-    if (fd_read_result(present_cylinder_number) != AXEL_SUCCESS) {
-        return AXEL_FAILED;
-    }
+    FAILED_RETURN(fd_write_command(SENSE_INTERRUPT));
+    FAILED_RETURN(fd_read_result(&st0->bit_expr));
+    FAILED_RETURN(fd_read_result(present_cylinder_number));
 
     return AXEL_SUCCESS;
 }
 
 
 static inline Axel_state_code fd_cmd_configure(void) {
-    if (fd_write_command(CONFIGURE) != AXEL_SUCCESS) {
-        return AXEL_FAILED;
-    }
-
-    if (fd_write_command(0) != AXEL_SUCCESS) {
-        return AXEL_FAILED;
-    }
-
-    if (fd_write_command(0x41) != AXEL_SUCCESS) {
-        return AXEL_FAILED;
-    }
-
-    if (fd_write_command(0) != AXEL_SUCCESS) {
-        return AXEL_FAILED;
-    }
+    FAILED_RETURN(fd_write_command(CONFIGURE));
+    /* First byte must be all zero. */
+    FAILED_RETURN(fd_write_command(0x00));
+    /* Bit 0 - 3: FIFO threshold value. */
+    /* Bit 4    : Disable polling. */
+    /* Bit 5    : Disable FIFO. */
+    /* Bit 6    : Disable implied seek. */
+    /* Bit 7    : Reserved by 0. */
+    FAILED_RETURN(fd_write_command(0x41));
+    /* Bit 0 - 7: pre complement value. */
+    FAILED_RETURN(fd_write_command(0x00));
 
     return AXEL_SUCCESS;
 }
@@ -449,24 +444,25 @@ static inline Axel_state_code fd_cmd_recalibrate(Fd_dev* fdd) {
         if (AXEL_SUCCESS != fd_write_command(fdd->drive_number & 0x03)) {
             continue;
         }
+
+        wait(3000);
         fd_wait_irq();
 
         Fd_status_register_st0 st0;
         uint8_t present_cylinder_number;
-        fd_cmd_sense_interrupt(&st0, &present_cylinder_number);
         if ((AXEL_SUCCESS != fd_cmd_sense_interrupt(&st0, &present_cylinder_number)) || (st0.interrupt_code != 0)) {
             continue;
         }
 
         if (present_cylinder_number == 0) {
             /* If head moves to 0, break */
-            break;
+            return AXEL_SUCCESS;
         }
     }
 
     fd_set_motor(fdd, false);
 
-    return AXEL_SUCCESS;
+    return AXEL_FAILED;
 }
 
 
@@ -475,6 +471,42 @@ static inline Axel_state_code fd_cmd_version(Fd_dev* fdd, uint8_t* v) {
     FAILED_RETURN(fd_read_result(v));
 
     return AXEL_SUCCESS;
+}
+
+
+static inline Axel_state_code fd_cmd_seek(Fd_dev* fdd, uint8_t head, uint8_t cylinder) {
+    if (fdd->enable_motor == false) {
+        fd_set_motor(fdd, true);
+    }
+
+    for (size_t i = 0; i < FD_MAX_RETRY_NUM; i++) {
+        if (fd_write_command(SEEK) != AXEL_SUCCESS) {
+            continue;
+        }
+
+        if (fd_write_command((uint8_t)(head << 2) | fdd->drive_number) != AXEL_SUCCESS) {
+            continue;
+        }
+
+        if (fd_write_command(cylinder) != AXEL_SUCCESS) {
+            continue;
+        }
+
+        wait(3000);
+        fd_wait_irq();
+
+        Fd_status_register_st0 st0;
+        uint8_t present_cylinder_number;
+        if ((fd_cmd_sense_interrupt(&st0, &present_cylinder_number) != AXEL_SUCCESS) || (st0.interrupt_code != 0x00)) {
+            continue;
+        }
+
+        if (present_cylinder_number == cylinder) {
+            return AXEL_SUCCESS;
+        }
+    }
+
+    return AXEL_FAILED;
 }
 
 
@@ -504,14 +536,12 @@ static inline Axel_state_code fd_reset_controller(Fd_dev* fdd) {
     fd_wait_irq();
 
     Fd_status_register_st0 st0;
-    uint8_t c = 0x3;
     uint8_t present_cylinder_number;
     int i;
     for (i = 0; i < 4; i++) {
         int tmp = i;
         if (AXEL_FAILED == fd_cmd_sense_interrupt(&st0, &present_cylinder_number)) {
             i = tmp - 1;
-            fill_screen(c++);
         }
     }
 
@@ -525,12 +555,13 @@ static inline Axel_state_code fd_reset_controller(Fd_dev* fdd) {
     io_out8(CONFIGURATION_CONTROL_REGISTER, 0x00);
 
     /* Calibrate a head position. */
-    /* return fd_cmd_recalibrate(fdd); */
-    return AXEL_SUCCESS;
+    return fd_cmd_recalibrate(fdd);
 }
 
 
 static inline Axel_state_code fd_init(Fd_dev* fdd) {
+    fdd->drive_number = FD_DRIVE0;
+
     uint8_t ver = 0;
     FAILED_RETURN(fd_cmd_version(fdd, &ver));
     if (ver != 0x90) {
@@ -539,8 +570,6 @@ static inline Axel_state_code fd_init(Fd_dev* fdd) {
     }
 
     enable_pic_port(PIC_IMR_MASK_IRQ06);
-
-    fdd->drive_number = FD_DRIVE0;
 
     fd_set_motor(fdd, false);
 
@@ -553,15 +582,28 @@ static inline Axel_state_code fd_init(Fd_dev* fdd) {
     }
     fdd->is_initialize = true;
 
-    return fd_cmd_recalibrate(fdd);
+    return AXEL_SUCCESS;
+}
+
+
+static void lba_to_chs(uint32_t lba, uint8_t* head, uint8_t* cylinder, uint8_t* sector) {
+    *head     = (uint8_t)(lba / (FD_HEAD * FD_SECTOR_PER_TRACK));
+    *cylinder = (lba / FD_SECTOR_PER_TRACK ) % FD_HEAD;
+    *sector   = (lba % FD_SECTOR_PER_TRACK) + 1;
 }
 
 
 static Axel_state_code fd_block_access(void* p, uint8_t direction, uint32_t lba, uint8_t sec_cnt, uint8_t* buf) {
     Fd_dev* fdd = p;
 
-    if (fdd->is_initialize == false) {
+    if (fdd->enable_motor == false) {
+        fd_set_motor(fdd, true);
     }
+
+    uint8_t head;
+    uint8_t cylinder;
+    uint8_t sector;
+    lba_to_chs(lba, &head, &cylinder, &sector);
 
     return AXEL_FAILED;
 }
