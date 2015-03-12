@@ -5,7 +5,7 @@ And support architecture is only x86.
 
 ## Functions
 - [x] Physical memory manager
-- [x] x86 paging
+- [x] x86_32 paging
 - [x] Virtual memory manager
 - [x] Interrupt
 - [x] Mouse, Keyboard
@@ -14,6 +14,7 @@ And support architecture is only x86.
 - [ ] User process (WIP)
 - [ ] System call (WIP)
 - [ ] Virtual filesystem (WIP)
+- [ ] Floppy boot (WIP)
 - [ ] Support ARM
 
 ## Requirements
