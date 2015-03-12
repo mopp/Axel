@@ -442,7 +442,7 @@ static inline void set_fat_date(uint16_t* date) {
 static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_cluster, uint8_t attr, uint32_t size) {
     memset(short_dir, 0, sizeof(Dir_entry));
     short_dir->attr = attr;
-    short_dir->first_clus_num_hi = first_cluster >> 16;
+    short_dir->first_clus_num_hi = (first_cluster >> 16) & 0xFFFF;
     short_dir->first_clus_num_lo = first_cluster & 0xFFFF;
     short_dir->file_size = size;
 #ifdef FOR_IMG_UTIL
@@ -465,7 +465,7 @@ static inline void init_short_dir_entry(Dir_entry* short_dir, uint32_t first_clu
  * @param  file_size
  * @return
  */
-Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, char const* name, uint8_t attr, void* file_content, size_t const file_size) {
+Axel_state_code fat_create_file(Fat_manips* fm, uint32_t const parent_dir_cluster, char const* name, uint8_t attr, void* file_content, size_t const file_size) {
     uint32_t const fat_type         = fm->fat_type;
     size_t const name_len           = strlen(name);
     uint32_t const root_dir_cluster = fat_get_root_dir_cluster(fm);
@@ -491,7 +491,7 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
 
     /* Alloc new directory entry. */
     Dir_entry new_short_entry;
-    init_short_dir_entry(&new_short_entry, new_short_entry_cluster, attr, file_size);
+    init_short_dir_entry(&new_short_entry, new_short_entry_cluster, attr, (uint32_t)file_size);
     create_short_file_name(name, (char*)new_short_entry.name);
 
     /* Lond directory entry exists in only FAT32. */
@@ -643,6 +643,7 @@ Axel_state_code fat_create_file(Fat_manips* fm, uint32_t parent_dir_cluster, cha
         fat_data_cluster_access(fm, FILE_WRITE, cluster_number, buffer);
     }
 
+
     if ((attr & DIR_ATTR_DIRECTORY) != 0) {
         /*
          * New entry is directory.
@@ -770,7 +771,7 @@ Axel_state_code fat_find_file_short_entry(Fat_manips* fm, uint32_t dir_cluster, 
         return 0;
     }
 
-    size_t max_dentry_num = fm->byte_per_cluster / sizeof(Dir_entry);
+    size_t const max_dentry_num = fm->byte_per_cluster / sizeof(Dir_entry);
     uint32_t entry = dir_cluster;
     void* buffer = alloc_clus_buf(fm);
     bool is_finish = false;
@@ -812,7 +813,7 @@ Axel_state_code fat_find_file_short_entry(Fat_manips* fm, uint32_t dir_cluster, 
                 if (strcmp(file_name, name) == 0) {
                     /* Found file. */
                     is_finish = true;
-                    short_entry_dst = short_entry;
+                    *short_entry_dst = *short_entry;
                     break;
                 }
             }
