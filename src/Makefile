@@ -24,7 +24,8 @@ export SRC_DIR     := $(PWD)/
 export INCLUDE_DIR := $(SRC_DIR)include/
 export OS_NAME     := $(shell uname -s)
 
-DISK_IMG   := disk.img
+FD_IMG     := fd.img
+HDD_IMG    := hdd.img
 AXEL_BIN   := axel.bin
 AXEL_SYM   := axel.sym
 KERNEL_LD  := kernel.ld
@@ -34,7 +35,7 @@ INIT_BIN   := init
 ISO_NAME   := axel.iso
 
 BOOT_DIR  := ./boot/
-TOOL_DIR  := tools/
+TOOL_DIR  := ./tools/
 WORK_DIR  := $(SRC_DIR)work/
 ISO_DIR   := $(WORK_DIR)iso/
 OBJS_DIR  := $(WORK_DIR)objs/
@@ -174,22 +175,27 @@ $(INIT_BIN): $(INIT_SRC)
 	$(NASM) -f bin -o $@ $(INIT_SRC)
 
 
-$(DISK_IMG): $(MAKEFILE) $(AXEL_BIN) $(INIT_BIN) $(LOADER1_BIN) $(LOADER2_BIN)
+$(FD_IMG): $(MAKEFILE) $(IMG_PROG) $(AXEL_BIN) $(INIT_BIN) $(LOADER1_BIN) $(LOADER2_BIN)
 	$(MAKE) -C $(TOOL_DIR)
 	$(IMG_PROG) -f 12 -t $@ -m $(LOADER1_BIN) -l $(LOADER2_BIN) $(AXEL_BIN) $(INIT_BIN)
+
+
+$(HDD_IMG): $(MAKEFILE) $(IMG_PROG) $(AXEL_BIN) $(INIT_BIN) $(LOADER1_BIN) $(LOADER2_BIN)
+	$(MAKE) -C $(TOOL_DIR)
+	$(IMG_PROG) -f 32 -t $@ -m $(LOADER1_BIN) -l $(LOADER2_BIN) $(AXEL_BIN) $(INIT_BIN)
 
 
 .PHONY: clean
 clean:
 	$(MAKE) -C $(TOOL_DIR) clean
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini $(DISK_IMG)
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini $(FD_IMG) $(HDD_IMG)
 	$(RM) $(LOADER1_BIN) $(LOADER2_BIN) $(BOOT_DIR)/*.o $(BOOT_DIR)/*.map $(BOOT_DIR)/*.lst
 	ctags -R ./*
 
 
 .PHONY: run_qemu_cdrom
-run_qemu_cdrom: $(MAKEFILE) $(ISO_NAME)
-	$(QEMU) -cdrom $(ISO_NAME)
+run_qemu_cdrom: $(MAKEFILE) $(ISO_NAME) $(HDD_IMG)
+	$(QEMU) -cdrom $(ISO_NAME) -hda $(HDD_IMG)
 
 
 .PHONY: run_qemu_debug
@@ -199,15 +205,15 @@ run_qemu_debug: $(MAKEFILE) $(ISO_NAME)
 
 
 .PHONY: run_qemu_fd
-run_qemu_fd: $(MAKEFILE) $(AXEL_BIN) $(DISK_IMG)
-	$(QEMU) -fda $(DISK_IMG)
+run_qemu_fd: $(MAKEFILE) $(AXEL_BIN) $(FD_IMG)
+	$(QEMU) -fda $(FD_IMG)
 
 
 .PHONY: run_bochs
-run_bochs: $(MAKEFILE) $(ISO_NAME) $(DISK_IMG)
+run_bochs: $(MAKEFILE) $(ISO_NAME) $(FD_IMG)
 	$(BOCHS)
 
 
 .PHONY: write_disk
-write_disk: $(DISK_IMG)
-	sudo dd if=$(DISK_IMG) of=/dev/sdb
+write_disk: $(FD_IMG)
+	sudo dd if=$(FD_IMG) of=/dev/sdb
