@@ -242,7 +242,10 @@ static inline Axel_state_code init_user_process(void) {
     intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
 
     /* Load program file. */
-    File* f = resolve_path(axel_s.fs, "init");
+    File* f = resolve_path(axel_s.fs, "/boot/init");
+    if (f == NULL) {
+        return AXEL_FAILED;
+    }
     void* fbuf = kmalloc(f->size);
     if (f->belong_fs->access_file(FILE_READ, f, fbuf) != AXEL_SUCCESS ) {
         kfree(fbuf);
