@@ -64,6 +64,9 @@ void interrupt_timer(Interrupt_frame* ic) {
     /* 1 tick is 10ms */
     ++tick_count;
 
+    /* NOTE: this function call is need at here for system call. */
+    send_done_pic_master();
+
     /* Execute handler. */
     for (size_t i = 0; i < MAX_TIMER_HANDLER_NUM; i++) {
         Timer_handler* th = timer_handlers[i];
@@ -72,7 +75,6 @@ void interrupt_timer(Interrupt_frame* ic) {
         }
     }
 
-    send_done_pic_master();
 }
 
 
