@@ -56,6 +56,7 @@ typedef struct file File;
 /* Filesystem access interfaces. */
 typedef Axel_state_code (*Fs_change_dir_func)(File_system*, char const*);
 typedef Axel_state_code (*Fs_access_file)(uint8_t, File const*, uint8_t*);
+typedef File* (*Fs_fetch_child_directory)(File*);
 
 
 struct file {
@@ -94,6 +95,7 @@ struct file_system {
     File* root_dir;
     Fs_change_dir_func change_dir;
     Fs_access_file access_file;
+    Fs_fetch_child_directory fetch_child_directory;
     Partition_entry pe;
 };
 typedef struct file_system File_system;

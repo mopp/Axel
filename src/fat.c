@@ -25,10 +25,16 @@ static inline Axel_state_code access(void* p, uint8_t direction, uint32_t lba, u
 }
 
 
-static inline Fat_file* read_directory(Fat_file* ff) {
+static File* fetch_child_directory(File* f) {
+    if (f == NULL) {
+        return NULL;
+    }
+    Fat_file* ff = (Fat_file*)f;
+
+
     if (ff->super.state_load == 1) {
         /* Already loaded. */
-        return ff;
+        return f;
     }
 
     Fat_manager* const fm = (Fat_manager*)ff->super.belong_fs;
@@ -156,7 +162,7 @@ static inline Fat_file* read_directory(Fat_file* ff) {
     }
     kfree(ffiles);
 
-    return ff;
+    return &ff->super;
 }
 
 
@@ -297,7 +303,7 @@ static inline Axel_state_code fat_change_dir(File_system* ft, char const* path) 
                     is_change = true;
 
                     /* Read sub directory contents. */
-                    if (ft->current_dir->state_load == 0 && read_directory(ffi) == NULL) {
+                    if (ft->current_dir->state_load == 0 && fetch_child_directory(&ffi->super) == NULL) {
                         goto failed;
                     }
                     break;
@@ -331,6 +337,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     fm->super.pe          = *pe;
     fm->super.change_dir  = fat_change_dir;
     fm->super.access_file = fat_access_file;
+    fm->super.fetch_child_directory = fetch_child_directory;
 
     Fat_file* const root  = kmalloc_zeroed(sizeof(Fat_file));
     root->super.name      = kmalloc(1 + 1);
@@ -391,7 +398,7 @@ File_system* init_fat(Ata_dev* dev, Partition_entry* pe) {
     }
 
     /* Load root directory entry. */
-    if (read_directory(root) == NULL) {
+    if (fetch_child_directory(&root->super) == NULL) {
         goto failed;
     }
 

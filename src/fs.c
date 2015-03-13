@@ -59,37 +59,64 @@ File_system* init_fs(Ata_dev* dev) {
 }
 
 
-/* TODO: stack */
-File* resolve_path(File_system const* fs, char const* path) {
-    if ((path[0] == '/') && (strstr(path, "..") == NULL)) {
-        /* Absolute path. */
+File* find_child_dir(char const* file_name, size_t const file_name_len, File* base_file) {
+    if ((file_name == NULL) || (base_file == NULL)) {
+        return NULL;
     }
 
-    File* current = fs->current_dir;
+    if (base_file->state_load == 0) {
+        /* If children directory are not loaded, load children directory. */
+        File_system* fs = base_file->belong_fs;
+        fs->fetch_child_directory(base_file);
+    }
 
-    do {
-        if (memcmp(path, "../", 3) == 0) {
-            if (current == current->belong_fs->root_dir) {
-                /* Path error. */
+    for (size_t i = 0; i < base_file->child_nr; i++) {
+        if (memcmp(base_file->children[i]->name, file_name, file_name_len) == 0) {
+            return base_file->children[i];
+        }
+    }
+
+    return NULL;
+}
+
+
+static File* resolve_path_sub(File_system const* fs, char const* path, File* f) {
+    char* c = strchr(path, '/');
+
+    if (c != NULL) {
+        /* Path is directory name. */
+        if (memcmp(path, "..", 2) == 0) {
+            f = f->parent_dir;
+        } else {
+            uintptr_t name_length = (uintptr_t)c - (uintptr_t)path;
+            f = find_child_dir(path, name_length, f);
+            if (f == NULL) {
                 return NULL;
             }
-            /* Move to upper dir. */
-            current = current->parent_dir;
-            continue;
+            path += name_length + 1;
         }
 
-        char* c = strchr(path, '/');
-        size_t l = (c == NULL) ? (strlen(path)) : ((uintptr_t)c - (uintptr_t)path);
-        size_t cnr = current->child_nr;
-        for (size_t i = 0; i < cnr; i++) {
-            File* child = current->children[i];
-            if (memcmp(child->name, path, l) == 0) {
-                path += (l + 1);
-                current = child;
-                break;
-            }
-        }
-    } while ((path != '\0') && (current->type != FILE_TYPE_FILE));
+        return resolve_path_sub(fs, path, f);
+    }
 
-    return current;
+    /* Path is filename. */
+    return find_child_dir(path, strlen(path), f);
+}
+
+File* resolve_path(File_system const* fs, char const* path) {
+    if ((fs == NULL) || (path == NULL)) {
+        return NULL;
+    }
+
+    File* f = NULL;
+    if (path[0] == '/') {
+        /* Absolute path. */
+        f = fs->root_dir;
+        path++;
+    } else {
+        /* Related path. */
+        f = fs->current_dir;
+    }
+
+    return resolve_path_sub(fs, path, f);
 }
