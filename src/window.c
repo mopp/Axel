@@ -18,7 +18,7 @@
 
 struct window_manager {
     Elist windows;
-    Point2d display_size; /* This storing display size. */
+    Point2d display_size; /* This stores display size. */
     struct {
         Point2d begin, end;
     } check_area;         /* This is checking area in update_win_for_each. */
@@ -218,6 +218,21 @@ void move_window(Window* const w, Point2d const* const p) {
     update_window_vram();
 }
 
+
+void swap_window_layer(Window* w1, Window* w2) {
+    if (((w1 == win_man->mouse_win) || (w2 == win_man->mouse_win)) || (w1 == w2)) {
+        /*
+         * mouse windows must be top of other windows.
+         * swapping same window has not mean.
+         */
+        return;
+    }
+
+    elist_swap(&w1->list, &w2->list);
+
+    /* TODO: optimize. */
+    flush_windows();
+}
 
 // void updown_window(Window const* const w, bool is_down) {
 // }

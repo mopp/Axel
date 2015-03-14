@@ -63,5 +63,6 @@ extern Window* get_top_writable_window(void);
 extern void w_putchar(int c);
 extern Window* window_set_writable(Window*, RGB8 const*, RGB8 const*, Point2d const*, Point2d const*);
 extern Window* window_fill_area(Window* const, Point2d const* const, Point2d const* const, RGB8 const* const);
+extern void swap_window_layer(Window*, Window*);
 
 #endif
