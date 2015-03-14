@@ -35,6 +35,7 @@ extern Elist* elist_insert_next(Elist* l, Elist* new);
 extern Elist* elist_insert_prev(Elist* l, Elist* new);
 extern Elist* elist_remove(Elist* n);
 extern bool elist_is_empty(Elist* n);
+extern void elist_swap(Elist*, Elist*);
 
 
 
