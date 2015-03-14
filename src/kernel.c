@@ -150,6 +150,7 @@ static void set_idt(Gate_descriptor* idts, size_t size) {
     set_gate_descriptor(idts + 0x80, (uintptr_t)asm_syscall_enter,        KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_TRAP | GD_RING3);
 }
 
+
 static inline void draw_desktop(void) {
     Point2d p0, p1;
     RGB8 c;
@@ -173,6 +174,7 @@ static inline void draw_desktop(void) {
     RGB8 fg = convert_color2RGB8(0x2EFE2E);
     RGB8 bg = convert_color2RGB8(0x151515);
     console = alloc_filled_window(&make_point2d(30, 30), &make_point2d(c_width, c_height), &bg);
+
     if (console != NULL) {
         window_draw_line(console, set_point2d(&p0, 0, 0), set_point2d(&p1, 0, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
         window_draw_line(console, set_point2d(&p0, c_width - 1, 0), set_point2d(&p1, c_width - 1, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
@@ -600,13 +602,11 @@ static inline void decode_mouse(void) {
 
 static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t base_addr, uint32_t limit, uint32_t flags) {
     s->bit_expr_high = flags;
-
-    s->limit_low = ECAST_UINT16(limit);
-    s->limit_hi = (limit >> 16) & 0xF;
-
+    s->limit_low     = ECAST_UINT16(limit);
+    s->limit_hi      = (limit >> 16) & 0xF;
     s->base_addr_low = ECAST_UINT16(base_addr);
     s->base_addr_mid = ECAST_UINT8(base_addr >> 16);
-    s->base_addr_hi = ECAST_UINT8(base_addr >> 24);
+    s->base_addr_hi  = ECAST_UINT8(base_addr >> 24);
 
     return s;
 }
