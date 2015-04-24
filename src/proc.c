@@ -248,7 +248,7 @@ static inline Axel_state_code init_user_process(void) {
     intf->prev_ss  = USER_DATA_SEGMENT_SELECTOR;
 
     /* Load program file. */
-    File* f = resolve_path(axel_s.fs, "/boot/init");
+    File* f = resolve_path(axel_s.fs, "/boot/user_init");
     if (f == NULL) {
         return AXEL_FAILED;
     }
