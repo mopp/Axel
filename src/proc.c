@@ -18,6 +18,7 @@
 #include <fs.h>
 #include <elf.h>
 #include <time.h>
+#include <print.h>
 
 
 enum Process_constants {
@@ -180,6 +181,11 @@ void switch_context(Interrupt_frame* current_iframe) {
 
 /* FIXME: */
 static inline Axel_state_code expand_segment(Process* p, Segment* s, size_t size) {
+    if (size == 0) {
+        s->size = 0;
+        return AXEL_SUCCESS;
+    }
+
     Frame* f = buddy_alloc_frames(axel_s.bman, size_to_order(size));
     if (f == NULL) {
         return AXEL_FRAME_ALLOC_ERROR;
@@ -327,13 +333,15 @@ static Axel_state_code elf_callback(void* o, size_t n, void const* fbuf, Elf_phd
 
     s->addr = ALIGN_DOWN(ph->vaddr, FRAME_SIZE);
     s->size = 0;
-    size_t size = ALIGN_UP(ph->memsz + (ph->vaddr - s->addr), FRAME_SIZE);
-    expand_segment(p, s, size);
+    size_t const size = ph->memsz + (ph->vaddr - s->addr);
+    size_t const aligned_size = ALIGN_UP(size, FRAME_SIZE);
+    expand_segment(p, s, aligned_size);
 
     set_cpu_pdt(get_page_phys_addr(&p->pdt_page));
+
     /* Copy segment into memory. */
     void* segbuf = (void*)((uintptr_t)fbuf + ph->offset);
-    memcpy((void*)s->addr, segbuf, s->size);
+    memcpy((void*)ph->vaddr, segbuf, size);
 
     return AXEL_SUCCESS;
 }
@@ -358,7 +366,6 @@ Axel_state_code execve(char const *path, char const * const *argv, char const * 
     }
 
     Process* p = running_proc();
-    /* Process* p = &procs[1]; */
 
     /* Load program file. */
     File* f = resolve_path(axel_s.fs, path);
