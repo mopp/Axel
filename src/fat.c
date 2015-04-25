@@ -298,7 +298,7 @@ static inline Axel_state_code fat_change_dir(File_system* ft, char const* path) 
             for (size_t i = 0; i < cnr; i++) {
                 Fat_file* ffi = (Fat_file*)ff->super.children[i];
                 /* Checking directory && Not current directory && match name. */
-                if ((ffi->super.type_dir == 1) && (&ffi->super != ft->current_dir) && (memcmp(path, ffi->super.name, len) == 0)) {
+                if ((ffi->super.type_dir == 1) && (&ffi->super != ft->current_dir) && (memcmp(path, ffi->super.name, strlen(ffi->super.name)) == 0)) {
                     ft->current_dir = &ffi->super;
                     is_change = true;
 
