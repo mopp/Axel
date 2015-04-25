@@ -13,6 +13,7 @@
 #include <utils.h>
 #include <macros.h>
 #include <proc.h>
+#include <aapi.h>
 
 
 enum {
@@ -25,7 +26,8 @@ union syscall_args {
     size_t args[SYSCALL_MAX_ARG_NUM];
 
     struct axel_args {
-        size_t api_number;
+        unsigned int api_number;
+        void* api_arguments;
     } axel_args;
 
     struct execve_args {
@@ -63,7 +65,6 @@ typedef struct syscall_entry Syscall_entry;
         sizeof(struct name##_args), sys_##name, \
     }
 
-
 static Syscall_entry syscall_table[] = {
     set_syscall_entry(SYSCALL_AXEL, axel),
     set_syscall_entry(SYSCALL_FORK, fork),
@@ -99,7 +100,7 @@ void syscall_enter(Interrupt_frame* iframe)
 static int sys_axel(Syscall_args* a)
 {
     Axel_args* args = (Axel_args*)a;
-    return 1;
+    return axel_api_entry(args->api_number, args->api_arguments);
 }
 
 
