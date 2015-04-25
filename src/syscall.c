@@ -8,6 +8,7 @@
 
 
 #include <syscall.h>
+#include <syscall_numbers.h>
 #include <interrupt.h>
 #include <utils.h>
 #include <macros.h>
@@ -22,19 +23,21 @@ enum {
 /* Arguments order is Left to Right. */
 union syscall_args {
     size_t args[SYSCALL_MAX_ARG_NUM];
-    struct mopp_args {
+    struct axel_args {
         char* str;
-    } mopp_args;
+    } axel_args;
+
     struct execve_args {
         char const *path;
         char const * const *argv;
         char const * const *envp;
     } execve_args;
+
     struct fork_args {
         uint8_t dummy;
     } fork_args;
 };
-typedef struct mopp_args Mopp_args;
+typedef struct axel_args Axel_args;
 typedef struct execve_args Execve_args;
 typedef union syscall_args Syscall_args;
 _Static_assert(sizeof(Syscall_args) == 32, "Syscall_args size is NOT 32 byte.");
@@ -56,15 +59,15 @@ typedef struct syscall_entry Syscall_entry;
     } \
 
 
-static int sys_mopp(Syscall_args*);
+static int sys_axel(Syscall_args*);
 static int sys_execve(Syscall_args*);
 static int sys_fork(Syscall_args*);
 
 
 static Syscall_entry syscall_table[] = {
-    set_syscall_entry(0x00, mopp),
-    set_syscall_entry(0x02, fork),
-    set_syscall_entry(0x0b, execve),
+    set_syscall_entry(SYSCALL_AXEL, axel),
+    set_syscall_entry(SYSCALL_FORK, fork),
+    set_syscall_entry(SYSCALL_EXECVE, execve),
 };
 
 
@@ -87,7 +90,7 @@ void syscall_enter(Interrupt_frame* iframe) {
 }
 
 
-static int sys_mopp(Syscall_args* a) {
+static int sys_axel(Syscall_args* a) {
     (void)a;
     return 1;
 }
