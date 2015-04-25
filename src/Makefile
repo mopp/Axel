@@ -86,6 +86,7 @@ C_SRCS    :=      \
 	utils.c       \
 	window.c      \
 	print.c      \
+	aapi.c      \
 	kernel.c
 C_OBJS := $(addprefix $(OBJS_DIR), $(C_SRCS:%.c=%.o))
 C_DEPS := $(addprefix $(DEPS_DIR), $(C_SRCS:%.c=%.d))
@@ -177,8 +178,8 @@ $(USER_INIT_BIN): $(MAKEFILE) $(USER_INIT_SRC)
 
 
 $(USER_MAIN_BIN): $(MAKEFILE) $(USER_MAIN_SRC)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(USER_MAIN_SRC) -o $*.o
-	$(LD) -e main -o $@ $*.o
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $(USER_MAIN_SRC) -o user_main.o
+	$(LD) -Map user_main.map -e main -o $@ user_main.o
 
 
 $(FD_IMG): $(MAKEFILE) $(AXEL_BIN) $(LOADER1_BIN) $(LOADER2_BIN)
@@ -196,6 +197,7 @@ clean:
 	$(MAKE) -C $(TOOL_DIR) clean
 	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini $(FD_IMG) $(HDD_IMG)
 	$(RM) $(LOADER1_BIN) $(LOADER2_BIN) $(BOOT_DIR)/*.o $(BOOT_DIR)/*.map $(BOOT_DIR)/*.lst
+	$(RM) $(USER_INIT_BIN) $(USER_MAIN_BIN)
 	ctags -R ./*
 
 
