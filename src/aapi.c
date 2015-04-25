@@ -17,12 +17,17 @@ union aapi_args {
         Point2d const* pos;
         Point2d const* size;
     } alloc_window_args;
+    struct flush_windows_args {
+        char dummy;
+    } flush_windows_args;
 };
 typedef struct alloc_window_args Alloc_window_args;
+typedef struct flush_windows_args Flush_windows_args;
 typedef union aapi_args Aapi_args;
 
 
 static int aapi_alloc_window(Aapi_args*);
+static int aapi_flush_windows(Aapi_args*);
 
 typedef int (*Aapi_handler)(Aapi_args*);
 
@@ -40,6 +45,7 @@ typedef struct aapi_entry Aapi_entry;
 
 static Aapi_entry aapi_table[] = {
     set_aapi_entry(AAPI_ALLOC_WINDOW, alloc_window),
+    set_aapi_entry(AAPI_FLUSH_WINDOWS, flush_windows),
 };
 
 
@@ -54,6 +60,12 @@ int axel_api_entry(unsigned int n, void* args)
     return aentry->handler(&aa);
 }
 
+static int aapi_flush_windows(Aapi_args* a)
+{
+    flush_windows();
+    return 0;
+}
+
 
 static int aapi_alloc_window(Aapi_args* a)
 {
@@ -61,7 +73,6 @@ static int aapi_alloc_window(Aapi_args* a)
 
     RGB8 c = convert_color2RGB8(0xAA00AA);
     alloc_filled_window(args->pos, args->size, &c);
-    flush_windows();
 
     return 0;
 }

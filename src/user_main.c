@@ -6,6 +6,8 @@
 
 
 static int axel_api_alloc_window(Point2d const*, Point2d const*);
+static int axel_api_flush_windows(void);
+
 
 int main(void)
 {
@@ -16,6 +18,7 @@ int main(void)
     size.x = 100;
     size.y = 100;
     axel_api_alloc_window(&pos, &size);
+    axel_api_flush_windows();
 
     for (;;) {
         __asm__ volatile("movl $16, %ecx");
@@ -40,11 +43,22 @@ int main(void)
         :                                              \
         : "eax")
 
+
 static int axel_api_alloc_window(Point2d const* pos, Point2d const* size)
 {
     int return_code = 0;
 
     AXEL_API_TEMPLATE(return_code, AAPI_ALLOC_WINDOW);
+
+    return return_code;
+}
+
+
+static int axel_api_flush_windows(void)
+{
+    int return_code = 0;
+
+    AXEL_API_TEMPLATE(return_code, AAPI_FLUSH_WINDOWS);
 
     return return_code;
 }

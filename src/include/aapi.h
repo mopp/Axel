@@ -10,7 +10,8 @@
 #define _AXEL_API_H_
 
 
-#define AAPI_ALLOC_WINDOW 0
+#define AAPI_FLUSH_WINDOWS 0
+#define AAPI_ALLOC_WINDOW  1
 
 int axel_api_entry(unsigned int, void*);
 
