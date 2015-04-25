@@ -22,6 +22,7 @@
 
 struct window {
     Elist list;
+    size_t wid;
     RGB8* buf;
     Point2d pos;
     Point2d size;
@@ -64,5 +65,6 @@ extern void w_putchar(int c);
 extern Window* window_set_writable(Window*, RGB8 const*, RGB8 const*, Point2d const*, Point2d const*);
 extern Window* window_fill_area(Window* const, Point2d const* const, Point2d const* const, RGB8 const* const);
 extern void swap_window_layer(Window*, Window*);
+extern Window* window_find_by_id(size_t);
 
 #endif

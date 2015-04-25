@@ -29,6 +29,7 @@ typedef struct window_manager Window_manager;
 
 
 static Window_manager* win_man; /* Window manager. */
+static size_t wid = 0;
 
 static void calibrate(Point2d* const p);
 static void update_window_buffer(void);
@@ -57,6 +58,7 @@ Axel_state_code init_window(void) {
         kfree(win_man);
         return AXEL_MEMORY_ALLOC_ERROR;
     }
+    mouse_win->wid           = wid++;
     mouse_win->buf           = kmalloc_zeroed(sizeof(RGB8) * (size_t)(mouse_cursor->width * mouse_cursor->height));
     mouse_win->pos           = make_point2d(get_max_x_resolution() / 2, get_max_y_resolution() / 2);
     mouse_win->size          = make_point2d(mouse_cursor->width, mouse_cursor->height);
@@ -99,6 +101,7 @@ Window* alloc_window(Point2d const* pos, Point2d const* size) {
         return NULL;
     }
 
+    w->wid = wid++;
     w->pos = *pos;
     w->size = *size;
 
@@ -234,8 +237,20 @@ void swap_window_layer(Window* w1, Window* w2) {
     flush_windows();
 }
 
+
 // void updown_window(Window const* const w, bool is_down) {
 // }
+
+
+Window* window_find_by_id(size_t id) {
+    elist_foreach(w, &win_man->windows, Window, list) {
+        if (w->wid == id) {
+            return w;
+        }
+    }
+
+    return NULL;
+}
 
 
 Window* get_top_writable_window(void) {

@@ -72,7 +72,11 @@ static int aapi_alloc_window(Aapi_args* a)
     Alloc_window_args* args = (Alloc_window_args*)a;
 
     RGB8 c = convert_color2RGB8(0xAA00AA);
-    alloc_filled_window(args->pos, args->size, &c);
+    Window* w = alloc_filled_window(args->pos, args->size, &c);
 
-    return 0;
+    if (w == NULL) {
+        return AXEL_FAILED;
+    }
+
+    return (int)w->wid;
 }
