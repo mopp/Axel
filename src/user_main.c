@@ -18,6 +18,16 @@ int func_name
 
 SYSCALL_DEFINE(axel_api, SYSCALL_AXEL)(unsigned int n, void* args);
 SYSCALL_DEFINE(sys_execve, SYSCALL_EXECVE)(char const *path, char const * const *argv, char const * const *envp);
+SYSCALL_DEFINE(sys_fork, SYSCALL_FORK)(void);
+
+
+int execve(char const *path, char const * const *argv, char const * const *envp) {
+    return sys_execve(path, argv, envp);
+}
+
+int fork(void) {
+    return sys_fork();
+}
 
 
 #define AXEL_API_FUNC_BODY(api_number)    \
@@ -43,31 +53,19 @@ static int axel_api_flush_windows(void)
 AXEL_API_FUNC_BODY(AAPI_FLUSH_WINDOWS)
 
 
-int execve(char const *path, char const * const *argv, char const * const *envp) {
-    return sys_execve(path, argv, envp);
-}
-
-
 int main(void)
 {
     Point2d pos;
     Point2d size;
-    pos.x  = 500;
-    pos.y  = 500;
+    pos.x  = 400;
+    pos.y  = 400;
     size.x = 100;
     size.y = 100;
 
     int wid = axel_api_alloc_window(&pos, &size);
     axel_api_flush_windows();
 
-    for (;;) {
-        __asm__ volatile(
-            ".intel_syntax noprefix \n"
-            :
-            : "a" (wid)
-            : "eax"
-                );
-    }
+    for (;;) { }
 
     return 0;
 }
