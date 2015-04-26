@@ -54,7 +54,8 @@ static void clear_bss(void);
  *        Initialize system in this.
  * @param boot_info boot information by bootstraps loader.
  */
-_Noreturn void kernel_entry(Multiboot_info* const boot_info) {
+_Noreturn void kernel_entry(Multiboot_info* const boot_info)
+{
     io_cli();    /* Disable interrupt until interrupt handler is set. */
     clear_bss(); /* Clear bss section of kernel. */
     Multiboot_info_flag const flags = boot_info->flags;
@@ -122,7 +123,8 @@ _Noreturn void kernel_entry(Multiboot_info* const boot_info) {
 }
 
 
-static _Noreturn void hlt(Interrupt_frame* ic) {
+static _Noreturn void hlt(Interrupt_frame* ic)
+{
     printf("Interrupt_frame: %p\n", ic);
 
     BOCHS_MAGIC_BREAK();
@@ -130,7 +132,8 @@ static _Noreturn void hlt(Interrupt_frame* ic) {
 }
 
 
-static _Noreturn void no_op(Interrupt_frame* ic) {
+static _Noreturn void no_op(Interrupt_frame* ic)
+{
     puts("No Operation\n");
     printf("Interrupt_frame: %p\n", ic);
 
@@ -140,18 +143,20 @@ static _Noreturn void no_op(Interrupt_frame* ic) {
 }
 
 
-static void set_idt(Gate_descriptor* idts, size_t size) {
-    set_gate_descriptor(idts + 0x08, (uintptr_t)hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
-    set_gate_descriptor(idts + 0x0D, (uintptr_t)hlt,                      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+static void set_idt(Gate_descriptor* idts, size_t size)
+{
+    set_gate_descriptor(idts + 0x08, (uintptr_t)hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x0D, (uintptr_t)hlt, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
     set_gate_descriptor(idts + 0x0E, (uintptr_t)asm_exception_page_fault, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_TRAP);
-    set_gate_descriptor(idts + 0x20, (uintptr_t)asm_interrupt_timer,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
-    set_gate_descriptor(idts + 0x21, (uintptr_t)asm_interrupt_keybord,    KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
-    set_gate_descriptor(idts + 0x2C, (uintptr_t)asm_interrupt_mouse,      KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
-    set_gate_descriptor(idts + 0x80, (uintptr_t)asm_syscall_enter,        KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_TRAP | GD_RING3);
+    set_gate_descriptor(idts + 0x20, (uintptr_t)asm_interrupt_timer, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x21, (uintptr_t)asm_interrupt_keybord, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x2C, (uintptr_t)asm_interrupt_mouse, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_INT);
+    set_gate_descriptor(idts + 0x80, (uintptr_t)asm_syscall_enter, KERNEL_CODE_SEGMENT_INDEX, GD_FLAGS_TRAP | GD_RING3);
 }
 
 
-static inline void draw_desktop(void) {
+static inline void draw_desktop(void)
+{
     Point2d p0, p1;
     RGB8 c;
     int32_t const max_x = get_max_x_resolution();
@@ -163,11 +168,11 @@ static inline void draw_desktop(void) {
     Window* const status_bar = alloc_filled_window(set_point2d(&p0, 0, max_y - 27), set_point2d(&p1, max_x, 27), set_rgb_by_color(&c, 0xC6C6C6));
 
     /* 60x20 Button */
-    window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1, 60,  1), set_rgb_by_color(&c, 0xFFFFFF));    // above edge.
-    window_fill_area(status_bar, set_point2d(&p0, 3, 23), set_point2d(&p1, 60,  2), set_rgb_by_color(&c, 0x848484));    // below edge.
-    window_fill_area(status_bar, set_point2d(&p0, 3,  3), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0xFFFFFF));    // left edge.
-    window_fill_area(status_bar, set_point2d(&p0, 61, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x848484));    // right edge.
-    window_fill_area(status_bar, set_point2d(&p0, 62, 4), set_point2d(&p1,  1, 20), set_rgb_by_color(&c, 0x000001));    // right edge.
+    window_fill_area(status_bar, set_point2d(&p0, 3, 3), set_point2d(&p1, 60, 1), set_rgb_by_color(&c, 0xFFFFFF));   // above edge.
+    window_fill_area(status_bar, set_point2d(&p0, 3, 23), set_point2d(&p1, 60, 2), set_rgb_by_color(&c, 0x848484));  // below edge.
+    window_fill_area(status_bar, set_point2d(&p0, 3, 3), set_point2d(&p1, 1, 20), set_rgb_by_color(&c, 0xFFFFFF));   // left edge.
+    window_fill_area(status_bar, set_point2d(&p0, 61, 4), set_point2d(&p1, 1, 20), set_rgb_by_color(&c, 0x848484));  // right edge.
+    window_fill_area(status_bar, set_point2d(&p0, 62, 4), set_point2d(&p1, 1, 20), set_rgb_by_color(&c, 0x000001));  // right edge.
 
     int32_t c_height = 400;
     int32_t c_width = 500;
@@ -179,7 +184,7 @@ static inline void draw_desktop(void) {
         window_draw_line(console, set_point2d(&p0, 0, 0), set_point2d(&p1, 0, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
         window_draw_line(console, set_point2d(&p0, c_width - 1, 0), set_point2d(&p1, c_width - 1, c_height), set_rgb_by_color(&c, 0xFFFFFF), 1);
         window_draw_line(console, set_point2d(&p0, 0, c_height - 1), set_point2d(&p1, c_width, c_height - 1), set_rgb_by_color(&c, 0xFFFFFF), 1);
-        window_fill_area(console, set_point2d(&p0, 0, 0), set_point2d(&p1,  c_width, 10), set_rgb_by_color(&c, 0xC6C6C6));
+        window_fill_area(console, set_point2d(&p0, 0, 0), set_point2d(&p1, c_width, 10), set_rgb_by_color(&c, 0xC6C6C6));
         window_set_writable(console, &fg, &bg, set_point2d(&p0, 5, 15), set_point2d(&p1, c_width - 5 - 5, c_height - 15 - 5));
     }
 
@@ -195,7 +200,8 @@ static inline void draw_desktop(void) {
 }
 
 
-static inline void do_cmd(char* ecmd) {
+static inline void do_cmd(char* ecmd)
+{
     if (strlen(ecmd) == 0) {
         puts(prompt);
         return;
@@ -346,85 +352,86 @@ static inline void do_cmd(char* ecmd) {
 }
 
 
-static inline void decode_key(void) {
+static inline void decode_key(void)
+{
     static uint8_t on_break = false;
     static char const keymap[] = {
-        [0x1C] = 'a',
-        [0x32] = 'b',
-        [0x21] = 'c',
-        [0x23] = 'd',
-        [0x24] = 'e',
-        [0x2B] = 'f',
-        [0x34] = 'g',
-        [0x33] = 'h',
-        [0x43] = 'i',
-        [0x3B] = 'j',
-        [0x42] = 'k',
-        [0x4B] = 'l',
-        [0x3A] = 'm',
-        [0x31] = 'n',
-        [0x44] = 'o',
-        [0x4D] = 'p',
-        [0x15] = 'q',
-        [0x2D] = 'r',
-        [0x1B] = 's',
-        [0x2C] = 't',
-        [0x3C] = 'u',
-        [0x2A] = 'v',
-        [0x1D] = 'w',
-        [0x22] = 'x',
-        [0x35] = 'y',
-        [0x1A] = 'z',
+            [0x1C] = 'a',
+            [0x32] = 'b',
+            [0x21] = 'c',
+            [0x23] = 'd',
+            [0x24] = 'e',
+            [0x2B] = 'f',
+            [0x34] = 'g',
+            [0x33] = 'h',
+            [0x43] = 'i',
+            [0x3B] = 'j',
+            [0x42] = 'k',
+            [0x4B] = 'l',
+            [0x3A] = 'm',
+            [0x31] = 'n',
+            [0x44] = 'o',
+            [0x4D] = 'p',
+            [0x15] = 'q',
+            [0x2D] = 'r',
+            [0x1B] = 's',
+            [0x2C] = 't',
+            [0x3C] = 'u',
+            [0x2A] = 'v',
+            [0x1D] = 'w',
+            [0x22] = 'x',
+            [0x35] = 'y',
+            [0x1A] = 'z',
 
-        [0x45] = '0',
-        [0x16] = '1',
-        [0x1E] = '2',
-        [0x26] = '3',
-        [0x25] = '4',
-        [0x2E] = '5',
-        [0x36] = '6',
-        [0x3D] = '7',
-        [0x3E] = '8',
-        [0x46] = '9',
+            [0x45] = '0',
+            [0x16] = '1',
+            [0x1E] = '2',
+            [0x26] = '3',
+            [0x25] = '4',
+            [0x2E] = '5',
+            [0x36] = '6',
+            [0x3D] = '7',
+            [0x3E] = '8',
+            [0x46] = '9',
 
-        [0x49] = '.',
-        [0x4A] = '/',
-        [0x0E] = '`',
-        [0x4E] = '-',
-        [0x55] = '=',
-        [0x5D] = '\\',
+            [0x49] = '.',
+            [0x4A] = '/',
+            [0x0E] = '`',
+            [0x4E] = '-',
+            [0x55] = '=',
+            [0x5D] = '\\',
     };
     static char const keymap_s[] = {
-        [0x49] = '>',
-        [0x4A] = '?',
-        [0x45] = ')',
-        [0x16] = '!',
-        [0x1E] = '@',
-        [0x26] = '#',
-        [0x25] = '$',
-        [0x2E] = '%',
-        [0x36] = '^',
-        [0x3D] = '&',
-        [0x3E] = '\'',
-        [0x46] = '(',
+            [0x49] = '>',
+            [0x4A] = '?',
+            [0x45] = ')',
+            [0x16] = '!',
+            [0x1E] = '@',
+            [0x26] = '#',
+            [0x25] = '$',
+            [0x2E] = '%',
+            [0x36] = '^',
+            [0x3D] = '&',
+            [0x3E] = '\'',
+            [0x46] = '(',
 
-        [0x0E] = '~',
-        [0x4E] = '_',
-        [0x55] = '+',
-        [0x5D] = '|',
+            [0x0E] = '~',
+            [0x4E] = '_',
+            [0x55] = '+',
+            [0x5D] = '|',
     };
 
     enum {
-        enter     = 0x5a,
-        esc       = 0x76,
+        enter = 0x5a,
+        esc = 0x76,
         backspace = 0x66,
-        space     = 0x29,
-        tab       = 0x0D,
-        caps      = 0x58,
-        l_shift   = 0x12,
-        l_alt     = 0x11,
-        l_ctrl    = 0x14,
-        r_shift   = 0x59,
+        space = 0x29,
+        tab = 0x0D,
+        caps = 0x58,
+        l_shift = 0x12,
+        l_alt = 0x11,
+        l_ctrl = 0x14,
+        r_shift = 0x59,
         /* r_alt     = , */
         /* r_ctrl    = , */
         break_code = 0xf0,
@@ -517,7 +524,8 @@ static inline void decode_key(void) {
 }
 
 
-static inline void decode_mouse(void) {
+static inline void decode_mouse(void)
+{
     static bool is_discard = false; /* If this is true, discard entire packets. */
     static uint8_t discard_cnt = 0;
 
@@ -600,28 +608,30 @@ static inline void decode_mouse(void) {
 }
 
 
-static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t base_addr, uint32_t limit, uint32_t flags) {
+static inline Segment_descriptor* set_segment_descriptor(Segment_descriptor* s, uint32_t base_addr, uint32_t limit, uint32_t flags)
+{
     s->bit_expr_high = flags;
-    s->limit_low     = ECAST_UINT16(limit);
-    s->limit_hi      = (limit >> 16) & 0xF;
+    s->limit_low = ECAST_UINT16(limit);
+    s->limit_hi = (limit >> 16) & 0xF;
     s->base_addr_low = ECAST_UINT16(base_addr);
     s->base_addr_mid = ECAST_UINT8(base_addr >> 16);
-    s->base_addr_hi  = ECAST_UINT8(base_addr >> 24);
+    s->base_addr_hi = ECAST_UINT8(base_addr >> 24);
 
     return s;
 }
 
 
-static inline void init_gdt(void) {
+static inline void init_gdt(void)
+{
     axel_s.gdt = (Segment_descriptor*)kmalloc_zeroed(sizeof(Segment_descriptor) * SEGMENT_NUM);
     axel_s.tss = (Task_state_segment*)kmalloc_zeroed(sizeof(Task_state_segment));
 
     axel_s.tss->ss0 = KERNEL_DATA_SEGMENT_SELECTOR;
-    axel_s.tss->cs  = KERNEL_CODE_SEGMENT_SELECTOR;
-    axel_s.tss->ss  = KERNEL_DATA_SEGMENT_SELECTOR;
-    axel_s.tss->es  = KERNEL_DATA_SEGMENT_SELECTOR;
-    axel_s.tss->ds  = KERNEL_DATA_SEGMENT_SELECTOR;
-    axel_s.tss->gs  = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->cs = KERNEL_CODE_SEGMENT_SELECTOR;
+    axel_s.tss->ss = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->es = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->ds = KERNEL_DATA_SEGMENT_SELECTOR;
+    axel_s.tss->gs = KERNEL_DATA_SEGMENT_SELECTOR;
 
     /* Setup flat address model. */
     set_segment_descriptor(axel_s.gdt + KERNEL_CODE_SEGMENT_INDEX, 0x00000000, 0xffffffff, GDT_FLAGS_KERNEL_CODE);
@@ -640,7 +650,8 @@ static inline void init_gdt(void) {
 }
 
 
-static inline void clear_bss(void) {
+static inline void clear_bss(void)
+{
     extern uintptr_t const LD_KERNEL_BSS_START;
     extern uintptr_t const LD_KERNEL_BSS_SIZE;
 
