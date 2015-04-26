@@ -8,9 +8,9 @@ vgaromimage:          file="/usr/local/share/bochs/VGABIOS-lgpl-latest"
 
 # For booting from cdrom.
 boot:                 cdrom
-floppy_bootsig_check: disabled=0
-no floppya
-no floppyb
+# floppy_bootsig_check: disabled=0
+# no floppya
+# no floppyb
 
 # For booting from floppy.
 # floppya: 1_44="fd.img", status=inserted
