@@ -9,6 +9,7 @@ init:
     push 0
     push 0
     push user_main_path
+    push 0
     mov eax, 0x0b
     int 0x80
 

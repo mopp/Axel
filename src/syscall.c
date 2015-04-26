@@ -82,8 +82,11 @@ void syscall_enter(Interrupt_frame* iframe)
     uint32_t const syscall_number = iframe->eax;
     Syscall_entry const* const sentry = &syscall_table[syscall_number];
 
-    /* Get process stack for arguments */
-    void* process_stack = (void*)iframe->prev_esp;
+    /*
+     * Get process stack for arguments
+     * Avoid the return address by adding sizeof(uintptr_t).
+     */
+    void* process_stack = (void*)iframe->prev_esp + sizeof(uintptr_t);
 
     /* Copy arguments */
     Syscall_args sa;
