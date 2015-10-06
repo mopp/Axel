@@ -5,10 +5,12 @@
 !legacy
 !arch
 !arch/x86_32
+!lib/
 
 # allow files
 !.gitignore
 !.gdbinit
+!.gitkeep
 !Makefile
 !bochsrc
 !*.asm
