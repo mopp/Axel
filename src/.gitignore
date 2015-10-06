@@ -3,10 +3,8 @@
 
 # allow directors
 !legacy
-!boot
-!include
-!dev
-!tools
+!arch
+!arch/x86_32
 
 # allow files
 !.gitignore
@@ -17,7 +15,6 @@
 !*.c
 !*.h
 !*.ld
-!*.mk
 !*.cfg
 !*.txt
-!*.inc
+!*.rs
