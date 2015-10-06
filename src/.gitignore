@@ -6,6 +6,7 @@
 !arch
 !arch/x86_32
 !lib/
+!lib/rust-multiboot
 
 # allow files
 !.gitignore
