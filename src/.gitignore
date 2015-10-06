@@ -2,6 +2,7 @@
 *
 
 # allow directors
+!legacy
 !boot
 !include
 !dev
