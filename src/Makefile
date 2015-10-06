@@ -6,12 +6,17 @@
 # @date 2015-10-06
 #############################################################
 
+export ARCH          := x86_32
+export TARGET_TRIPLE := i686-unknown-linux-gnu
+
 # Commands
 export RM       := rm -rf
+export CD       := cd
 export CP       := cp -r
 export MKDIR    := mkdir -p
 export LD       := ld
 export RUSTC    := rustc
+export CARGO    := cargo
 export NASM     := nasm
 export QEMU     := qemu-system-i386
 export BOCHS    := bochs -q
@@ -19,16 +24,16 @@ export MAKE     := make --warn-undefined-variables
 export MKIMAGE  := grub-mkimage
 export MKRESCUE := grub-mkrescue
 
-# Options
-export ARCH := x86_32
-RUSTC_FLAGS := --target=i686-unknown-linux-gnu --emit=obj -C lto -C opt-level=3 -Z no-landing-pads
-LD_FLAGS    := -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -static
-QEMU_FLAGS  := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
-
 # Directories
 export BUILD_OS_NAME := $(shell uname -s)
 export ROOT_DIR      := $(realpath .)
 export ARCH_DIR      := $(ROOT_DIR)/arch/$(ARCH)
+export RLIB_DIR      := $(ROOT_DIR)/lib/
+
+# Options
+RUSTC_FLAGS          := -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -C lto -C opt-level=3 -Z no-landing-pads
+LD_FLAGS             := -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -static
+QEMU_FLAGS           := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
 
 # Files
 export MAKEFILE := Makefile
@@ -36,6 +41,7 @@ AXEL_BIN        := axel.bin
 AXEL_ISO        := axel.iso
 GRUB_CFG        := grub.cfg
 LINKER_FILE     := $(ARCH_DIR)/link.ld
+RLIB_FILES      := $(RLIB_DIR)/libmultiboot.rlib
 OBJ_FILES       := 		\
 	$(ARCH_DIR)/boot.o	\
 	main.o
@@ -52,10 +58,14 @@ $(ARCH_DIR)/%.o:
 	$(MAKE) -C $(ARCH_DIR)
 
 
+%.rlib:
+	$(MAKE) -C $(RLIB_DIR)
+
+
 all: $(AXEL_ISO)
 
 
-$(AXEL_BIN): $(MAKEFILE) $(OBJ_FILES) $(LINKER_FILE)
+$(AXEL_BIN): $(MAKEFILE) $(OBJ_FILES) $(RLIB_FILES) $(LINKER_FILE)
 	$(LD) $(LD_FLAGS) -Map axel.map -T $(LINKER_FILE) -o $@ $(OBJ_FILES)
 
 
@@ -74,4 +84,5 @@ run: $(AXEL_ISO)
 
 clean:
 	$(MAKE) -C $(ARCH_DIR) clean
+	$(MAKE) -C $(RLIB_DIR) clean
 	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini
