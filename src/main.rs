@@ -1,16 +1,27 @@
+#![feature(asm)]
 #![feature(lang_items)]
+#![feature(no_std)]
 #![feature(start)]
 #![no_main]
-#![feature(no_std)]
 #![no_std]
-#![feature(asm)]
+
+
+extern crate multiboot;
+use multiboot::*;
+use multiboot::PAddr as PhysicalAddr;
+use multiboot::VAddr as VirtualAddr;
+
+mod graphic;
+
 
 #[no_mangle]
 #[start]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[cfg(not(test))]
-pub extern fn main()
+pub extern fn main(multiboot_info_addr: PhysicalAddr)
 {
+    let mboot = Multiboot::new(multiboot_info_addr, physical_addr_to_virtual_addr);
+    let graphic = graphic::Graphic::new(true, 0xB8000);
+    graphic.putchar('A');
+
     let mut i = 0xB8000;
     while i < 0xC0000 {
         unsafe {
@@ -18,6 +29,7 @@ pub extern fn main()
         }
         i += 2;
     }
+
     loop {
         unsafe {
             asm!("hlt");
@@ -25,34 +37,23 @@ pub extern fn main()
     }
 }
 
-pub fn return_two() -> u16 {
-    2
+
+/// Translate a physical memory address into a kernel addressable location.
+pub fn physical_addr_to_virtual_addr(p: PhysicalAddr) -> VirtualAddr {
+    p as VirtualAddr
 }
 
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn return_two_test() {
-        let x = return_two();
-        assert!(x == 2);
-    }
-}
-
-
-#[cfg(not(test))]
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {}
 
-#[cfg(not(test))]
+
 #[lang = "eh_personality"]
 extern fn eh_personality() {}
 
-#[cfg(not(test))]
+
 #[lang = "panic_fmt"]
 pub fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> !
 {
-    loop { }
+    loop {}
 }

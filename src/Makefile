@@ -36,13 +36,14 @@ LD_FLAGS             := -m elf_i386 --format elf32-i386 -nostartfiles -nodefault
 QEMU_FLAGS           := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
 
 # Files
-export MAKEFILE := Makefile
-AXEL_BIN        := axel.bin
-AXEL_ISO        := axel.iso
-GRUB_CFG        := grub.cfg
-LINKER_FILE     := $(ARCH_DIR)/link.ld
-RLIB_FILES      := $(RLIB_DIR)/libmultiboot.rlib
-OBJ_FILES       := 		\
+export MAKEFILE   := Makefile
+AXEL_BIN          := axel.bin
+AXEL_ISO          := axel.iso
+GRUB_CFG          := grub.cfg
+LINKER_FILE       := $(ARCH_DIR)/link.ld
+RLIB_FILES        := $(RLIB_DIR)/libmultiboot.rlib
+DEPEND_SRC_FILES  := graphic.rs
+OBJ_FILES         := \
 	$(ARCH_DIR)/boot.o	\
 	main.o
 
@@ -50,7 +51,7 @@ OBJ_FILES       := 		\
 
 
 # General rules.
-%.o: %.rs
+%.o: %.rs $(DEPEND_SRC_FILES)
 	$(RUSTC) $(RUSTC_FLAGS) -o $@ $<
 
 
@@ -65,7 +66,7 @@ $(ARCH_DIR)/%.o:
 all: $(AXEL_ISO)
 
 
-$(AXEL_BIN): $(MAKEFILE) $(OBJ_FILES) $(RLIB_FILES) $(LINKER_FILE)
+$(AXEL_BIN): $(MAKEFILE) $(RLIB_FILES) $(OBJ_FILES) $(LINKER_FILE)
 	$(LD) $(LD_FLAGS) -Map axel.map -T $(LINKER_FILE) -o $@ $(OBJ_FILES)
 
 
