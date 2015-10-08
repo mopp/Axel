@@ -16,6 +16,6 @@ $(LIB_MULTIBOOT): rust-multiboot/
 
 clean:
 	$(RM) $(LIBS)
-	$(CD) rust-multiboot/ \
-	$(RM) Cargo.lock
+	$(CD) rust-multiboot/ 	\
+	$(RM) Cargo.lock		\
 	$(RM) target
