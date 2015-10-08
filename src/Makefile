@@ -28,7 +28,8 @@ export MKRESCUE := grub-mkrescue
 export BUILD_OS_NAME := $(shell uname -s)
 export ROOT_DIR      := $(realpath .)
 export ARCH_DIR      := $(ROOT_DIR)/arch/$(ARCH)
-export RLIB_DIR      := $(ROOT_DIR)/lib/
+export RLIB_DIR      := $(ROOT_DIR)/lib
+export TEST_DIR		 := $(ROOT_DIR)/tests
 
 # Options
 RUSTC_FLAGS          := -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -C lto -C opt-level=3 -Z no-landing-pads
@@ -83,7 +84,18 @@ run: $(AXEL_ISO)
 	$(QEMU) $(QEMU_FLAGS) -cdrom $(AXEL_ISO)
 
 
+$(TEST_DIR):
+	$(MKDIR) $@
+
+
+test: $(DEPEND_SRC_FILES) $(TEST_DIR)
+	$(foreach src_file, $(DEPEND_SRC_FILES), 				\
+		$(RUSTC) --test --out-dir ./tests $(src_file) &&	\
+		./tests/$(basename $(src_file))						\
+	)
+
+
 clean:
 	$(MAKE) -C $(ARCH_DIR) clean
 	$(MAKE) -C $(RLIB_DIR) clean
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(WORK_DIR) bx_enh_dbg.ini
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(TEST_DIR) bx_enh_dbg.ini
