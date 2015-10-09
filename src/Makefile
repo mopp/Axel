@@ -91,7 +91,7 @@ $(TEST_DIR):
 test: $(DEPEND_SRC_FILES) $(TEST_DIR)
 	$(foreach src_file, $(DEPEND_SRC_FILES), 				\
 		$(RUSTC) --test --out-dir ./tests $(src_file) &&	\
-		./tests/$(basename $(src_file))						\
+		./tests/$(basename $(src_file)) --nocapture			\
 	)
 
 
