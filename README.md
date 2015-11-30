@@ -1,40 +1,22 @@
-## Axel
+# Axel
 Axel Accelerates All For Me !  
-This is monolithic kernel written by C and nasm.  
-And support architecture is only x86.
-
-## Functions
-- [x] Physical memory manager
-- [x] x86_32 paging
-- [x] Virtual memory manager
-- [x] Interrupt
-- [x] Mouse, Keyboard
-- [x] Graphic(VBE)
-- [x] ATA device control
-- [ ] User process (WIP)
-- [ ] System call (WIP)
-- [ ] Virtual filesystem (WIP)
-- [ ] Floppy boot (WIP)
-- [ ] Support ARM
-
-## Requirements
-nasm, qemu(VBE), grub
+This is monolithic kernel written by [Rust](https://www.rust-lang.org/) and nasm.  
+Support architecture is only x86 now.
 
 
-## How to use ISO file
-```shell:variable
-qemu-system-i386 -vga std -m 32 -cdrom axel.iso
+# Requirements
+nasm, qemu, grub, rust
+
+# Building
+```shell
+make run
 ```
 
-## Setup Environment (NEW)
-Please install requirements by using package manager or building from source.
-If your clang is NOT enable cross-compiling, Please enable it.  
-And If your host architecture is 64bit environment, You should install 32bit libc and etc.  
-Because, Axel is 32bit yet :(
+# License
+The MIT License (MIT)
+See [LICENSE](LICENSE)
 
-## ScreenShot
-![ss](./ss.png)
-![ss2](./ss2.png)
 
-## :)
+# :)
+Axel-Girl.
 ![personification](./axel_tan.png)
