@@ -14,7 +14,7 @@ make run
 
 # License
 The MIT License (MIT)  
-See [LICENSE](LICENSE)
+See [LICENSE](./LICENSE.txt)
 
 
 # :)
