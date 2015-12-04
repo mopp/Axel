@@ -1,8 +1,9 @@
-#![feature(core)]
+//! This crate contains stuffs about computer graphic.
+//!
+//! This includes display (text and visual) object.
+
 #![feature(no_std)]
 #![no_std]
-
-use core::cell::Cell;
 
 pub static COLOR_TEXT_BLACK: u8         = 0x0;
 pub static COLOR_TEXT_BLUE: u8          = 0x1;
@@ -21,20 +22,64 @@ pub static COLOR_TEXT_LIGHT_MAGENTA: u8 = 0xD;
 pub static COLOR_TEXT_YELLOW: u8        = 0xE;
 pub static COLOR_TEXT_WHITE: u8         = 0xF;
 
-pub struct Graphic {
-    vram_addr: usize,
-    is_text_mode: bool,
-    pub color_background: Cell<u8>,
-    pub color_foreground: Cell<u8>,
+
+/// Graphic trait for graphical artifacts on the system.
+///
+/// This trait is abstract interface to do draw/print/etc processes.
+pub trait Graphic {
 }
 
 
-impl Graphic {
-    pub fn new(is_text: bool, vaddr: usize) -> Graphic
+/// Display trait for any display.
+///
+/// This trait is abstract interface for display.
+pub trait Display: Graphic {
+    fn vram_addr(&self) -> usize;
+}
+
+
+/// Text display struct to represent text display connected to the computer.
+pub struct CharacterDisplay {
+    vram_addr: usize,
+}
+
+
+impl CharacterDisplay {
+    pub fn new(vram_addr: usize) -> CharacterDisplay {
+        CharacterDisplay {
+            vram_addr: vram_addr
+        }
+    }
+}
+
+
+impl Graphic for CharacterDisplay {
+}
+
+
+impl Display for CharacterDisplay {
+    fn vram_addr(&self) -> usize {
+        self.vram_addr
+    }
+}
+
+
+
+
+/// Visual display struct to represent text display connected to the computer.
+pub struct GraphicalDisplay {
+    vram_addr: usize,
+}
+
+
+
+/*
+impl Display {
+    pub fn new(is_text: bool, vaddr: usize) -> Display
     {
         let default_bg = if is_text == true { COLOR_TEXT_BLACK } else { 0 };
         let default_fg = if is_text == true { COLOR_TEXT_GREEN } else { 0 };
-        Graphic {
+        Display {
             vram_addr:vaddr,
             is_text_mode:is_text,
             color_background:Cell::new(default_bg),
@@ -62,6 +107,8 @@ impl Graphic {
         self.get_one_pixel(&c);
     }
 }
+*/
+
 
 
 // Test codes.
@@ -74,10 +121,9 @@ mod test {
     use super::*;
 
     #[test]
-    fn get_one_pixel() {
-        let graphic = Graphic::new(true, 0xB800);
-        graphic.change_color(COLOR_TEXT_BLUE, COLOR_TEXT_GREEN);
-        assert_eq!(graphic.get_one_pixel(&'A'), 0x1241);
-        println!("\t0x{:x}", graphic.get_one_pixel(&'A'));
+    fn vram_addr() {
+        let c_disp = CharacterDisplay::new(100);
+        assert_eq!(c_disp.vram_addr(), 100);
+        assert_eq!(c_disp.vram_addr, 100);
     }
 }
