@@ -29,12 +29,12 @@ export BUILD_OS_NAME := $(shell uname -s)
 export ROOT_DIR      := $(realpath .)
 export ARCH_DIR      := $(ROOT_DIR)/arch/$(ARCH)
 export RLIB_DIR      := $(ROOT_DIR)/lib
-export TEST_DIR		 := $(ROOT_DIR)/tests
+export TEST_DIR      := $(ROOT_DIR)/tests
 
 # Options
-RUSTC_FLAGS          := -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -C lto -C opt-level=3 -Z no-landing-pads
-LD_FLAGS             := -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -static
-QEMU_FLAGS           := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
+RUSTC_FLAGS := -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -C lto -C opt-level=3 -Z no-landing-pads
+LD_FLAGS    := -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -static
+QEMU_FLAGS  := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
 
 # Files
 export MAKEFILE   := Makefile
@@ -44,22 +44,25 @@ GRUB_CFG          := grub.cfg
 LINKER_FILE       := $(ARCH_DIR)/link.ld
 RLIB_FILES        := $(RLIB_DIR)/libmultiboot.rlib
 DEPEND_SRC_FILES  := graphic.rs
-OBJ_FILES         := \
+OBJ_FILES         := 	\
 	$(ARCH_DIR)/boot.o	\
 	main.o
+
 
 .PHONY: all run clean
 
 
-# General rules.
+# Pattern rule to get object from rust code.
 %.o: %.rs $(DEPEND_SRC_FILES)
 	$(RUSTC) $(RUSTC_FLAGS) -o $@ $<
 
 
+# Pattern rule for building architecture depending codes.
 $(ARCH_DIR)/%.o:
 	$(MAKE) -C $(ARCH_DIR)
 
 
+# Pattern rule for building rust libraries.
 %.rlib:
 	$(MAKE) -C $(RLIB_DIR)
 
@@ -89,9 +92,9 @@ $(TEST_DIR):
 
 
 test: $(DEPEND_SRC_FILES) $(TEST_DIR)
-	$(foreach src_file, $(DEPEND_SRC_FILES), 				\
-		$(RUSTC) --test --out-dir ./tests $(src_file) &&	\
-		./tests/$(basename $(src_file)) --nocapture			\
+	$(foreach src_file, $(DEPEND_SRC_FILES), 					\
+		$(RUSTC) --test --out-dir $(TEST_DIR) $(src_file) &&	\
+		$(TEST_DIR)/$(basename $(src_file)) --nocapture			\
 	)
 
 
