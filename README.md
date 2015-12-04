@@ -7,6 +7,7 @@ Support architecture is only x86 now.
 # Requirements
 nasm, qemu, grub, rust, cargo, ld, make
 
+
 # Building
 ```shell
 make run
