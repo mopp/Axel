@@ -1,29 +1,34 @@
 //! This crate contains stuffs about computer graphic.
 //!
 //! This includes display (text and visual) object.
+#![feature(no_std)]
+#![no_std]
+
+use core::slice;
 
 /// This struct represents any position of 2d-coordinate.
 #[derive(PartialEq, Eq, Debug)]
-struct Position(isize, isize);
+pub struct Position(pub isize, pub isize);
 
+#[warn(dead_code)]
 pub enum Color {
-    RGB(i8, i8, i8),
-    BLACK,
-    BLUE,
-    GREEN,
-    CYAN,
-    RED,
-    MAGENTA,
-    BROWN,
-    LIGHT_GRAY,
-    DARK_GRAY,
-    LIGHT_BLUE,
-    LIGHT_GREEN,
-    LIGHT_CYAN,
-    LIGHT_RED,
-    LIGHT_MAGENTA,
-    YELLOW,
-    WHITE,
+    Rgb(i8, i8, i8),
+    Black,
+    Blue,
+    Green,
+    Cyan,
+    Red,
+    Magenta,
+    Brown,
+    LightGray,
+    DarkGray,
+    LightBlue,
+    LightGreen,
+    LightCyan,
+    LightRed,
+    LightMagenta,
+    Yellow,
+    White,
 }
 
 
@@ -32,75 +37,96 @@ pub enum Color {
 /// This trait is abstract interface for display.
 pub trait Display {
     fn color_background(&self) -> &Color;
-    fn set_color_background(&mut self, Color) -> &Self;
+    fn set_color_background(&mut self, Color) -> &mut Self;
     fn color_foreground(&self) -> &Color;
-    fn set_color_foreground(&mut self, Color) -> &Self;
+    fn set_color_foreground(&mut self, Color) -> &mut Self;
 }
 
 
 /// Text display struct to represent text display connected to the computer.
-pub struct CharacterDisplay {
+pub struct CharacterDisplay<'a> {
     vram_addr: usize,
+    vram: &'a [u8],
+    current_position: Position,
+    max_position: Position,
     color_background: Color,
     color_foreground: Color,
-    current_position: Position,
 }
 
 
-impl Default for CharacterDisplay {
-    fn default() -> CharacterDisplay
+impl<'a> Default for CharacterDisplay<'a> {
+    fn default() -> CharacterDisplay<'a>
     {
         CharacterDisplay {
             vram_addr: 0,
-            color_background: Color::BLACK,
-            color_foreground: Color::GREEN,
+            vram: &[],
             current_position: Position(0, 0),
+            max_position: Position(0, 0),
+            color_background: Color::Black,
+            color_foreground: Color::Green,
         }
     }
 }
 
 
-impl CharacterDisplay {
-    pub fn new(vram_addr: usize) -> CharacterDisplay
+impl<'a> CharacterDisplay<'a> {
+    pub fn new(vram_addr: usize, maxp: Position) -> CharacterDisplay<'a>
     {
+        let Position(x, y) = maxp;
+        let max_pixels_num = (x * y) as usize;
+        let vram_ptr       = vram_addr as *mut u8;
+        let vram           = unsafe { slice::from_raw_parts_mut(vram_ptr, max_pixels_num) };
+
         CharacterDisplay {
             vram_addr: vram_addr,
+            vram: vram,
+            max_position: maxp,
             ..Default::default()
         }
     }
 
+    pub fn set_current_position(&mut self, pos: Position) -> &mut Self
+    {
+        self.current_position = pos;
+        self
+    }
+
     fn color(c: &Color) -> i8 {
         match *c {
-            Color::BLACK         => 0x0,
-            Color::BLUE          => 0x1,
-            Color::GREEN         => 0x2,
-            Color::CYAN          => 0x3,
-            Color::RED           => 0x4,
-            Color::MAGENTA       => 0x5,
-            Color::BROWN         => 0x6,
-            Color::LIGHT_GRAY    => 0x7,
-            Color::DARK_GRAY     => 0x8,
-            Color::LIGHT_BLUE    => 0x9,
-            Color::LIGHT_GREEN   => 0xA,
-            Color::LIGHT_CYAN    => 0xB,
-            Color::LIGHT_RED     => 0xC,
-            Color::LIGHT_MAGENTA => 0xD,
-            Color::YELLOW        => 0xE,
-            Color::WHITE         => 0xF,
-            // TODO: add error handling RGB
-            _                    => 0x1,
+            Color::Black        => 0x0,
+            Color::Blue         => 0x1,
+            Color::Green        => 0x2,
+            Color::Cyan         => 0x3,
+            Color::Red          => 0x4,
+            Color::Magenta      => 0x5,
+            Color::Brown        => 0x6,
+            Color::LightGray    => 0x7,
+            Color::DarkGray     => 0x8,
+            Color::LightBlue    => 0x9,
+            Color::LightGreen   => 0xA,
+            Color::LightCyan    => 0xB,
+            Color::LightRed     => 0xC,
+            Color::LightMagenta => 0xD,
+            Color::Yellow       => 0xE,
+            Color::White        => 0xF,
+            _                   => panic!("Should NOT use Rgb in CharacterDisplay."), // TODO: add error handling Rgb
         }
+    }
+
+    pub fn clear_screen(&mut self)
+    {
+        let Position(x, y) = self.max_position;
     }
 }
 
 
-impl Display for CharacterDisplay {
+impl<'a> Display for CharacterDisplay<'a> {
     fn color_background(&self) -> &Color
     {
         &self.color_background
     }
 
-    fn set_color_background(&mut self, bg: Color) -> &Self
+    fn set_color_background(&mut self, bg: Color) -> &mut Self
     {
         self.color_background = bg;
         self
@@ -111,7 +137,7 @@ impl Display for CharacterDisplay {
         &self.color_foreground
     }
 
-    fn set_color_foreground(&mut self, fg: Color) -> &Self
+    fn set_color_foreground(&mut self, fg: Color) -> &mut Self
     {
         self.color_foreground = fg;
         self
@@ -131,22 +157,27 @@ mod test {
     use super::{CharacterDisplay, Display, Color, Position};
 
     #[test]
-    fn test_create_character_display() {
-        let c_disp = CharacterDisplay::new(0xB8000);
+    fn creating_character_display() {
+        let c_disp = CharacterDisplay::new(0xB8000, Position(800, 600));
         assert_eq!(c_disp.current_position, Position(0, 0));
     }
 
     #[test]
-    fn test_set_bg_fg_color()
+    fn setting_bg_fg_color()
     {
-        let mut c_disp = CharacterDisplay::new(0xB8000);
+        let mut c_disp = CharacterDisplay::new(0xB8000, Position(800, 600));
 
-        c_disp.set_color_background(Color::RED);
+        c_disp.set_color_background(Color::Red).set_color_foreground(Color::LightBlue);
         let color_code = CharacterDisplay::color(c_disp.color_background());
         assert_eq!(color_code, 0x4);
 
-        c_disp.set_color_background(Color::LIGHT_BLUE);
-        let color_code = CharacterDisplay::color(c_disp.color_background());
+        let color_code = CharacterDisplay::color(c_disp.color_foreground());
         assert_eq!(color_code, 0x9);
+    }
+
+    #[test]
+    #[should_panic]
+    fn setting_wrong_color() {
+        CharacterDisplay::color(&Color::Rgb(0, 0, 0));
     }
 }

@@ -22,7 +22,7 @@ pub extern fn main(multiboot_info_addr: PAddr)
     unsafe {
         mboot = Multiboot::new(multiboot_info_addr, paddr_to_slice);
     }
-    let display  =  graphic::CharacterDisplay::new(0xB8000);
+    // let display  =  graphic::CharacterDisplay::new(0xB8000, graphic::Position(800, 640));
 
     let mut i = 0xB8000;
     while i < 0xC0000 {
