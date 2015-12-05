@@ -7,19 +7,22 @@
 
 
 extern crate multiboot;
+use core::mem;
+use core::slice;
 use multiboot::*;
-use multiboot::PAddr as PhysicalAddr;
-use multiboot::VAddr as VirtualAddr;
 
 mod graphic;
 
 
 #[no_mangle]
 #[start]
-pub extern fn main(multiboot_info_addr: PhysicalAddr)
+pub extern fn main(multiboot_info_addr: PAddr)
 {
-    let mboot = Multiboot::new(multiboot_info_addr, physical_addr_to_virtual_addr);
-    let display = graphic::CharacterDisplay::new(0xB8000);
+    let mboot;
+    unsafe {
+        mboot = Multiboot::new(multiboot_info_addr, paddr_to_slice);
+    }
+    let display  =  graphic::CharacterDisplay::new(0xB8000);
 
     let mut i = 0xB8000;
     while i < 0xC0000 {
@@ -36,10 +39,13 @@ pub extern fn main(multiboot_info_addr: PhysicalAddr)
     }
 }
 
-
-/// Translate a physical memory address into a kernel addressable location.
-pub fn physical_addr_to_virtual_addr(p: PhysicalAddr) -> VirtualAddr {
-    p as VirtualAddr
+//  Translate a physical memory address and size into a slice
+pub unsafe fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]>
+{
+    // TODO
+    // let ptr = mem::transmute(p + KERNEL_BASE);
+    let ptr = mem::transmute(0);
+    Some(slice::from_raw_parts(ptr,  sz))
 }
 
 
