@@ -2,128 +2,151 @@
 //!
 //! This includes display (text and visual) object.
 
-#![feature(no_std)]
-#![no_std]
+/// This struct represents any position of 2d-coordinate.
+#[derive(PartialEq, Eq, Debug)]
+struct Position(isize, isize);
 
-pub static COLOR_TEXT_BLACK: u8         = 0x0;
-pub static COLOR_TEXT_BLUE: u8          = 0x1;
-pub static COLOR_TEXT_GREEN: u8         = 0x2;
-pub static COLOR_TEXT_CYAN: u8          = 0x3;
-pub static COLOR_TEXT_RED: u8           = 0x4;
-pub static COLOR_TEXT_MAGENTA: u8       = 0x5;
-pub static COLOR_TEXT_BROWN: u8         = 0x6;
-pub static COLOR_TEXT_LIGHT_GRAY: u8    = 0x7;
-pub static COLOR_TEXT_DARK_GRAY: u8     = 0x8;
-pub static COLOR_TEXT_LIGHT_BLUE: u8    = 0x9;
-pub static COLOR_TEXT_LIGHT_GREEN: u8   = 0xA;
-pub static COLOR_TEXT_LIGHT_CYAN: u8    = 0xB;
-pub static COLOR_TEXT_LIGHT_RED: u8     = 0xC;
-pub static COLOR_TEXT_LIGHT_MAGENTA: u8 = 0xD;
-pub static COLOR_TEXT_YELLOW: u8        = 0xE;
-pub static COLOR_TEXT_WHITE: u8         = 0xF;
-
-
-/// Graphic trait for graphical artifacts on the system.
-///
-/// This trait is abstract interface to do draw/print/etc processes.
-pub trait Graphic {
+pub enum Color {
+    RGB(i8, i8, i8),
+    BLACK,
+    BLUE,
+    GREEN,
+    CYAN,
+    RED,
+    MAGENTA,
+    BROWN,
+    LIGHT_GRAY,
+    DARK_GRAY,
+    LIGHT_BLUE,
+    LIGHT_GREEN,
+    LIGHT_CYAN,
+    LIGHT_RED,
+    LIGHT_MAGENTA,
+    YELLOW,
+    WHITE,
 }
 
 
 /// Display trait for any display.
 ///
 /// This trait is abstract interface for display.
-pub trait Display: Graphic {
-    fn vram_addr(&self) -> usize;
+pub trait Display {
+    fn color_background(&self) -> &Color;
+    fn set_color_background(&mut self, Color) -> &Self;
+    fn color_foreground(&self) -> &Color;
+    fn set_color_foreground(&mut self, Color) -> &Self;
 }
 
 
 /// Text display struct to represent text display connected to the computer.
 pub struct CharacterDisplay {
     vram_addr: usize,
+    color_background: Color,
+    color_foreground: Color,
+    current_position: Position,
+}
+
+
+impl Default for CharacterDisplay {
+    fn default() -> CharacterDisplay
+    {
+        CharacterDisplay {
+            vram_addr: 0,
+            color_background: Color::BLACK,
+            color_foreground: Color::GREEN,
+            current_position: Position(0, 0),
+        }
+    }
 }
 
 
 impl CharacterDisplay {
-    pub fn new(vram_addr: usize) -> CharacterDisplay {
+    pub fn new(vram_addr: usize) -> CharacterDisplay
+    {
         CharacterDisplay {
-            vram_addr: vram_addr
+            vram_addr: vram_addr,
+            ..Default::default()
         }
     }
-}
 
-
-impl Graphic for CharacterDisplay {
+    fn color(c: &Color) -> i8 {
+        match *c {
+            Color::BLACK         => 0x0,
+            Color::BLUE          => 0x1,
+            Color::GREEN         => 0x2,
+            Color::CYAN          => 0x3,
+            Color::RED           => 0x4,
+            Color::MAGENTA       => 0x5,
+            Color::BROWN         => 0x6,
+            Color::LIGHT_GRAY    => 0x7,
+            Color::DARK_GRAY     => 0x8,
+            Color::LIGHT_BLUE    => 0x9,
+            Color::LIGHT_GREEN   => 0xA,
+            Color::LIGHT_CYAN    => 0xB,
+            Color::LIGHT_RED     => 0xC,
+            Color::LIGHT_MAGENTA => 0xD,
+            Color::YELLOW        => 0xE,
+            Color::WHITE         => 0xF,
+            // TODO: add error handling RGB
+            _                    => 0x1,
+        }
+    }
 }
 
 
 impl Display for CharacterDisplay {
-    fn vram_addr(&self) -> usize {
-        self.vram_addr
+    fn color_background(&self) -> &Color
+    {
+        &self.color_background
+    }
+
+    fn set_color_background(&mut self, bg: Color) -> &Self
+    {
+        self.color_background = bg;
+        self
+    }
+
+    fn color_foreground(&self) -> &Color
+    {
+        &self.color_foreground
+    }
+
+    fn set_color_foreground(&mut self, fg: Color) -> &Self
+    {
+        self.color_foreground = fg;
+        self
     }
 }
-
-
-
-
-/// Visual display struct to represent text display connected to the computer.
-pub struct GraphicalDisplay {
-    vram_addr: usize,
-}
-
 
 
 /*
-impl Display {
-    pub fn new(is_text: bool, vaddr: usize) -> Display
-    {
-        let default_bg = if is_text == true { COLOR_TEXT_BLACK } else { 0 };
-        let default_fg = if is_text == true { COLOR_TEXT_GREEN } else { 0 };
-        Display {
-            vram_addr:vaddr,
-            is_text_mode:is_text,
-            color_background:Cell::new(default_bg),
-            color_foreground:Cell::new(default_fg),
-        }
-    }
-
-    pub fn change_color(&self, bg: u8, fg: u8)
-    {
-        self.color_background.set(bg);
-        self.color_foreground.set(fg);
-    }
-
-    fn get_one_pixel(&self, c: &char) -> u16
-    {
-        let bg = self.color_background.get() as u16;
-        let fg = self.color_foreground.get() as u16;
-        (bg << 12) | (fg << 8) | (*c as u16)
-    }
-
-
-    pub fn putchar(&self, c: char)
-    {
-        let cn = self.get_one_pixel(&c);
-        self.get_one_pixel(&c);
-    }
+/// Visual display struct to represent text display connected to the computer.
+struct GraphicalDisplay {
 }
 */
 
 
-
-// Test codes.
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{CharacterDisplay, Display, Color, Position};
 
     #[test]
-    fn vram_addr() {
-        let c_disp = CharacterDisplay::new(100);
-        assert_eq!(c_disp.vram_addr(), 100);
-        assert_eq!(c_disp.vram_addr, 100);
+    fn test_create_character_display() {
+        let c_disp = CharacterDisplay::new(0xB8000);
+        assert_eq!(c_disp.current_position, Position(0, 0));
+    }
+
+    #[test]
+    fn test_set_bg_fg_color()
+    {
+        let mut c_disp = CharacterDisplay::new(0xB8000);
+
+        c_disp.set_color_background(Color::RED);
+        let color_code = CharacterDisplay::color(c_disp.color_background());
+        assert_eq!(color_code, 0x4);
+
+        c_disp.set_color_background(Color::LIGHT_BLUE);
+        let color_code = CharacterDisplay::color(c_disp.color_background());
+        assert_eq!(color_code, 0x9);
     }
 }
