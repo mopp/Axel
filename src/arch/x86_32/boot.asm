@@ -34,8 +34,8 @@ align 4
 
     ; Graphic field
     dd $1
-    dd $0
-    dd $0
+    dd $80
+    dd $25
     dd $0
 ; }}}
 
