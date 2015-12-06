@@ -32,7 +32,17 @@ export RLIB_DIR      := $(ROOT_DIR)/lib
 export TEST_DIR      := $(ROOT_DIR)/tests
 
 # Options
-RUSTC_FLAGS := -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -C lto -C opt-level=3 -Z no-landing-pads
+# 	For `rustc`
+# 	-C means codegen option, almost option is passed to llvm tools (e.g., lli and llc).
+# 	Please refer this link http://linux.die.net/man/1/lli
+# 		-g 						Output full debug info.
+# 		-C lto					Perform llvm link-time optimizations
+#		-C opt-level=3			Optimize with possible level 3 (0-3 are available)
+#		-C code-model=kernel	This option is described in System V ABI Reference 0.99, kernel code-model optimize symbols virtual addresses.
+#		-C soft-float			Generate software floating point library calls
+#		-C target-cpu=i386		Select target processor (llc -mcpu=help for details)
+#		-Z no-landing-pads		Omit landing pads for unwinding
+RUSTC_FLAGS := -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -g -C code-model=kernel -C lto -C soft-float -C opt-level=3 -C target-cpu=i386 -Z no-landing-pads
 LD_FLAGS    := -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -static
 QEMU_FLAGS  := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
 
