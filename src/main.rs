@@ -46,15 +46,15 @@ pub unsafe fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]>
 
 
 #[lang = "stack_exhausted"]
-pub fn stack_exhausted() {}
+pub extern fn stack_exhausted() {}
 
 
 #[lang = "eh_personality"]
-pub fn eh_personality() {}
+pub extern fn eh_personality() {}
 
 
 #[lang = "panic_fmt"]
-pub fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> !
+pub extern fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> !
 {
     loop {}
 }
