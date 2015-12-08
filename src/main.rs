@@ -11,21 +11,20 @@ use core::slice;
 use multiboot::*;
 
 mod graphic;
+use graphic::Display;
 
 const TEXT_MODE_VRAM_ADDR: usize = 0xB8000;
-const TEXT_MODE_WIDTH: isize     = 80;
-const TEXT_MODE_HEIGHT: isize    = 25;
+const TEXT_MODE_WIDTH: usize     = 80;
+const TEXT_MODE_HEIGHT: usize    = 25;
 
 #[no_mangle]
 #[start]
 pub extern fn main(multiboot_info_addr: PAddr)
 {
-    let mboot;
-    unsafe {
-        mboot = Multiboot::new(multiboot_info_addr, paddr_to_slice);
-    }
+    let mboot = unsafe { Multiboot::new(multiboot_info_addr, paddr_to_slice) };
     let mut display = graphic::CharacterDisplay::new(TEXT_MODE_VRAM_ADDR, graphic::Position(TEXT_MODE_WIDTH, TEXT_MODE_HEIGHT));
     display.clear_screen();
+    display.puts("Axel.");
 
     loop {
         unsafe {

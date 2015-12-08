@@ -5,21 +5,7 @@ use core::slice;
 
 /// This struct represents any position of 2d-coordinate.
 #[derive(PartialEq, Eq, Debug)]
-pub struct Position(pub isize, pub isize);
-
-
-impl Position {
-    fn x(&self) -> isize {
-        let &Position(x, _) = self;
-        x
-    }
-
-    fn y(&self) -> isize {
-        let &Position(_, y) = self;
-        y
-    }
-}
-
+pub struct Position(pub usize, pub usize);
 
 trait Area {
     fn area_from_origin(&self) -> usize;
@@ -29,12 +15,12 @@ trait Area {
 impl Area for Position {
     fn area_from_origin(&self) -> usize
     {
-        (self.x().abs() * self.y().abs()) as usize
+        (self.0 * self.1)
     }
 }
 
 
-#[warn(dead_code)]
+#[allow(dead_code)]
 pub enum Color {
     Rgb(i8, i8, i8),
     Black,
@@ -71,7 +57,7 @@ pub trait Display {
 /// Text display struct to represent text display connected to the computer.
 pub struct CharacterDisplay<'a> {
     vram_addr: usize,
-    vram: &'a mut  [u16],
+    vram: &'a mut [u16],
     current_position: Position,
     max_position: Position,
     color_background: Color,
@@ -115,6 +101,7 @@ impl<'a> CharacterDisplay<'a> {
         self
     }
 
+    #[allow(dead_code)]
     fn color(c: &Color) -> u8 {
         match *c {
             Color::Black        => 0x0,
@@ -141,10 +128,10 @@ impl<'a> CharacterDisplay<'a> {
     /// [Text UI](http://wiki.osdev.org/Text_UI)
     /// Bit 76543210 76543210
     ///     |||||||| ||||||||
-    ///     |||||||| ^^^^^^^^- Character
+    ///     |||||||| ^^^^^^^^-Character
     ///     ||||^^^^-fore colour
     ///     ^^^^-----back colour
-    pub fn gen_pixel(&self, c:char) -> u16
+    fn gen_pixel(&self, c: char) -> u16
     {
         let bg = Self::color(&self.color_background) as u16;
         let fg = Self::color(&self.color_foreground) as u16;
@@ -152,13 +139,47 @@ impl<'a> CharacterDisplay<'a> {
         (bg << 12) | (fg << 8) | (c as u16)
     }
 
-    pub fn clear_screen(&mut self)
+    pub fn puts(&mut self, puts_str: &str)
     {
-        let space = self.gen_pixel(' ');
-        for i in 0..(self.max_position.area_from_origin()) {
-            self.vram[i] = space;
+        for c in puts_str.chars() {
+            let width = self.max_position.0;
+            {
+                let code                    = self.gen_pixel(c);
+                let x                       = self.current_position.0;
+                let y                       = self.current_position.1;
+                self.vram[x + y * width] = code;
+            }
+
+            let space = self.gen_pixel(' ');
+            let y = &mut self.current_position.1;
+            {
+                let x = &mut self.current_position.0;
+                *x += 1;
+
+                if width <= *x {
+                    *x = 0;
+                    *y += 1;
+                }
+            }
+
+            let height = self.max_position.1;
+            if height <= *y {
+                // scroll down.
+                for i in (width)..self.max_position.area_from_origin() {
+                    self.vram[i - width] = self.vram[i];
+                }
+
+                // clear last line.
+                for i in (width * (height - 1))..self.max_position.area_from_origin() {
+                    self.vram[i] = space;
+                }
+                *y -= 1;
+            }
         }
     }
+
+
+    // fn println(&mut self);
 }
 
 
@@ -183,6 +204,14 @@ impl<'a> Display for CharacterDisplay<'a> {
     {
         self.color_foreground = fg;
         self
+    }
+
+    fn clear_screen(&mut self)
+    {
+        let space = self.gen_pixel(' ');
+        for i in 0..(self.max_position.area_from_origin()) {
+            self.vram[i] = space;
+        }
     }
 }
 
