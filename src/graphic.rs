@@ -20,7 +20,6 @@ impl Area for Position {
 }
 
 
-#[allow(dead_code)]
 pub enum Color {
     Rgb(i8, i8, i8),
     Black,
@@ -101,7 +100,7 @@ impl<'a> CharacterDisplay<'a> {
         self
     }
 
-    #[allow(dead_code)]
+    /// Return color code based on Enum.
     fn color(c: &Color) -> u8 {
         match *c {
             Color::Black        => 0x0,
@@ -144,22 +143,20 @@ impl<'a> CharacterDisplay<'a> {
         for c in puts_str.chars() {
             let width = self.max_position.0;
             {
-                let code                    = self.gen_pixel(c);
-                let x                       = self.current_position.0;
-                let y                       = self.current_position.1;
+                let code                 = self.gen_pixel(c);
+                let x                    = self.current_position.0;
+                let y                    = self.current_position.1;
                 self.vram[x + y * width] = code;
             }
 
             let space = self.gen_pixel(' ');
+            let x = &mut self.current_position.0;
             let y = &mut self.current_position.1;
-            {
-                let x = &mut self.current_position.0;
-                *x += 1;
+            *x += 1;
 
-                if width <= *x {
-                    *x = 0;
-                    *y += 1;
-                }
+            if width <= *x {
+                *x = 0;
+                *y += 1;
             }
 
             let height = self.max_position.1;
@@ -176,6 +173,12 @@ impl<'a> CharacterDisplay<'a> {
                 *y -= 1;
             }
         }
+
+        // Move to next line.
+        let x = &mut self.current_position.0;
+        let y = &mut self.current_position.1;
+        *x = 0;
+        *y += 1;
     }
 
 
