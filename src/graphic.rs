@@ -74,7 +74,7 @@ impl<'a> Default for CharacterDisplay<'a> {
             current_position: Position(0, 0),
             max_position: Position(0, 0),
             color_background: Color::Black,
-            color_foreground: Color::Green,
+            color_foreground: Color::LightRed,
         }
     }
 }
