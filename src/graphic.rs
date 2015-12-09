@@ -261,12 +261,13 @@ mod test {
 
     #[test]
     fn creating_position() {
-        let p = Position(100, 100);
-        assert_eq!(p, Position(100, 100));
-        assert_eq!(p.x(), 100);
-        assert_eq!(p.y(), 100);
+        let mut p = Position(100, 100);
         assert_eq!(p, Position(100, 100));
         assert_eq!(p.area_from_origin(), 100 * 100);
+        assert_eq!(p.0, 100);
+        assert_eq!(p.1, 100);
+        p.1 = 255;
+        assert_eq!(p.1, 255);
     }
 
     #[test]
