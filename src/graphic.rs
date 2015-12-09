@@ -23,6 +23,7 @@ impl Area for Position {
 }
 
 
+#[allow(dead_code)]
 pub enum Color {
     Rgb(i8, i8, i8),
     Black,
@@ -59,6 +60,7 @@ pub trait Display {
 
 
 /// Text display struct to represent text display connected to the computer.
+#[allow(dead_code)]
 pub struct CharacterDisplay<'_> {
     vram_addr: usize,
     vram: &'_ mut [u16],
@@ -84,6 +86,7 @@ impl<'_> Default for CharacterDisplay<'_> {
 }
 
 
+#[allow(dead_code)]
 impl<'_> CharacterDisplay<'_> {
     pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'_>
     {
