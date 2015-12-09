@@ -99,11 +99,13 @@ impl<'_> CharacterDisplay<'_> {
         }
     }
 
+
     pub fn set_current_position(&mut self, pos: Position) -> &mut Self
     {
         self.current_position = pos;
         self
     }
+
 
     /// Return color code based on Enum.
     fn color(c: &Color) -> u8 {
@@ -128,6 +130,7 @@ impl<'_> CharacterDisplay<'_> {
         }
     }
 
+
     /// Generate one pixel (16bit)
     /// [Text UI](http://wiki.osdev.org/Text_UI)
     /// Bit 76543210 76543210
@@ -151,16 +154,19 @@ impl<'_> Display for CharacterDisplay<'_> {
         &self.color_background
     }
 
+
     fn set_color_background(&mut self, bg: Color) -> &mut Self
     {
         self.color_background = bg;
         self
     }
 
+
     fn color_foreground(&self) -> &Color
     {
         &self.color_foreground
     }
+
 
     fn set_color_foreground(&mut self, fg: Color) -> &mut Self
     {
@@ -175,6 +181,7 @@ impl<'_> Display for CharacterDisplay<'_> {
             self.vram[i] = space;
         }
     }
+
 
     fn print(&mut self, string: &str)
     {
@@ -218,6 +225,7 @@ impl<'_> Display for CharacterDisplay<'_> {
             }
         }
     }
+
 
     fn println(&mut self, s: &str)
     {
