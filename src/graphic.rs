@@ -53,6 +53,8 @@ pub trait Display {
     fn color_foreground(&self) -> &Color;
     fn set_color_foreground(&mut self, Color) -> &mut Self;
     fn clear_screen(&mut self);
+    fn print(&mut self, &str);
+    fn println(&mut self, &str);
 }
 
 
@@ -140,9 +142,41 @@ impl<'_> CharacterDisplay<'_> {
 
         (bg << 12) | (fg << 8) | (c as u16)
     }
+}
 
 
-    pub fn print(&mut self, string: &str)
+impl<'_> Display for CharacterDisplay<'_> {
+    fn color_background(&self) -> &Color
+    {
+        &self.color_background
+    }
+
+    fn set_color_background(&mut self, bg: Color) -> &mut Self
+    {
+        self.color_background = bg;
+        self
+    }
+
+    fn color_foreground(&self) -> &Color
+    {
+        &self.color_foreground
+    }
+
+    fn set_color_foreground(&mut self, fg: Color) -> &mut Self
+    {
+        self.color_foreground = fg;
+        self
+    }
+
+    fn clear_screen(&mut self)
+    {
+        let space = self.gen_pixel(' ');
+        for i in 0..(self.max_position.area_from_origin()) {
+            self.vram[i] = space;
+        }
+    }
+
+    fn print(&mut self, string: &str)
     {
         for c in string.chars() {
             let width = self.max_position.0;
@@ -185,44 +219,10 @@ impl<'_> CharacterDisplay<'_> {
         }
     }
 
-
-    pub fn println(&mut self, s: &str)
+    fn println(&mut self, s: &str)
     {
         self.print(s);
         self.print("\n");
-    }
-}
-
-
-impl<'_> Display for CharacterDisplay<'_> {
-    fn color_background(&self) -> &Color
-    {
-        &self.color_background
-    }
-
-    fn set_color_background(&mut self, bg: Color) -> &mut Self
-    {
-        self.color_background = bg;
-        self
-    }
-
-    fn color_foreground(&self) -> &Color
-    {
-        &self.color_foreground
-    }
-
-    fn set_color_foreground(&mut self, fg: Color) -> &mut Self
-    {
-        self.color_foreground = fg;
-        self
-    }
-
-    fn clear_screen(&mut self)
-    {
-        let space = self.gen_pixel(' ');
-        for i in 0..(self.max_position.area_from_origin()) {
-            self.vram[i] = space;
-        }
     }
 }
 
