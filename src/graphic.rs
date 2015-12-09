@@ -1,7 +1,7 @@
 //! This crate contains stuffs about computer graphic.
 //!
 //! This includes display (text and visual) object.
-use core::slice;
+extern crate core;
 
 /// This struct represents any position of 2d-coordinate.
 #[derive(PartialEq, Eq, Debug)]
@@ -18,7 +18,6 @@ impl Area for Position {
         (self.0 * self.1)
     }
 }
-
 
 pub enum Color {
     Rgb(i8, i8, i8),
@@ -54,9 +53,9 @@ pub trait Display {
 
 
 /// Text display struct to represent text display connected to the computer.
-pub struct CharacterDisplay<'a> {
+pub struct CharacterDisplay<'_> {
     vram_addr: usize,
-    vram: &'a mut [u16],
+    vram: &'_ mut [u16],
     current_position: Position,
     max_position: Position,
     color_background: Color,
@@ -64,8 +63,8 @@ pub struct CharacterDisplay<'a> {
 }
 
 
-impl<'a> Default for CharacterDisplay<'a> {
-    fn default() -> CharacterDisplay<'a>
+impl<'_> Default for CharacterDisplay<'_> {
+    fn default() -> CharacterDisplay<'_>
     {
         CharacterDisplay {
             vram_addr: 0,
@@ -79,12 +78,12 @@ impl<'a> Default for CharacterDisplay<'a> {
 }
 
 
-impl<'a> CharacterDisplay<'a> {
-    pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'a>
+impl<'_> CharacterDisplay<'_> {
+    pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'_>
     {
         let max_texts_num  = max_p.area_from_origin();
         let vram_ptr       = vram_addr as *mut u16;
-        let vram           = unsafe { slice::from_raw_parts_mut(vram_ptr, max_texts_num) };
+        let vram           = unsafe { core::slice::from_raw_parts_mut(vram_ptr, max_texts_num) };
 
         CharacterDisplay {
             vram_addr: vram_addr,
@@ -181,12 +180,11 @@ impl<'a> CharacterDisplay<'a> {
         *y += 1;
     }
 
-
     // fn println(&mut self);
 }
 
 
-impl<'a> Display for CharacterDisplay<'a> {
+impl<'_> Display for CharacterDisplay<'_> {
     fn color_background(&self) -> &Color
     {
         &self.color_background
@@ -224,9 +222,6 @@ impl<'a> Display for CharacterDisplay<'a> {
 struct GraphicalDisplay {
 }
 */
-
-#[cfg(test)]
-extern crate core;
 
 #[cfg(test)]
 mod test {
