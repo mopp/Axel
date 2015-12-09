@@ -14,24 +14,14 @@ export RM       := rm -rf
 export CD       := cd
 export CP       := cp -r
 export MKDIR    := mkdir -p
-export LD       := ld
-export RUSTC    := rustc
 export CARGO    := cargo
 export NASM     := nasm
-export QEMU     := qemu-system-i386
 export BOCHS    := bochs -q
 export MAKE     := make --warn-undefined-variables
 export MKIMAGE  := grub-mkimage
 export MKRESCUE := grub-mkrescue
 
-# Directories
-export BUILD_OS_NAME := $(shell uname -s)
-export ROOT_DIR      := $(realpath .)
-export ARCH_DIR      := $(ROOT_DIR)/arch/$(ARCH)
-export RLIB_DIR      := $(ROOT_DIR)/lib
-export TEST_DIR      := $(ROOT_DIR)/tests
-
-# Options
+# Rustc options
 # 	For `rustc`
 # 	-C means codegen option, almost option is passed to llvm tools (e.g., lli and llc).
 # 	Please refer this link http://linux.die.net/man/1/lli
@@ -42,14 +32,36 @@ export TEST_DIR      := $(ROOT_DIR)/tests
 #		-C soft-float			Generate software floating point library calls
 #		-C target-cpu=i386		Select target processor (llc -mcpu=help for details)
 #		-Z no-landing-pads		Omit landing pads for unwinding
-RUSTC_FLAGS := -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -g -C code-model=kernel -C lto -C soft-float -C opt-level=3 -C target-cpu=i386 -Z no-landing-pads
-LD_FLAGS    := -m elf_i386 --format elf32-i386 -nostartfiles -nodefaultlibs -nostdlib -static
+export RUSTC := rustc
+RUSTC_FLAGS  = -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -g -C code-model=kernel -C lto -C opt-level=3 -C target-cpu=i386 -Z no-landing-pads -C link-args=-static-libgcc
+
+# We use gcc as linker to generate Axel binary because of libgcc.
+# So we build rustc using gcc in development.
+# gcc options
+# 	--build-id=none is very important in order to do multiboot.
+# 	The reason is described in this link http://stackoverflow.com/questions/27744126/grub-multiboot-header-not-found
+# 	Briefly, this option suppresses creating a note section.
+# 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
+# Also, Please pay attention the order of command line arguments.
+export LD := gcc -m32
+LD_FLAGS  := -Wl,--build-id=none -ffreestanding -fno-builtin -nostdlib
+LIBS      := -lgcc
+
+export QEMU := qemu-system-i386
 QEMU_FLAGS  := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
+
+# Directories
+export BUILD_OS_NAME := $(shell uname -s)
+export ROOT_DIR      := $(realpath .)
+export ARCH_DIR      := $(ROOT_DIR)/arch/$(ARCH)
+export RLIB_DIR      := $(ROOT_DIR)/lib
+export TEST_DIR      := $(ROOT_DIR)/tests
 
 # Files
 export MAKEFILE   := Makefile
 AXEL_BIN          := axel.bin
 AXEL_ISO          := axel.iso
+AXEL_MAP          := axel.map
 GRUB_CFG          := grub.cfg
 LINKER_FILE       := $(ARCH_DIR)/link.ld
 RLIB_FILES        := $(RLIB_DIR)/libmultiboot.rlib
@@ -81,7 +93,7 @@ all: $(AXEL_ISO)
 
 
 $(AXEL_BIN): $(MAKEFILE) $(RLIB_FILES) $(OBJ_FILES) $(LINKER_FILE)
-	$(LD) $(LD_FLAGS) -Map axel.map -T $(LINKER_FILE) -o $@ $(OBJ_FILES)
+	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINKER_FILE) -o $@ $(OBJ_FILES) $(LIBS)
 
 
 $(AXEL_ISO): $(MAKEFILE) $(AXEL_BIN) $(GRUB_CFG)
