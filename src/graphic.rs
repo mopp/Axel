@@ -1,11 +1,14 @@
 //! This crate contains stuffs about computer graphic.
 //!
 //! This includes display (text and visual) object.
+
 extern crate core;
+
 
 /// This struct represents any position of 2d-coordinate.
 #[derive(PartialEq, Eq, Debug)]
 pub struct Position(pub usize, pub usize);
+
 
 trait Area {
     fn area_from_origin(&self) -> usize;
@@ -18,6 +21,7 @@ impl Area for Position {
         (self.0 * self.1)
     }
 }
+
 
 pub enum Color {
     Rgb(i8, i8, i8),
@@ -137,21 +141,28 @@ impl<'_> CharacterDisplay<'_> {
         (bg << 12) | (fg << 8) | (c as u16)
     }
 
-    pub fn puts(&mut self, puts_str: &str)
+
+    pub fn print(&mut self, string: &str)
     {
-        for c in puts_str.chars() {
+        for c in string.chars() {
             let width = self.max_position.0;
-            {
+
+            if c != '\n' {
                 let code                 = self.gen_pixel(c);
-                let x                    = self.current_position.0;
+                let x                    = &mut self.current_position.0;
                 let y                    = self.current_position.1;
-                self.vram[x + y * width] = code;
+                self.vram[*x + y * width] = code;
+                *x += 1;
+            } else {
+                let x = &mut self.current_position.0;
+                let y = &mut self.current_position.1;
+                *x = 0;
+                *y += 1;
             }
 
             let space = self.gen_pixel(' ');
             let x = &mut self.current_position.0;
             let y = &mut self.current_position.1;
-            *x += 1;
 
             if width <= *x {
                 *x = 0;
@@ -172,15 +183,14 @@ impl<'_> CharacterDisplay<'_> {
                 *y -= 1;
             }
         }
-
-        // Move to next line.
-        let x = &mut self.current_position.0;
-        let y = &mut self.current_position.1;
-        *x = 0;
-        *y += 1;
     }
 
-    // fn println(&mut self);
+
+    pub fn println(&mut self, s: &str)
+    {
+        self.print(s);
+        self.print("\n");
+    }
 }
 
 
@@ -216,10 +226,11 @@ impl<'_> Display for CharacterDisplay<'_> {
     }
 }
 
+
 impl<'_> core::fmt::Write for CharacterDisplay<'_> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result
     {
-        self.puts(s);
+        self.print(s);
         Ok(())
     }
 }
@@ -230,6 +241,8 @@ impl<'_> core::fmt::Write for CharacterDisplay<'_> {
 struct GraphicalDisplay {
 }
 */
+
+
 
 #[cfg(test)]
 mod test {
