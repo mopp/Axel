@@ -89,7 +89,7 @@ $(ARCH_DIR)/%.o:
 	$(MAKE) -C $(RLIB_DIR)
 
 
-all: $(AXEL_ISO)
+all: $(AXEL_BIN)
 
 
 $(AXEL_BIN): $(MAKEFILE) $(RLIB_FILES) $(OBJ_FILES) $(LINKER_FILE)
@@ -105,8 +105,12 @@ $(AXEL_ISO): $(MAKEFILE) $(AXEL_BIN) $(GRUB_CFG)
 	$(RM) iso/
 
 
-run: $(AXEL_ISO)
-	$(QEMU) $(QEMU_FLAGS) -cdrom $(AXEL_ISO)
+run_kernel: $(AXEL_BIN)
+	$(QEMU) $(QEMU_FLAGS) --kernel $<
+
+
+run_cdrom: $(AXEL_ISO)
+	$(QEMU) $(QEMU_FLAGS) -cdrom $<
 
 
 $(TEST_DIR):
