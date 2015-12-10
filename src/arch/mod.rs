@@ -7,7 +7,7 @@ mod arm11;
 #[cfg(target_arch = "arm")]
 pub fn init_arch()
 {
-    arm::init();
+    arm11::init();
 }
 
 
