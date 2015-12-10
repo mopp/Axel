@@ -1,0 +1,46 @@
+#############################################################
+# @file Makefile
+# @brief Config for x86_32 to build Axel.
+# @author mopp
+# @version 0.2
+# @date 2015-12-10
+#############################################################
+
+# Target triple for cargo.
+export TARGET_TRIPLE := i686-unknown-linux-gnu
+
+# Rustc options
+# 	For `rustc`
+# 	-C means codegen option, almost option is passed to llvm tools (e.g., lli and llc).
+# 	Please refer this link http://linux.die.net/man/1/lli
+# 		-g 						Output full debug info.
+# 		-C lto					Perform llvm link-time optimizations
+#		-C opt-level=3			Optimize with possible level 3 (0-3 are available)
+#		-C code-model=kernel	This option is described in System V ABI Reference 0.99, kernel code-model optimize symbols virtual addresses.
+#		-C soft-float			Generate software floating point library calls
+#		-C target-cpu=i386		Select target processor (llc -mcpu=help for details)
+#		-Z no-landing-pads		Omit landing pads for unwinding
+RUSTC_FLAGS := 	-L $(RLIB_DIR)				\
+				-g 							\
+				--emit=obj					\
+				--target=$(TARGET_TRIPLE)	\
+				-C target-cpu=i386			\
+				-C code-model=kernel		\
+				-C lto						\
+				-C opt-level=3				\
+				-Z no-landing-pads
+
+# We use gcc as linker to generate Axel binary because of libgcc.
+# So we build rustc using gcc in development.
+# gcc options
+# 	--build-id=none is very important in order to do multiboot.
+# 	The reason is described in this link http://stackoverflow.com/questions/27744126/grub-multiboot-header-not-found
+# 	Briefly, this option suppresses creating a note section.
+# 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
+# Also, Please pay attention the order of command line arguments.
+LD       := gcc -m32
+LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib
+LIBS     := -lgcc
+
+QEMU       := qemu-system-i386
+QEMU_FLAGS := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int

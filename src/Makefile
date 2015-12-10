@@ -6,72 +6,24 @@
 # @date 2015-10-06
 #############################################################
 
-export ARCH          := x86_32
-export TARGET_TRIPLE := i686-unknown-linux-gnu
-
-# Commands
-export RM       := rm -rf
-export CD       := cd
-export CP       := cp -r
-export MKDIR    := mkdir -p
-export CARGO    := cargo
-export NASM     := nasm
-export BOCHS    := bochs -q
-export MAKE     := make --warn-undefined-variables
-export MKIMAGE  := grub-mkimage
-export MKRESCUE := grub-mkrescue
-
-# Rustc options
-# 	For `rustc`
-# 	-C means codegen option, almost option is passed to llvm tools (e.g., lli and llc).
-# 	Please refer this link http://linux.die.net/man/1/lli
-# 		-g 						Output full debug info.
-# 		-C lto					Perform llvm link-time optimizations
-#		-C opt-level=3			Optimize with possible level 3 (0-3 are available)
-#		-C code-model=kernel	This option is described in System V ABI Reference 0.99, kernel code-model optimize symbols virtual addresses.
-#		-C soft-float			Generate software floating point library calls
-#		-C target-cpu=i386		Select target processor (llc -mcpu=help for details)
-#		-Z no-landing-pads		Omit landing pads for unwinding
-export RUSTC := rustc
-RUSTC_FLAGS  = -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) --emit=obj -g -C code-model=kernel -C lto -C opt-level=3 -C target-cpu=i386 -Z no-landing-pads -C link-args=-static-libgcc
-
-# We use gcc as linker to generate Axel binary because of libgcc.
-# So we build rustc using gcc in development.
-# gcc options
-# 	--build-id=none is very important in order to do multiboot.
-# 	The reason is described in this link http://stackoverflow.com/questions/27744126/grub-multiboot-header-not-found
-# 	Briefly, this option suppresses creating a note section.
-# 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
-# Also, Please pay attention the order of command line arguments.
-export LD := gcc -m32
-LD_FLAGS  := -Wl,--build-id=none -ffreestanding -fno-builtin -nostdlib
-LIBS      := -lgcc
-
-export QEMU := qemu-system-i386
-QEMU_FLAGS  := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
+# Target architecture.
+ARCH := x86_32
+# ARCH := arm11
 
 # Directories
-export BUILD_OS_NAME := $(shell uname -s)
-export ROOT_DIR      := $(realpath .)
-export ARCH_DIR      := $(ROOT_DIR)/arch/$(ARCH)
-export RLIB_DIR      := $(ROOT_DIR)/lib
-export TEST_DIR      := $(ROOT_DIR)/tests
+export ROOT_DIR := .
+export RLIB_DIR := $(ROOT_DIR)/lib
+export TEST_DIR := $(ROOT_DIR)/tests
+export ARCH_DIR := $(ROOT_DIR)/arch/$(ARCH)
 
 # Files
-export MAKEFILE   := Makefile
-AXEL_BIN          := axel.bin
-AXEL_ISO          := axel.iso
-AXEL_MAP          := axel.map
-GRUB_CFG          := grub.cfg
-LINKER_FILE       := $(ARCH_DIR)/link.ld
 RLIB_FILES        := $(RLIB_DIR)/libmultiboot.rlib
 DEPEND_SRC_FILES  := graphic.rs
-OBJ_FILES         := 	\
-	$(ARCH_DIR)/boot.o	\
-	main.o
+OBJ_FILES         := $(ARCH_DIR)/boot.o main.o
 
-
-.PHONY: all run clean
+# Load other config and target specific config.
+include Makefile.common
+include Makefile.$(ARCH)
 
 
 # Pattern rule to get object from rust code.
@@ -88,6 +40,8 @@ $(ARCH_DIR)/%.o:
 %.rlib:
 	$(MAKE) -C $(RLIB_DIR)
 
+
+.PHONY: all run_kernel run_cdrom test clean
 
 all: $(AXEL_BIN)
 
