@@ -16,7 +16,9 @@ export RLIB_DIR := $(ROOT_DIR)/lib
 export TEST_DIR := $(ROOT_DIR)/tests
 export ARCH_DIR := $(ROOT_DIR)/arch/$(ARCH)
 
+
 # Files
+export MAKEFILE   := $(realpath $(ROOT_DIR))/Makefile
 RLIB_FILES        := $(RLIB_DIR)/libmultiboot.rlib
 DEPEND_SRC_FILES  := graphic.rs
 OBJ_FILES         := $(ARCH_DIR)/boot.o main.o
@@ -27,7 +29,7 @@ include Makefile.$(ARCH)
 
 
 # Pattern rule to get object from rust code.
-%.o: %.rs $(DEPEND_SRC_FILES)
+%.o: %.rs $(DEPEND_SRC_FILES) $(MAKEFILE)
 	$(RUSTC) $(RUSTC_FLAGS) -o $@ $<
 
 
@@ -37,7 +39,7 @@ $(ARCH_DIR)/%.o:
 
 
 # Pattern rule for building rust libraries.
-%.rlib:
+%.rlib: $(MAKEFILE)
 	$(MAKE) -C $(RLIB_DIR)
 
 

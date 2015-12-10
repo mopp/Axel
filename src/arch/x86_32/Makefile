@@ -9,7 +9,7 @@
 .PHONY: all clean
 
 
-boot.o: boot.asm
+boot.o: boot.asm $(MAKEFILE)
 	$(NASM) -f elf32 -l $*.lst -o $@ $<
 
 clean:

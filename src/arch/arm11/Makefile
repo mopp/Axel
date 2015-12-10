@@ -8,7 +8,8 @@
 
 .PHONY: all clean
 
-boot.o: boot.S
+
+boot.o: boot.S $(MAKEFILE)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

@@ -20,7 +20,6 @@ export MKIMAGE  := grub-mkimage
 export MKRESCUE := grub-mkrescue
 
 # Files
-export MAKEFILE   := Makefile
 AXEL_BIN          := axel.bin
 AXEL_ISO          := axel.iso
 AXEL_MAP          := axel.map

@@ -8,10 +8,10 @@ LIBS          := $(LIB_MULTIBOOT)
 all: $(LIBS)
 
 
-$(LIB_MULTIBOOT): rust-multiboot/
+$(LIB_MULTIBOOT): rust-multiboot/ $(MAKEFILE)
 	$(CD) $<; \
 	$(CARGO) build -v --release --target $(TARGET_TRIPLE)
-	$(CP) $</target/$(TARGET_TRIPLE)/release/$(LIB_MULTIBOOT) ./
+	$(CP) $</target/$(TARGET_TRIPLE)/release/$@ ./
 
 
 clean:
