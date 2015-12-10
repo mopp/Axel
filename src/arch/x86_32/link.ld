@@ -1,51 +1,66 @@
-OUTPUT_FORMAT("elf32-i386")
+/**
+ * @brief Linker script to link OS binary.
+ * @author mopp
+ * @version 0.2
+ * @date 2015-12-11
+ *
+ *  Please refer to documents in below link.
+ *  https://sourceware.org/binutils/docs/ld/index.html
+ */
 
 
-SECTIONS {
-    /* OS booting entry point. */
-    ENTRY(boot_kernel)
+/*
+ * Set output file format.
+ * You can see available list in your environment by `objdump --info`.
+ */
+OUTPUT_FORMAT(elf32-i386)
 
-    LD_KERNEL_START = .;
-
+SECTIONS
+{
+    /*
+     * Set kernel load address to location counter.
+     * The kernel will be load at this address by bootloader.
+     */
     . = 0x00100000;
 
+    LD_KERNEL_BEGIN = .;
+
+    /* Set OS entry point. */
+    ENTRY(boot_kernel)
+
     /*
-     * Entry point.
-     * This is called by bootstraps loader.
-     * NOTE that AT command indicates load memory address.
-     * Kernel load address is NOT equal virtual address.
-     * So, We subtract virtual base address.
+     * Each section will be aligned on a 4096.
+     * This alignment means page size.
      */
-    .boot_kernel BLOCK(4K) : ALIGN(4K)
+    .text ALIGN(4096):
     {
-        *(.multiboot_header)
-        *(.boot_kernel)
-    }
-
-
-    .text BLOCK(4K) : ALIGN(4K)
-    {
+        /*
+         * If linker option `--gc-sections` is passed, linker eliminates unused section (e.g., never referenced section).
+         * However, multiboot header should not be removed and located at head.
+         * So, KEEP is used to keep these sections.
+         */
+        KEEP(*(.multiboot_header))
+        KEEP(*(.boot_kernel))
         *(.text*)
     }
 
-
-    .data BLOCK(4K) : ALIGN(4K)
+    .data ALIGN(4096):
     {
         *(.data*)
-        *(.rodata*)
     }
 
-
-    .bss BLOCK(4K) : ALIGN(4K)
+    .bss ALIGN(4096):
     {
-        LD_KERNEL_BSS_START = .;
+        LD_KERNEL_BSS_BEGIN = .;
         *(.bss*)
-        *(COMMON)
         LD_KERNEL_BSS_END = .;
     }
 
+    .rodata ALIGN(4096):
+    {
+        *(.rodata*)
+    }
 
-    LD_KERNEL_BSS_SIZE = LD_KERNEL_BSS_END - LD_KERNEL_BSS_START;
     LD_KERNEL_END = .;
-    LD_KERNEL_SIZE = LD_KERNEL_END - LD_KERNEL_START;
+    LD_KERNEL_SIZE = LD_KERNEL_END - LD_KERNEL_BEGIN;
 }
