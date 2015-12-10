@@ -14,6 +14,9 @@ use core::fmt::Write;
 mod graphic;
 use graphic::{Position, Display};
 
+mod arch;
+use arch::init_arch;
+
 
 const TEXT_MODE_VRAM_ADDR: usize = 0xB8000;
 const TEXT_MODE_WIDTH: usize     = 80;
@@ -29,6 +32,9 @@ pub extern fn main(multiboot_info_addr: PAddr)
     display.println("Start Axel.");
 
     let mboot = unsafe { Multiboot::new(multiboot_info_addr, paddr_to_slice) }.unwrap();
+
+    // Initialize stuffs depending on the architecture.
+    init_arch();
 
     let lower = mboot.lower_memory_bound();
     let upper = mboot.upper_memory_bound();
