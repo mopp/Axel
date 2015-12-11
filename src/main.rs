@@ -48,7 +48,8 @@ pub extern fn main(multiboot_info_addr: PAddr)
 
     loop {
         unsafe {
-            asm!("hlt");
+            // asm!("hlt");
+            asm!("mov r5, #55");
         }
     }
 }
@@ -59,7 +60,7 @@ pub unsafe fn paddr_to_slice<'a>(ptr_addr: PAddr, sz: usize) -> Option<&'a [u8]>
 {
     // TODO
     // let ptr = mem::transmute(p + KERNEL_BASE);
-    let ptr = mem::transmute(ptr_addr);
+    let ptr = mem::transmute(ptr_addr as usize);
     Some(slice::from_raw_parts(ptr,  sz))
 }
 
@@ -75,8 +76,34 @@ pub extern fn eh_personality() {}
 #[lang = "panic_fmt"]
 pub extern fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> !
 {
+    loop {
+        unsafe {
+            // asm!("hlt");
+            asm!("mov r5, #255");
+        }
+    }
     let mut display = graphic::CharacterDisplay::new(TEXT_MODE_VRAM_ADDR, graphic::Position(TEXT_MODE_WIDTH, TEXT_MODE_HEIGHT));
     display.clear_screen();
     display.println("Fault.");
     loop {}
+}
+
+#[no_mangle]
+pub extern fn abort()
+{
+    loop {
+        unsafe {
+            // asm!("hlt");
+            asm!("mov r5, #128");
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8
+{
+    for i in 0..n {
+        *dest.offset(i as isize) = *src.offset(i as isize);
+    }
+    return dest;
 }

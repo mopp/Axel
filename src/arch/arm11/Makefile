@@ -10,7 +10,7 @@
 
 
 boot.o: boot.S $(MAKEFILE)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(AS) $(AS_FLAGS) -c $< -o $@
 
 clean:
 	$(RM) *.o *.lst

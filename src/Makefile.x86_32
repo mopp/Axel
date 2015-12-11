@@ -6,29 +6,13 @@
 # @date 2015-12-10
 #############################################################
 
-# Target triple for cargo.
+# Target triple consists of 4 parts (Last part is option).
+# architecture-vendor-os-env_type
+# Please see below links for more details.
+# https://github.com/rust-lang/rfcs/blob/master/text/0131-target-specification.md
+# https://github.com/rust-lang/rust/blob/master/src/librustc_back/target/mod.rs
 export TARGET_TRIPLE := i686-unknown-linux-gnu
-
-# Rustc options
-# 	For `rustc`
-# 	-C means codegen option, almost option is passed to llvm tools (e.g., lli and llc).
-# 	Please refer this link http://linux.die.net/man/1/lli
-# 		-g 						Output full debug info.
-# 		-C lto					Perform llvm link-time optimizations
-#		-C opt-level=3			Optimize with possible level 3 (0-3 are available)
-#		-C code-model=kernel	This option is described in System V ABI Reference 0.99, kernel code-model optimize symbols virtual addresses.
-#		-C soft-float			Generate software floating point library calls
-#		-C target-cpu=i386		Select target processor (llc -mcpu=help for details)
-#		-Z no-landing-pads		Omit landing pads for unwinding
-RUSTC_FLAGS := 	-L $(RLIB_DIR)				\
-				-g 							\
-				--emit=obj					\
-				--target=$(TARGET_TRIPLE)	\
-				-C target-cpu=i386			\
-				-C code-model=kernel		\
-				-C lto						\
-				-C opt-level=3				\
-				-Z no-landing-pads
+TARGET_CPU           := i386
 
 # We use gcc as linker to generate Axel binary because of libgcc.
 # So we build rustc using gcc in development.
@@ -39,7 +23,7 @@ RUSTC_FLAGS := 	-L $(RLIB_DIR)				\
 # 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
 # Also, Please pay attention the order of command line arguments.
 LD       := gcc -m32
-LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib
+LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static
 LIBS     := -lgcc
 
 QEMU       := qemu-system-i386

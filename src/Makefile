@@ -10,23 +10,62 @@
 ARCH := x86_32
 # ARCH := arm11
 
+# Commands
+export RM       := rm -rf
+export CD       := cd
+export CP       := cp -r
+export MAKE     := make --warn-undefined-variables
+export MKDIR    := mkdir -p
+export CARGO    := cargo
+export NASM     := nasm
+export RUSTC    := rustc
+export BOCHS    := bochs -q
+export MKIMAGE  := grub-mkimage
+export MKRESCUE := grub-mkrescue
+
 # Directories
 export ROOT_DIR := .
 export RLIB_DIR := $(ROOT_DIR)/lib
 export TEST_DIR := $(ROOT_DIR)/tests
 export ARCH_DIR := $(ROOT_DIR)/arch/$(ARCH)
 
-
 # Files
-export MAKEFILE   := $(realpath $(ROOT_DIR))/Makefile
-RLIB_FILES        := $(RLIB_DIR)/libmultiboot.rlib
-DEPEND_SRC_FILES  := graphic.rs
-OBJ_FILES         := $(ARCH_DIR)/boot.o main.o
+export MAKEFILE  := $(realpath $(ROOT_DIR))/Makefile
+AXEL_BIN         := axel.bin
+AXEL_ISO         := axel.iso
+AXEL_MAP         := axel.map
+GRUB_CFG         := grub.cfg
+LINKER_FILE      := $(ARCH_DIR)/link.ld
+RLIB_FILES       := $(RLIB_DIR)/libmultiboot.rlib $(RLIB_DIR)/libcore.rlib
+DEPEND_SRC_FILES := graphic.rs
+OBJ_FILES        := $(ARCH_DIR)/boot.o main.o
 
-# Load other config and target specific config.
-include Makefile.common
+# Load target specific config.
 include Makefile.$(ARCH)
 
+# rustc options
+# -C means codegen option, almost option is passed to llvm tools (e.g., lli and llc).
+# Please refer this link http://linux.die.net/man/1/lli
+# 	-g 						Output full debug info.
+# 	-C lto					Perform llvm link-time optimizations
+#	-C opt-level=3			Optimize with possible level 3 (0-3 are available)
+#	-C code-model=kernel	This option is described in System V ABI Reference 0.99, kernel code-model optimize symbols virtual addresses.
+#	-C soft-float			Generate software floating point library calls
+#	-C target-cpu=i386		Select target processor (llc -mcpu=help for details)
+#	-Z no-landing-pads		Omit landing pads for unwinding
+RUSTC_FLAGS := 					\
+	-L $(RLIB_DIR)				\
+	-g 							\
+	--emit=obj					\
+	--target=$(TARGET_TRIPLE)	\
+	-C target-cpu=$(TARGET_CPU)	\
+	-C lto						\
+	-C opt-level=3				\
+	-Z no-landing-pads
+RUSTC_FLAGS_RLIB := 			\
+	-L $(RLIB_DIR)				\
+	--out-dir $(RLIB_DIR)		\
+	--target=$(TARGET_TRIPLE)
 
 # Pattern rule to get object from rust code.
 %.o: %.rs $(DEPEND_SRC_FILES) $(MAKEFILE)
@@ -38,12 +77,14 @@ $(ARCH_DIR)/%.o:
 	$(MAKE) -C $(ARCH_DIR)
 
 
-# Pattern rule for building rust libraries.
 %.rlib: $(MAKEFILE)
-	$(RUSTC) -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) ./lib/rust-multiboot/src/lib.rs --out-dir ./lib/
+ifeq ($(TARGET_TRIPLE),arm-unknown-none-eabi)
+	$(RUSTC) $(RUSTC_FLAGS_RLIB) $(RLIB_DIR)/rust/src/libcore/lib.rs
+endif
+	$(RUSTC) $(RUSTC_FLAGS_RLIB) $(RLIB_DIR)/rust-multiboot/src/lib.rs
 
 
-.PHONY: all run_kernel run_cdrom test clean
+.PHONY: all run_kernel run_cdrom test clean distclean
 
 all: $(AXEL_BIN)
 
@@ -82,5 +123,9 @@ test: $(DEPEND_SRC_FILES) $(TEST_DIR)
 
 clean:
 	$(MAKE) -C $(ARCH_DIR) clean
-	$(RM) $(RLIB_DIR)/*.rlib
 	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(TEST_DIR) bx_enh_dbg.ini
+
+
+distclean:
+	$(MAKE) clean
+	$(RM) $(RLIB_DIR)/*.rlib

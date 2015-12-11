@@ -1,0 +1,18 @@
+{
+    "llvm-target" : "arm-unknown-none-eabihf",
+    "target-endian" : "little",
+    "target-pointer-width" : "32",
+    "os" : "none",
+    "target-env" : "eabi",
+    "target_vendor" : "unknown",
+    "arch" : "arm",
+    "linker" : "arm-none-eabi-gcc",
+    "pre-link-args" : "-Wl,--build-id=none -Wl,--gc-sections -static -ffreestanding -fno-builtin -nostdlib -mfloat-abi=hard",
+    "post-link-args" : "-lgcc",
+    "cpu" : "arm1176jzf-s",
+    "dynamic-linking" : false,
+    "executables" : false,
+    "code-model" : "kernel",
+    "no-compiler-rt" : true,
+    "no-default-libraries" : true
+}
