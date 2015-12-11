@@ -32,8 +32,8 @@ TARGET_CPU           := arm1176jzf-s
 # 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
 # Also, Please pay attention the order of command line arguments.
 LD       := arm-none-eabi-gcc
-LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static -mfloat-abi=hard
-LIBS     := -lgcc
+LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static -mfloat-abi=soft
+LIBS     := -lc -lm -lgcc
 
 QEMU       := ~/.local/bin/qemu-system-arm
 QEMU_FLAGS := -monitor stdio -vga std -m 256 -M raspi -cpu arm1176

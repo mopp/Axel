@@ -7,8 +7,8 @@
 #############################################################
 
 # Target architecture.
-ARCH := x86_32
-# ARCH := arm11
+# ARCH := x86_32
+ARCH := arm11
 
 # Commands
 export RM       := rm -rf
