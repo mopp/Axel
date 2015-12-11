@@ -51,4 +51,18 @@ SECTIONS
     {
         *(.rodata*)
     }
+
+    /*
+     * This section is unused section.
+     * But gcc library requires this section.
+     * http://embdev.net/topic/282936
+     * http://stackoverflow.com/questions/9752000/exidx-start-and-exidx-end-what-do-they-do
+     */
+    __exidx_start = .;
+    .ARM.exidx ALIGN(4096):
+    {
+        KEEP(*(.ARM.exidx* .gnu.linkonce.armexidx.*))
+    }
+    __exidx_end = .;
+    .rel.plt        : { *(.rel.plt) }
 }
