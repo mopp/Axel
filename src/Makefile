@@ -40,7 +40,7 @@ $(ARCH_DIR)/%.o:
 
 # Pattern rule for building rust libraries.
 %.rlib: $(MAKEFILE)
-	$(MAKE) -C $(RLIB_DIR)
+	$(RUSTC) -L $(RLIB_DIR) --target=$(TARGET_TRIPLE) ./lib/rust-multiboot/src/lib.rs --out-dir ./lib/
 
 
 .PHONY: all run_kernel run_cdrom test clean
@@ -82,5 +82,5 @@ test: $(DEPEND_SRC_FILES) $(TEST_DIR)
 
 clean:
 	$(MAKE) -C $(ARCH_DIR) clean
-	$(MAKE) -C $(RLIB_DIR) clean
+	$(RM) $(RLIB_DIR)/*.rlib
 	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(TEST_DIR) bx_enh_dbg.ini
