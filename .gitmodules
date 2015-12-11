@@ -1,3 +1,6 @@
 [submodule "src/lib/rust-multiboot"]
 	path = src/lib/rust-multiboot
 	url = https://github.com/gz/rust-multiboot.git
+[submodule "src/lib/rust"]
+	path = src/lib/rust
+	url = https://github.com/rust-lang/rust.git
