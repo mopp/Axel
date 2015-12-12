@@ -124,11 +124,9 @@ pub fn init()
     set_pin_function(PinNumber::OkLed, Function::Output);
 
     loop {
-        unsafe {
-            write_output_pin(PinNumber::OkLed, Output::CLEAR);
-            dummy_wait();
-            write_output_pin(PinNumber::OkLed, Output::SET);
-            dummy_wait();
-        }
+        write_output_pin(PinNumber::OkLed, Output::CLEAR);
+        dummy_wait();
+        write_output_pin(PinNumber::OkLed, Output::SET);
+        dummy_wait();
     }
 }
