@@ -48,31 +48,33 @@ halt:
 
 
 /* Only for Raspberry Pi B+ and zero. */
+/*
 blink_led:
     ldr r0,=0x20200000
     mov r1,#1
     lsl r1,#21
     str r1,[r0, #0x10]
 
-blink$:
+1:
     mov r1,#1
     lsl r1,#15
     str r1,[r0, #0x2C]
 
     mov r2,#0x90000
-wait1$:
+2:
     sub r2,#1
     cmp r2,#0
-    bne wait1$
+    bne 2b
 
     mov r1,#1
     lsl r1,#15
     str r1,[r0, #0x20]
 
     mov r2,#0x90000
-wait2$:
+3:
     sub r2,#1
     cmp r2,#0
-    bne wait2$
+    bne b3
 
-    b blink$
+    b 1b
+*/
