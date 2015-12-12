@@ -28,6 +28,7 @@
 export TARGET_TRIPLE := arm-unknown-none-eabi
 TARGET_CPU           := arm1176jzf-s
 
+RUSTC_CFG := --cfg RPi_zero
 
 # We use gcc as linker to generate Axel binary because of libgcc.
 # So we build rustc using gcc in development.
@@ -39,7 +40,9 @@ TARGET_CPU           := arm1176jzf-s
 # Also, Please pay attention the order of command line arguments.
 LD       := arm-none-eabi-gcc
 LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -nostartfiles -static -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
-LIBS     := -lgcc
+
+# All libs are required during opt-level=0.
+LIBS     := -lm -lc -lgcc
 
 QEMU       := ~/.local/bin/qemu-system-arm
 QEMU_FLAGS := -monitor stdio -vga std -m 256 -M raspi -cpu arm1176
@@ -47,3 +50,4 @@ QEMU_FLAGS := -monitor stdio -vga std -m 256 -M raspi -cpu arm1176
 export AS       := arm-none-eabi-as
 export AS_FLAGS := -g -mfpu=vfp -mfloat-abi=hard -march=armv6zk
 
+OBJCOPY := arm-none-eabi-objcopy

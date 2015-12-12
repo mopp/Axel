@@ -37,7 +37,7 @@ AXEL_MAP         := axel.map
 GRUB_CFG         := grub.cfg
 LINKER_FILE      := $(ARCH_DIR)/link.ld
 RLIB_FILES       := $(RLIB_DIR)/libmultiboot.rlib $(RLIB_DIR)/libcore.rlib
-DEPEND_SRC_FILES := graphic.rs
+DEPEND_SRC_FILES := graphic.rs ./arch/arm11/mod.rs ./arch/arm11/gpio.rs ./arch/x86_32/mod.rs
 OBJ_FILES        := $(ARCH_DIR)/boot.o main.o
 
 # Load target specific config.
@@ -54,6 +54,7 @@ include Makefile.$(ARCH)
 #	-C target-cpu=i386		Select target processor (llc -mcpu=help for details)
 #	-Z no-landing-pads		Omit landing pads for unwinding
 RUSTC_FLAGS := 					\
+	$(RUSTC_CFG)				\
 	-L $(RLIB_DIR)				\
 	-g 							\
 	--emit=obj					\
@@ -62,10 +63,16 @@ RUSTC_FLAGS := 					\
 	-C lto						\
 	-C opt-level=3				\
 	-Z no-landing-pads
+
 RUSTC_FLAGS_RLIB := 			\
 	-L $(RLIB_DIR)				\
 	--out-dir $(RLIB_DIR)		\
+	-A unstable-features		\
+	-A dead-code 				\
+	-A stable_features			\
+	-A unused_features			\
 	--target=$(TARGET_TRIPLE)
+
 
 # Pattern rule to get object from rust code.
 %.o: %.rs $(DEPEND_SRC_FILES) $(MAKEFILE)
@@ -91,6 +98,9 @@ all: $(AXEL_BIN)
 
 $(AXEL_BIN): $(MAKEFILE) $(RLIB_FILES) $(OBJ_FILES) $(LINKER_FILE)
 	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINKER_FILE) -o $@ $(OBJ_FILES) $(LIBS)
+ifeq ($(TARGET_TRIPLE),arm-unknown-none-eabi)
+	$(OBJCOPY) $@ -O binary kernel.img
+endif
 
 
 $(AXEL_ISO): $(MAKEFILE) $(AXEL_BIN) $(GRUB_CFG)
