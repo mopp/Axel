@@ -1,5 +1,5 @@
 {
-    "llvm-target" : "arm-unknown-none-eabi",
+    "llvm-target" : "arm-unknown-none-eabihf",
     "target-endian" : "little",
     "target-pointer-width" : "32",
     "os" : "none",
@@ -7,7 +7,7 @@
     "target_vendor" : "unknown",
     "arch" : "arm",
     "linker" : "arm-none-eabi-gcc",
-    "pre-link-args" : "-Wl,--build-id=none -Wl,--gc-sections -static -ffreestanding -fno-builtin -nostdlib -mfloat-abi=soft",
+    "pre-link-args" : "-Wl,--build-id=none -Wl,--gc-sections -static -ffreestanding -fno-builtin -nostdlib -nostartfiles -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s",
     "post-link-args" : "-lgcc",
     "cpu" : "arm1176jzf-s",
     "dynamic-linking" : false,

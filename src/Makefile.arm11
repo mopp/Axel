@@ -11,6 +11,12 @@
 # 	So, Axel is bare metal software.
 # 	Please see below link.
 # 	https://bugs.launchpad.net/linaro-toolchain-binaries/+bug/1181159
+#
+# 	`hf` means hardware float.
+# 	In Axel, we have supposed ARM11 is raspberry pi, and it has hardware float feature.
+# 	However, the name of gcc (arm-none-eabi-gcc) does NOT contain `hf`.
+# 	But, setting is hardware float.
+# 	Please pay attention this things.
 #############################################################
 
 
@@ -32,11 +38,12 @@ TARGET_CPU           := arm1176jzf-s
 # 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
 # Also, Please pay attention the order of command line arguments.
 LD       := arm-none-eabi-gcc
-LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static -mfloat-abi=soft
-LIBS     := -lc -lm -lgcc
+LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -nostartfiles -static -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+LIBS     := -lgcc
 
 QEMU       := ~/.local/bin/qemu-system-arm
 QEMU_FLAGS := -monitor stdio -vga std -m 256 -M raspi -cpu arm1176
 
 export AS       := arm-none-eabi-as
-export AS_FLAGS := -g -mcpu=arm1176jzf-s -mfloat-abi=hard
+export AS_FLAGS := -g -mfpu=vfp -mfloat-abi=hard -march=armv6zk
+
