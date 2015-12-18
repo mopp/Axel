@@ -98,109 +98,11 @@ pub fn dummy_wait()
 }
 
 
-unsafe fn set_bit(addr: usize, val: u32, clobbered_mask: u32) {
+pub unsafe fn set_bit(addr: usize, val: u32, clobbered_mask: u32) {
     let ptr = addr as *mut u32;
     let mut current_val = *ptr;
 
     // Keep Not write value.
     let new_val = (current_val & !clobbered_mask) | (val & clobbered_mask);
     *ptr = new_val;
-}
-
-
-// Only the SPI0 controller is available on the header pin.
-fn init_spi() {
-    // Set GPIO function for SPI0.
-    set_pin_function(GpioPin::Spi0Ce1N, Function::Alternate0);
-    set_pin_function(GpioPin::Spi0Ce0N, Function::Alternate0);
-    set_pin_function(GpioPin::Spi0Miso, Function::Alternate0);
-    set_pin_function(GpioPin::Spi0Mosi, Function::Alternate0);
-    set_pin_function(GpioPin::Spi0Sclk, Function::Alternate0);
-
-    // Set SPI0 CS register to all zero.
-    unsafe {
-        *(Addr::Spi0RegisterCs.to_usize() as *mut u32) = 0;
-
-        // Clear TX and RX FIFO.
-        // With memory barrier.
-        // asm!("dmb");
-        *(Addr::Spi0RegisterCs.to_usize() as *mut u32) = 0x00000030;
-
-        // Set data mode.
-        // With memory barrier.
-        // asm!("dmb");
-        *(Addr::Spi0RegisterCs.to_usize() as *mut u32) = 0x00000030;
-    }
-}
-
-
-unsafe fn spi_transfer(val: u8) -> u8 {
-    // Clear TX and RX fifos.
-    set_bit(Addr::Spi0RegisterCs.to_usize(), 0x00000030, 0x00000030);
-
-    // Set TA = 1.
-    set_bit(Addr::Spi0RegisterCs.to_usize(), 1 << 7, 1 << 7);
-
-    // Wait for TXD.
-    loop {
-        // WTF
-        // let cs_reg :u32= volatile_load(Addr::Spi0RegisterFifo.to_usize() as *const u32);
-        let mut val = 0;
-        asm!(
-            "ldr r1, [r0]"
-            : "={r1}"(val)
-            : "{r0}"(Addr::Spi0RegisterCs.to_usize())
-            : "volatile", "intel"
-            );
-        if val == 0x30 {
-            break;
-        }
-    }
-
-    // Write to FIFO
-    *(Addr::Spi0RegisterFifo.to_usize() as *mut u8) = val;
-
-    // Wait for DONE
-    loop {
-        // WTF
-        // let cs_reg :u32= volatile_load(Addr::Spi0RegisterFifo.to_usize() as *const u32);
-        let mut val = 0;
-        asm!(
-            "ldr r1, [r0]"
-            : "={r1}"(val)
-            : "{r0}"(Addr::Spi0RegisterCs.to_usize())
-            : "volatile", "intel"
-            );
-        if val == 0x00010000 {
-            break;
-        }
-    }
-
-    // Write to FIFO
-    let read_data = *(Addr::Spi0RegisterFifo.to_usize() as *mut u8);
-
-    // Set TA = 1.
-    set_bit(Addr::Spi0RegisterCs.to_usize(), 0, 1 << 7);
-
-    read_data
-}
-
-
-/// For ILI9340 IC.
-fn ili9340_write_command(command: u8) {
-    write_output_pin(GpioPin::Ili9340Dc, Output::CLEAR);
-    unsafe {
-        spi_transfer(command);
-    }
-    write_output_pin(GpioPin::Ili9340Dc, Output::SET);
-}
-
-// SPI Write Data
-// D/C=HIGH then,write data(8bit)
-fn ili9340_write_data(data: u8)
-{
-    write_output_pin(GpioPin::Ili9340Dc, Output::SET);
-    unsafe {
-        spi_transfer(data);
-    }
 }
