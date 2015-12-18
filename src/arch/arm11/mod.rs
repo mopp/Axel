@@ -1,6 +1,6 @@
-mod gpio;
+mod peripheral;
 
 pub fn init()
 {
-    gpio::init();
+    peripheral::init();
 }

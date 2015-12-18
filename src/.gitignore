@@ -4,6 +4,7 @@
 # allow directors
 !arch
 !arch/arm11
+!arch/arm11/peripheral
 !arch/x86_32
 !lib/
 !lib/rust
