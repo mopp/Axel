@@ -13,6 +13,7 @@ pub fn init_spi0() {
     gpio::set_pin_function(gpio::GpioPin::Spi0Mosi, gpio::Function::Alternate0);
     gpio::set_pin_function(gpio::GpioPin::Spi0Sclk, gpio::Function::Alternate0);
 
+
     // Set SPI0 CS register to all zero.
     unsafe {
         *(Addr::Spi0RegisterCs.to_usize() as *mut u32) = 0;
@@ -46,6 +47,7 @@ unsafe fn spi_transfer(val: u8) -> u8 {
             "ldr r1, [r0]"
             : "={r1}"(val)
             : "{r0}"(Addr::Spi0RegisterCs.to_usize())
+            :
             : "volatile", "intel"
             );
         if val == 0x30 {
@@ -65,6 +67,7 @@ unsafe fn spi_transfer(val: u8) -> u8 {
             "ldr r1, [r0]"
             : "={r1}"(val)
             : "{r0}"(Addr::Spi0RegisterCs.to_usize())
+            :
             : "volatile", "intel"
             );
         if val == 0x00010000 {
