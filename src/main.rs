@@ -7,11 +7,14 @@
 extern crate multiboot;
 use multiboot::PAddr;
 
+#[cfg(target_arch = "x86")]
 mod graphic;
+#[cfg(target_arch = "x86")]
 use graphic::Display;
 
 use core::mem;
 use core::slice;
+#[cfg(target_arch = "x86")]
 use core::fmt::Write;
 
 mod arch;
