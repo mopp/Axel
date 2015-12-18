@@ -1,3 +1,5 @@
+//! This module provides peripheral addresses based on BCM2835.
+
 use core;
 
 #[allow(dead_code)]
@@ -38,16 +40,16 @@ pub enum Addr {
     AuxMuCntlReg,       // Mini Uart Extra Control      size: 8
     AuxMuStatReg,       // Mini Uart Extra Status       size: 32
     AuxMuBaudReg,       // Mini Uart Baudrate           size: 16
-    AuxSpi0Cntl0Reg,    // SPI1 Control register0       size: 32
-    AuxSpi0Cntl1Reg,    // SPI1 Control register1       size: 8
-    AuxSpi0StatReg,     // SPI1 Status                  size: 32
-    AuxSpi0IoReg,       // SPI1 Data                    size: 32
-    AuxSpi0PeekReg,     // SPI1 Peek                    size: 16
-    AuxSpi1Cntl0Reg,    // SPI2 Control register0       size: 32
-    AuxSpi1Cntl1Reg,    // SPI2 Control register1       size: 8
-    AuxSpi1StatReg,     // SPI2 Status                  size: 32
-    AuxSpi1IoReg,       // SPI2 Data                    size: 32
-    AuxSpi1PeekReg,     // SPI2 Peek                    size: 16
+    AuxSpi1Cntl0Reg,    // SPI1 Control register0       size: 32
+    AuxSpi1Cntl1Reg,    // SPI1 Control register1       size: 8
+    AuxSpi1StatReg,     // SPI1 Status                  size: 32
+    AuxSpi1IoReg,       // SPI1 Data                    size: 32
+    AuxSpi1PeekReg,     // SPI1 Peek                    size: 16
+    AuxSpi2Cntl0Reg,    // SPI2 Control register0       size: 32
+    AuxSpi2Cntl1Reg,    // SPI2 Control register1       size: 8
+    AuxSpi2StatReg,     // SPI2 Status                  size: 32
+    AuxSpi2IoReg,       // SPI2 Data                    size: 32
+    AuxSpi2PeekReg,     // SPI2 Peek                    size: 16
 }
 
 
@@ -97,16 +99,16 @@ impl Addr {
             Addr::AuxMuCntlReg     => aux_base + 0x60,
             Addr::AuxMuStatReg     => aux_base + 0x64,
             Addr::AuxMuBaudReg     => aux_base + 0x68,
-            Addr::AuxSpi0Cntl0Reg  => aux_base + 0x80,
-            Addr::AuxSpi0Cntl1Reg  => aux_base + 0x84,
-            Addr::AuxSpi0StatReg   => aux_base + 0x88,
-            Addr::AuxSpi0IoReg     => aux_base + 0x90,
-            Addr::AuxSpi0PeekReg   => aux_base + 0x94,
-            Addr::AuxSpi1Cntl0Reg  => aux_base + 0xC0,
-            Addr::AuxSpi1Cntl1Reg  => aux_base + 0xC4,
-            Addr::AuxSpi1StatReg   => aux_base + 0xC8,
-            Addr::AuxSpi1IoReg     => aux_base + 0xD0,
-            Addr::AuxSpi1PeekReg   => aux_base + 0xD4,
+            Addr::AuxSpi1Cntl0Reg  => aux_base + 0x80,
+            Addr::AuxSpi1Cntl1Reg  => aux_base + 0x84,
+            Addr::AuxSpi1StatReg   => aux_base + 0x88,
+            Addr::AuxSpi1IoReg     => aux_base + 0x90,
+            Addr::AuxSpi1PeekReg   => aux_base + 0x94,
+            Addr::AuxSpi2Cntl0Reg  => aux_base + 0xC0,
+            Addr::AuxSpi2Cntl1Reg  => aux_base + 0xC4,
+            Addr::AuxSpi2StatReg   => aux_base + 0xC8,
+            Addr::AuxSpi2IoReg     => aux_base + 0xD0,
+            Addr::AuxSpi2PeekReg   => aux_base + 0xD4,
         }
     }
 
