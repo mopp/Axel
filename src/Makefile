@@ -7,8 +7,8 @@
 #############################################################
 
 # Target architecture.
-ARCH := x86_32
-# ARCH := arm11
+# ARCH := x86_32
+ARCH := arm11
 
 # Commands
 export RM       := rm -rf
@@ -30,15 +30,16 @@ export TEST_DIR := $(ROOT_DIR)/tests
 export ARCH_DIR := $(ROOT_DIR)/arch/$(ARCH)
 
 # Files
-export MAKEFILE  := $(realpath $(ROOT_DIR))/Makefile
-AXEL_BIN         := axel.bin
-AXEL_ISO         := axel.iso
-AXEL_MAP         := axel.map
-GRUB_CFG         := grub.cfg
-LINKER_FILE      := $(ARCH_DIR)/link.ld
-RLIB_FILES       := $(RLIB_DIR)/libmultiboot.rlib $(RLIB_DIR)/libcore.rlib
-DEPEND_SRC_FILES := graphic.rs ./arch/arm11/mod.rs ./arch/arm11/gpio.rs ./arch/x86_32/mod.rs
-OBJ_FILES        := $(ARCH_DIR)/boot.o main.o
+export MAKEFILE := $(realpath $(ROOT_DIR))/Makefile
+AXEL_BIN        := axel.bin
+AXEL_ISO        := axel.iso
+AXEL_MAP        := axel.map
+GRUB_CFG        := grub.cfg
+LINKER_FILE     := $(ARCH_DIR)/link.ld
+RUST_SRCS       := main.rs
+RUST_OBJS       := $(RUST_SRCS:%.rs=%.o)
+RUST_DEPS       := $(RUST_SRCS:%.rs=%.d)
+OBJS            := $(ARCH_DIR)/boot.o $(RUST_OBJS)
 
 # Load target specific config.
 include Makefile.$(ARCH)
@@ -57,7 +58,6 @@ RUSTC_FLAGS := 					\
 	$(RUSTC_CFG)				\
 	-L $(RLIB_DIR)				\
 	-g 							\
-	--emit=obj					\
 	--target=$(TARGET_TRIPLE)	\
 	-C target-cpu=$(TARGET_CPU)	\
 	-C lto						\
@@ -74,68 +74,87 @@ RUSTC_FLAGS_RLIB := 			\
 	--target=$(TARGET_TRIPLE)
 
 
-# Pattern rule to get object from rust code.
-%.o: %.rs $(DEPEND_SRC_FILES) $(MAKEFILE)
-	$(RUSTC) $(RUSTC_FLAGS) -o $@ $<
-
-
 # Pattern rule for building architecture depending codes.
 $(ARCH_DIR)/%.o:
 	$(MAKE) -C $(ARCH_DIR)
 
 
-%.rlib: $(MAKEFILE)
-ifeq ($(TARGET_TRIPLE),arm-unknown-none-eabi)
-	$(RUSTC) $(RUSTC_FLAGS_RLIB) $(RLIB_DIR)/rust/src/libcore/lib.rs
-endif
-	$(RUSTC) $(RUSTC_FLAGS_RLIB) $(RLIB_DIR)/rust-multiboot/src/lib.rs
+# Pattern rule for emitting object file from rust file.
+%.o: %.rs $(MAKEFILE) $(RUST_LIBS)
+	$(RUSTC) $(RUSTC_FLAGS) --emit=dep-info,obj $<
 
 
-.PHONY: all run_kernel run_cdrom test clean distclean
-
+.PHONY: all
 all: $(AXEL_BIN)
 
 
-$(AXEL_BIN): $(MAKEFILE) $(RLIB_FILES) $(OBJ_FILES) $(LINKER_FILE)
-	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINKER_FILE) -o $@ $(OBJ_FILES) $(LIBS)
-ifeq ($(TARGET_TRIPLE),arm-unknown-none-eabi)
-	$(OBJCOPY) $@ -O binary kernel.img
-endif
+# Include rust dependency information.
+# Even if files not found, make does not output error.
+-include $(RUST_DEPS)
 
 
-$(AXEL_ISO): $(MAKEFILE) $(AXEL_BIN) $(GRUB_CFG)
+$(RLIB_DIR)/libcore.rlib: $(RLIB_DIR)/rust/src/libcore/lib.rs $(MAKEFILE)
+	$(RUSTC) $(RUSTC_FLAGS_RLIB) $<
+
+
+$(RLIB_DIR)/libmultiboot.rlib: $(RLIB_DIR)/rust-multiboot/src/lib.rs $(MAKEFILE)
+	$(RUSTC) $(RUSTC_FLAGS_RLIB) $<
+
+
+$(AXEL_BIN): $(OBJS) $(LINKER_FILE)
+	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINKER_FILE) -o $@ $(OBJS) $(LIBS)
+
+
+$(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
 	$(MKDIR) ./iso/boot/grub/
 	$(CP) $(AXEL_BIN) ./iso/boot/
 	$(CP) $(GRUB_CFG) ./iso/boot/grub/grub.cfg
 	$(MKIMAGE) --format i386-pc -o ./iso/efi.img multiboot biosdisk iso9660
 	$(MKRESCUE) -o $@ ./iso/
-	$(RM) iso/
+	$(RM) ./iso/
 
 
+.PHONY: run_kernel
 run_kernel: $(AXEL_BIN)
 	$(QEMU) $(QEMU_FLAGS) --kernel $<
 
 
+.PHONY: run_cdrom
 run_cdrom: $(AXEL_ISO)
 	$(QEMU) $(QEMU_FLAGS) -cdrom $<
+
+
+.PHONY: write
+write: $(AXEL_BIN)
+	$(OBJCOPY) $< -O binary kernel.img
+	sudo mount /dev/mmcblk0p1 /mnt/
+	sudo sync
+	sudo $(CP) kernel.img /mnt/kernel.img
+	sudo $(CP) kernel.img /mnt/kernel7.img
+	sudo umount /mnt/
+	$(RM) kernel.img
+
+
+.PHONY: clean
+clean:
+	$(MAKE) -C $(ARCH_DIR) clean
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(TEST_DIR) bx_enh_dbg.ini
+
+
+.PHONY: distclean
+distclean:
+	$(MAKE) clean
+	$(RM) $(RLIB_DIR)/*.rlib
 
 
 $(TEST_DIR):
 	$(MKDIR) $@
 
 
-test: $(DEPEND_SRC_FILES) $(TEST_DIR)
-	$(foreach src_file, $(DEPEND_SRC_FILES), 					\
-		$(RUSTC) --test --out-dir $(TEST_DIR) $(src_file) &&	\
-		$(TEST_DIR)/$(basename $(src_file)) --nocapture			\
+.PHONY: test
+RUST_TESTS := graphic.rs
+test: $(RUST_TESTS) $(TEST_DIR)
+	$(foreach src, $(RUST_TESTS), 						\
+		$(RUSTC) --test --out-dir $(TEST_DIR) $(src) &&	\
+		$(TEST_DIR)/$(basename $(src)) --nocapture		\
 	)
-
-
-clean:
-	$(MAKE) -C $(ARCH_DIR) clean
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(TEST_DIR) bx_enh_dbg.ini
-
-
-distclean:
-	$(MAKE) clean
-	$(RM) $(RLIB_DIR)/*.rlib

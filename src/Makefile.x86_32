@@ -13,6 +13,9 @@
 # https://github.com/rust-lang/rust/blob/master/src/librustc_back/target/mod.rs
 export TARGET_TRIPLE := i686-unknown-linux-gnu
 TARGET_CPU           := i386
+RUST_LIBS             = $(RLIB_DIR)/libmultiboot.rlib
+
+
 
 # We use gcc as linker to generate Axel binary because of libgcc.
 # So we build rustc using gcc in development.

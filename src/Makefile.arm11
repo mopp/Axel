@@ -27,6 +27,7 @@
 # https://github.com/rust-lang/rust/blob/master/src/librustc_back/target/mod.rs
 export TARGET_TRIPLE := arm-unknown-none-eabi
 TARGET_CPU           := arm1176jzf-s
+RUST_LIBS             = $(RLIB_DIR)/libcore.rlib $(RLIB_DIR)/libmultiboot.rlib
 
 RUSTC_CFG := --cfg RPi_zero
 
