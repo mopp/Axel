@@ -112,15 +112,25 @@ impl Addr {
         }
     }
 
+
     pub fn from_usize(v: usize) -> Addr
     {
         unsafe { core::mem::transmute(v) }
     }
 
-    pub fn read<T>(&self) -> T {
+
+    pub fn load<T>(&self) -> T {
         let ptr = self.to_usize() as *mut T;
         unsafe {
             core::intrinsics::volatile_load(ptr)
+        }
+    }
+
+
+    pub fn store<T>(&self, value: T) {
+        let ptr = self.to_usize() as *mut T;
+        unsafe {
+            core::intrinsics::volatile_store(ptr, value);
         }
     }
 }
