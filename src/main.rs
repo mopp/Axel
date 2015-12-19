@@ -2,7 +2,8 @@
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(core_intrinsics)]
-#![no_main]
+// no_main is unused, maybe json setting file set os type is 'none'.
+// #![no_main]
 #![no_std]
 
 extern crate multiboot;
