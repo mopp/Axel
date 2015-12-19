@@ -7,11 +7,11 @@ use super::addr::Addr;
 /// Only the SPI0 controller is available on the header pin.
 pub fn init_spi0() {
     // Set GPIO function for SPI0.
-    gpio::set_pin_function(gpio::GpioPin::Spi0Ce1N, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::GpioPin::Spi0Ce0N, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::GpioPin::Spi0Miso, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::GpioPin::Spi0Mosi, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::GpioPin::Spi0Sclk, gpio::Function::Alternate0);
+    gpio::set_pin_function(gpio::Pin::Spi0Ce1N, gpio::Function::Alternate0);
+    gpio::set_pin_function(gpio::Pin::Spi0Ce0N, gpio::Function::Alternate0);
+    gpio::set_pin_function(gpio::Pin::Spi0Miso, gpio::Function::Alternate0);
+    gpio::set_pin_function(gpio::Pin::Spi0Mosi, gpio::Function::Alternate0);
+    gpio::set_pin_function(gpio::Pin::Spi0Sclk, gpio::Function::Alternate0);
 
 
     // Set SPI0 CS register to all zero.
@@ -87,18 +87,18 @@ unsafe fn spi_transfer(val: u8) -> u8 {
 
 /// For ILI9340 IC.
 fn ili9340_write_command(command: u8) {
-    gpio::write_output_pin(gpio::GpioPin::Ili9340Dc, gpio::Output::CLEAR);
+    gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::CLEAR);
     unsafe {
         spi_transfer(command);
     }
-    gpio::write_output_pin(gpio::GpioPin::Ili9340Dc, gpio::Output::SET);
+    gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::SET);
 }
 
 // SPI Write Data
 // D/C=HIGH then,write data(8bit)
 fn ili9340_write_data(data: u8)
 {
-    gpio::write_output_pin(gpio::GpioPin::Ili9340Dc, gpio::Output::SET);
+    gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::SET);
     unsafe {
         spi_transfer(data);
     }

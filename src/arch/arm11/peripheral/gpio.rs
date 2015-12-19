@@ -26,7 +26,7 @@ pub enum Output {
 }
 
 
-pub enum GpioPin {
+pub enum Pin {
     #[cfg(any(RPi_a, RPi_aplus))]
     OkLed = 16,
     #[cfg(any(RPi_zero, RPi_bplus, RPi2_b))]
@@ -43,7 +43,7 @@ pub enum GpioPin {
 }
 
 
-pub fn set_pin_function(pin_number: GpioPin, func: Function)
+pub fn set_pin_function(pin_number: Pin, func: Function)
 {
     let n                  = pin_number as usize;
     let gpf_sel_number:usize = n / 10;
@@ -56,7 +56,7 @@ pub fn set_pin_function(pin_number: GpioPin, func: Function)
 }
 
 
-pub fn write_output_pin(pin_number: GpioPin, mode: Output)
+pub fn write_output_pin(pin_number: Pin, mode: Output)
 {
     let n = pin_number as usize;
     let register =
