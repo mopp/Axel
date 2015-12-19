@@ -11,11 +11,7 @@
 # Please see below links for more details.
 # https://github.com/rust-lang/rfcs/blob/master/text/0131-target-specification.md
 # https://github.com/rust-lang/rust/blob/master/src/librustc_back/target/mod.rs
-export TARGET_TRIPLE := i686-unknown-linux-gnu
-TARGET_CPU           := i386
-RUST_LIBS             = $(RLIB_DIR)/libmultiboot.rlib
-
-
+TARGET_TRIPLE := i386-unknown-none-gnu
 
 # We use gcc as linker to generate Axel binary because of libgcc.
 # So we build rustc using gcc in development.
@@ -26,7 +22,7 @@ RUST_LIBS             = $(RLIB_DIR)/libmultiboot.rlib
 # 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
 # Also, Please pay attention the order of command line arguments.
 LD       := gcc -m32
-LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static
+LD_FLAGS := -g -O2 -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static -march=i386
 LIBS     := -lgcc
 
 QEMU       := qemu-system-i386

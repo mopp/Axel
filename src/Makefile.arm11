@@ -25,11 +25,8 @@
 # Please see below links for more details.
 # https://github.com/rust-lang/rfcs/blob/master/text/0131-target-specification.md
 # https://github.com/rust-lang/rust/blob/master/src/librustc_back/target/mod.rs
-export TARGET_TRIPLE := arm-unknown-none-eabihf
-TARGET_CPU           := arm1176jzf-s
-RUST_LIBS             = $(RLIB_DIR)/libcore.rlib $(RLIB_DIR)/libmultiboot.rlib
-
-RUSTC_CFG := --cfg RPi_zero
+TARGET_TRIPLE := arm-unknown-none-eabihf
+RUSTC_CFG     := --cfg RPi_zero
 
 # We use gcc as linker to generate Axel binary because of libgcc.
 # So we build rustc using gcc in development.

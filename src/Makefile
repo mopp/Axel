@@ -36,6 +36,7 @@ AXEL_ISO        := axel.iso
 AXEL_MAP        := axel.map
 GRUB_CFG        := grub.cfg
 LINKER_FILE     := $(ARCH_DIR)/link.ld
+RUST_LIBS       := $(RLIB_DIR)/libcore.rlib $(RLIB_DIR)/libmultiboot.rlib
 RUST_SRCS       := main.rs
 RUST_OBJS       := $(RUST_SRCS:%.rs=%.o)
 RUST_DEPS       := $(RUST_SRCS:%.rs=%.d)
@@ -59,7 +60,6 @@ RUSTC_FLAGS := 					\
 	-L $(RLIB_DIR)				\
 	-g 							\
 	--target=$(TARGET_TRIPLE)	\
-	-C target-cpu=$(TARGET_CPU)	\
 	-C lto						\
 	-C opt-level=3				\
 	-Z no-landing-pads
