@@ -2,7 +2,7 @@
 //! http://www.valvers.com/open-software/raspberry-pi/step01-bare-metal-programming-in-cpt1/
 //! https://www.raspberrypi.org/documentation//hardware/raspberrypi/bcm2835/BCM2835-ARM-Peripherals.pdf
 //!  LED ON, Zero -> CLR
-//!        , Pi 1 B+ -> SET
+//!        , Pi 1 B+ -> Set
 
 use super::addr::Addr;
 
@@ -21,8 +21,8 @@ pub enum Function {
 
 
 pub enum Output {
-    CLEAR,
-    SET,
+    Clear,
+    Set,
 }
 
 
@@ -38,8 +38,9 @@ pub enum Pin {
     Spi0Mosi = 10,
     Spi0Sclk = 11,
 
+    // ILI 9340 GPIO PIN
     Ili9340Dc = 17,
-    Ili9340Res = 18,
+    Ili9340Rst = 18,
 }
 
 
@@ -62,13 +63,13 @@ pub fn write_output_pin(pin_number: Pin, mode: Output)
     let register =
         if n <= 31 {
             match mode {
-                Output::SET   => Addr::GpioGpSet0.to_usize(),
-                Output::CLEAR => Addr::GpioGpClr0.to_usize(),
+                Output::Set   => Addr::GpioGpSet0.to_usize(),
+                Output::Clear => Addr::GpioGpClr0.to_usize(),
             }
         } else {
             match mode {
-                Output::SET   => Addr::GpioGpSet1.to_usize(),
-                Output::CLEAR => Addr::GpioGpClr1.to_usize(),
+                Output::Set   => Addr::GpioGpSet1.to_usize(),
+                Output::Clear => Addr::GpioGpClr1.to_usize(),
             }
         };
 
@@ -95,14 +96,4 @@ pub fn dummy_wait()
             : "r1", "r2"
             );
     }
-}
-
-
-pub unsafe fn set_bit(addr: usize, val: u32, clobbered_mask: u32) {
-    let ptr = addr as *mut u32;
-    let mut current_val = *ptr;
-
-    // Keep Not write value.
-    let new_val = (current_val & !clobbered_mask) | (val & clobbered_mask);
-    *ptr = new_val;
 }
