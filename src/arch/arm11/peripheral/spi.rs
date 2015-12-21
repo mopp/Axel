@@ -4,6 +4,13 @@ use super::gpio;
 use super::addr::Addr;
 
 
+enum Chip {
+    Ce0,
+    Ce1,
+    Ce2,
+}
+
+
 /// Only the SPI0 controller is available on the header pin.
 pub fn init_spi0() {
     // Set GPIO function for SPI0.
@@ -13,21 +20,12 @@ pub fn init_spi0() {
     gpio::set_pin_function(gpio::Pin::Spi0Mosi, gpio::Function::Alternate0);
     gpio::set_pin_function(gpio::Pin::Spi0Sclk, gpio::Function::Alternate0);
 
-
     // Set SPI0 CS register to all zero.
-    unsafe {
-        *(Addr::Spi0RegisterCs.to_usize() as *mut u32) = 0;
-
-        // Clear TX and RX FIFO.
-        // With memory barrier.
-        // asm!("dmb");
-        *(Addr::Spi0RegisterCs.to_usize() as *mut u32) = 0x00000030;
-
-        // Set data mode.
-        // With memory barrier.
-        // asm!("dmb");
-        *(Addr::Spi0RegisterCs.to_usize() as *mut u32) = 0x00000030;
-    }
+    Addr::Spi0RegisterCs.store::<u32>(0);
+    // Clear TX and RX FIFO.
+    Addr::Spi0RegisterCs.store::<u32>(0x00000030);
+    // Set data mode.
+    Addr::Spi0RegisterCs.store::<u32>(0x00000030);
 }
 
 
@@ -85,21 +83,26 @@ unsafe fn spi_transfer(val: u8) -> u8 {
 }
 
 
-/// For ILI9340 IC.
-fn ili9340_write_command(command: u8) {
-    gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::CLEAR);
-    unsafe {
-        spi_transfer(command);
-    }
-    gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::SET);
-}
+mod ili9340 {
+    use super::super::gpio;
 
-// SPI Write Data
-// D/C=HIGH then,write data(8bit)
-fn ili9340_write_data(data: u8)
-{
-    gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::SET);
-    unsafe {
-        spi_transfer(data);
+    /// For ILI9340 IC.
+    fn write_command(command: u8) {
+        gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::CLEAR);
+        unsafe {
+            super::spi_transfer(command);
+        }
+        gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::SET);
+    }
+
+
+    // SPI Write Data
+    // D/C=HIGH then,write data(8bit)
+    fn write_data(data: u8)
+    {
+        gpio::write_output_pin(gpio::Pin::Ili9340Dc, gpio::Output::SET);
+        unsafe {
+            super::spi_transfer(data);
+        }
     }
 }
