@@ -7,6 +7,14 @@ extern crate core;
 pub enum Addr {
     Base,
 
+    TimerCs,
+    TimerClo,
+    TimerChi,
+    TimerC0,
+    TimerC1,
+    TimerC2,
+    TimerC3,
+
     GpioBase,
     GpioGpfSel0, // GPIO Function Select 0 to 5, read and write.
     GpioGpfSel1,
@@ -63,11 +71,19 @@ impl Addr {
             base = 0x3F000000;
         }
 
-        let gpio_base = base + 0x00200000;
-        let spi_base  = base + 0x00204000;
-        let aux_base  = base + 0x00215000;
+        let timer_base = base + 0x00003000;
+        let gpio_base  = base + 0x00200000;
+        let spi_base   = base + 0x00204000;
+        let aux_base   = base + 0x00215000;
         match self {
             Addr::Base             => base,
+            Addr::TimerCs          => timer_base,
+            Addr::TimerClo         => timer_base + 0x04,
+            Addr::TimerChi         => timer_base + 0x08,
+            Addr::TimerC0          => timer_base + 0x0C,
+            Addr::TimerC1          => timer_base + 0x10,
+            Addr::TimerC2          => timer_base + 0x14,
+            Addr::TimerC3          => timer_base + 0x18,
             Addr::GpioBase         => gpio_base,
             Addr::GpioGpfSel0      => gpio_base + 0x00,
             Addr::GpioGpfSel1      => gpio_base + 0x04,
