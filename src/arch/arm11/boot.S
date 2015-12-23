@@ -74,7 +74,7 @@ blink_led:
 3:
     sub r2,#1
     cmp r2,#0
-    bne b3
+    bne 3b
 
     b 1b
 */
