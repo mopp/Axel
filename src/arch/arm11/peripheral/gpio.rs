@@ -38,8 +38,8 @@ pub enum Pin {
     Spi0Mosi = 10,
     Spi0Sclk = 11,
 
-    // ILI 9340 GPIO PIN
-    Ili9340Dc = 17,
+    // ILI 9340 (pitft 2.2) GPIO PIN
+    Ili9340Dc = 25,
     Ili9340Rst = 18,
 }
 
@@ -76,24 +76,5 @@ pub fn write_output_pin(pin_number: Pin, mode: Output)
     let addr = register;
     unsafe {
         *(addr as *mut u32) = 1 << (n % 32);
-    }
-}
-
-
-#[inline(never)]
-pub fn dummy_wait()
-{
-    unsafe {
-        asm!("
-            mov r2,#0xF0000
-        inner_loop:
-            sub r2, #1
-            eor r1, r2, r1
-            cmp r2, #0
-            bne inner_loop"
-            :
-            :
-            : "r1", "r2"
-            );
     }
 }

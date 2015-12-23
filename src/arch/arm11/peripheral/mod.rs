@@ -5,7 +5,7 @@ mod timer;
 
 pub fn init()
 {
-    // spi::init_spi0();
+    spi::init_spi0();
 
     // Blinking LED.
     gpio::set_pin_function(gpio::Pin::OkLed, gpio::Function::Output);
