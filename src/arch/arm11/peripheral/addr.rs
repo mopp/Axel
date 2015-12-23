@@ -1,6 +1,6 @@
 //! This module provides peripheral addresses based on BCM2835.
 
-use core;
+extern crate core;
 
 #[allow(dead_code)]
 #[repr(usize)]
@@ -54,7 +54,7 @@ pub enum Addr {
 
 
 impl Addr {
-    pub fn to_usize(&self) -> usize
+    pub fn to_usize(self) -> usize
     {
         let base: usize;
         if cfg!(any(RPi_a, RPi_aplus, RPi_bplus, RPi_zero)) {
@@ -66,7 +66,7 @@ impl Addr {
         let gpio_base = base + 0x00200000;
         let spi_base  = base + 0x00204000;
         let aux_base  = base + 0x00215000;
-        match *self {
+        match self {
             Addr::Base             => base,
             Addr::GpioBase         => gpio_base,
             Addr::GpioGpfSel0      => gpio_base + 0x00,
@@ -119,7 +119,8 @@ impl Addr {
     }
 
 
-    pub fn load<T>(&self) -> T {
+    pub fn load<T>(self) -> T
+    {
         let ptr = self.to_usize() as *mut T;
         unsafe {
             core::intrinsics::volatile_load(ptr)
@@ -127,7 +128,8 @@ impl Addr {
     }
 
 
-    pub fn store<T>(&self, value: T) {
+    pub fn store<T>(self, value: T)
+    {
         let ptr = self.to_usize() as *mut T;
         unsafe {
             core::intrinsics::volatile_store(ptr, value);
