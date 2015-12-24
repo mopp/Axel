@@ -2,6 +2,7 @@
 
 use super::gpio;
 use super::addr::Addr;
+extern crate core;
 
 
 #[allow(dead_code)]
@@ -22,20 +23,6 @@ macro_rules! bitmask (
 /// Only the SPI0 controller is available on the header pin.
 pub fn init_spi0()
 {
-    // Set GPIO functions for SPI0.
-    gpio::set_pin_function(gpio::Pin::Spi0Ce0N, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::Pin::Spi0Ce1N, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::Pin::Spi0Miso, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::Pin::Spi0Mosi, gpio::Function::Alternate0);
-    gpio::set_pin_function(gpio::Pin::Spi0Sclk, gpio::Function::Alternate0);
-
-    // Set SPI0 CS register to clear.
-    Addr::Spi0RegisterCs.store::<u32>(0);
-
-    // Clear TX and RX FIFO.
-    Addr::Spi0RegisterCs.store::<u32>(0b11 << 4);
-
-    // TODO: move out.
     ili9340::init();
 }
 
@@ -78,7 +65,10 @@ fn spi_transfer(trans_value: u8) -> u8
     }
 
     // Write to FIFO
-    Addr::Spi0RegisterFifo.store::<u32>(trans_value as u32);
+    Addr::Spi0RegisterFifo.store::<u32>(0xFF & trans_value as u32);
+
+    // Read from FIFO
+    let read_value = (Addr::Spi0RegisterFifo.load::<u32>() & 0xFF) as u8;
 
     // Polling DONE
     loop {
@@ -88,9 +78,6 @@ fn spi_transfer(trans_value: u8) -> u8
             break;
         }
     }
-
-    // Read from FIFO
-    let read_value = (Addr::Spi0RegisterFifo.load::<u32>() & 0xFF) as u8;
 
     // Set TA = 0.
     let new_config = bitmask!(Addr::Spi0RegisterCs.load::<u32>(), 1 << 7, 0 << 7);
@@ -111,41 +98,6 @@ mod ili9340 {
         timer::wait(5);
 
         write_command(0x28);
-
-        write_command(0xEF);
-        write_data(0x03);
-        write_data(0x80);
-        write_data(0x02);
-
-        write_command(0xCF);
-        write_data(0x00);
-        write_data(0xC1);
-        write_data(0x30);
-
-        write_command(0xED);
-        write_data(0x64);
-        write_data(0x03);
-        write_data(0x12);
-        write_data(0x81);
-
-        write_command(0xE8);
-        write_data(0x85);
-        write_data(0x00);
-        write_data(0x78);
-
-        write_command(0xCB);
-        write_data(0x39);
-        write_data(0x2C);
-        write_data(0x00);
-        write_data(0x34);
-        write_data(0x02);
-
-        write_command(0xF7);
-        write_data(0x20);
-
-        write_command(0xEA);
-        write_data(0x00);
-        write_data(0x00);
 
         write_command(0xC0);
         write_data(0x23);
@@ -213,55 +165,51 @@ mod ili9340 {
         write_data(0x0F);
 
         write_command(0x11);
-        timer::wait(100);
+        timer::wait(1000);
 
         write_command(0x29);
-        timer::wait(20);
+        timer::wait(1000);
     }
 
     pub fn init()
     {
-        // Set SPI mode in mode0.
-        // mode0 has referred CPOL = 0 and CPHA = 0.
-        let new_config = bitmask!(Addr::Spi0RegisterCs.load::<u32>(), 0b11 << 2, 0);
-        Addr::Spi0RegisterCs.store::<u32>(new_config);
-
-        // Set clock divider.
-        Addr::Spi0RegisterClk.store::<u32>(8);
-
-        // Select SPI slave.
-        super::select_chip(super::Chip::Ce0);
-
-        // Set GPIO pins that are used by ILI9340.
+        // Set GPIO functions for SPI0.
+        gpio::set_pin_function(gpio::Pin::Spi0Ce0N, gpio::Function::Alternate0);
+        gpio::set_pin_function(gpio::Pin::Spi0Mosi, gpio::Function::Alternate0);
+        gpio::set_pin_function(gpio::Pin::Spi0Sclk, gpio::Function::Alternate0);
         gpio::set_pin_function(gpio::Pin::Ili9340Dc, gpio::Function::Output);
-        gpio::set_pin_function(gpio::Pin::Ili9340Rst, gpio::Function::Output);
+        Addr::Spi0RegisterCs.store::<u32>(0x30);
+        Addr::Spi0RegisterClk.store::<u32>(4);
 
         init_lcd();
 
-        for i in 0..50 {
-            for j in 0..50 {
-                draw(i, i, j, j);
+        for i in 0..240 {
+            for j in 0..320 {
+                draw(i, j, 0x0FF0);
             }
         }
     }
 
-    fn draw(x0: u8, x1: u8, y0: u8, y1: u8)
+
+    fn draw(mut x: u16, mut y: u16, c: u16)
     {
         write_command(0x2A);  // set column(x) address
-        write_data(0);
-        write_data(x0);
-        write_data(0);
-        write_data(x1);
+        write_data((x >> 8) as u8);
+        write_data((x & 0xFF) as u8);
+        x += 1;
+        write_data((x >> 8) as u8);
+        write_data((x & 0xFF) as u8);
 
         write_command(0x2B);  // set Page(y) address
-        write_data(0);
-        write_data(y0);
-        write_data(0);
-        write_data(y1);
+        write_data((y >> 8) as u8);
+        write_data((y & 0xFF) as u8);
+        y += 1;
+        write_data((y >> 8) as u8);
+        write_data((y & 0xFF) as u8);
 
         write_command(0x2C);  // Memory Write
-        write_data(0xF8);
-        write_data(0x00);
+        write_data((c >> 8) as u8);
+        write_data((c & 0xFF) as u8);
     }
 
 
