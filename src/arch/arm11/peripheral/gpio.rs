@@ -5,6 +5,7 @@
 //!        , Pi 1 B+ -> Set
 
 use super::addr::Addr;
+extern crate core;
 
 
 #[allow(dead_code)]
@@ -26,6 +27,7 @@ pub enum Output {
 }
 
 
+#[allow(dead_code)]
 pub enum Pin {
     #[cfg(any(RPi_a, RPi_aplus))]
     OkLed = 16,
@@ -44,24 +46,28 @@ pub enum Pin {
 }
 
 
-pub fn set_pin_function(pin_number: Pin, func: Function)
+pub fn set_pin_function(pin: Pin, func: Function)
 {
-    let n                  = pin_number as usize;
-    let gpf_sel_number:usize = n / 10;
-    let gpf_sel_addr  :usize = Addr::GpioBase.to_usize() + (gpf_sel_number * 0x4);
-    let set_value      = (func as u32) << (3 * (n % 10));
+    let pin_number     = pin as usize;
+    let gpf_sel_number = pin_number / 10;
+    let gpf_sel_addr   = Addr::GpioBase.to_usize() + (gpf_sel_number * 0x4);
+    let gpf_sel_ptr    = gpf_sel_addr as *mut u32;
+    let shift          = 3 * (pin_number % 10);
+    let set_value      = (func as u32) << shift;
 
     unsafe {
-        *(gpf_sel_addr as *mut u32) = set_value;
+        let current_value = core::intrinsics::volatile_load(gpf_sel_ptr);
+        let new_value = (current_value & !(7 << shift)) | set_value;
+        core::intrinsics::volatile_store(gpf_sel_ptr, new_value);
     }
 }
 
 
-pub fn write_output_pin(pin_number: Pin, mode: Output)
+pub fn write_output_pin(pin: Pin, mode: Output)
 {
-    let n = pin_number as usize;
-    let register =
-        if n <= 31 {
+    let pin_number = pin as usize;
+    let reg_addr =
+        if pin_number <= 31 {
             match mode {
                 Output::Set   => Addr::GpioGpSet0.to_usize(),
                 Output::Clear => Addr::GpioGpClr0.to_usize(),
@@ -72,9 +78,12 @@ pub fn write_output_pin(pin_number: Pin, mode: Output)
                 Output::Clear => Addr::GpioGpClr1.to_usize(),
             }
         };
+    let reg_ptr = reg_addr as *mut u32;
+    let shift = pin_number % 32;
 
-    let addr = register;
     unsafe {
-        *(addr as *mut u32) = 1 << (n % 32);
+        let current_value = core::intrinsics::volatile_load(reg_ptr);
+        let new_value = (current_value & !(1 << shift)) | (1 << shift);
+        core::intrinsics::volatile_store(reg_ptr, new_value);
     }
 }
