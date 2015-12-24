@@ -129,6 +129,7 @@ impl Addr {
     }
 
 
+    #[allow(dead_code)]
     pub fn from_usize(v: usize) -> Addr
     {
         unsafe { core::mem::transmute(v) }
