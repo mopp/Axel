@@ -43,6 +43,11 @@ pub enum Pin {
     // ILI 9340 (pitft 2.2) GPIO PIN
     Ili9340Dc = 25,
     Ili9340Rst = 18,
+
+    Button1 = 17,
+    Button2 = 22,
+    Button3 = 23,
+    Button4 = 27,
 }
 
 
@@ -85,5 +90,25 @@ pub fn write_output_pin(pin: Pin, mode: Output)
         let current_value = core::intrinsics::volatile_load(reg_ptr);
         let new_value = (current_value & !(1 << shift)) | (1 << shift);
         core::intrinsics::volatile_store(reg_ptr, new_value);
+    }
+}
+
+
+pub fn read_pin_level(pin: Pin) -> bool {
+    let pin_number = pin as usize;
+    let shift = pin_number % 32;
+
+    let value;
+    if pin_number <= 31 {
+        value = Addr::GpioGpLev0.load::<u32>()
+    } else {
+        value = Addr::GpioGpLev1.load::<u32>()
+    };
+
+    let level = (value >> shift) & 0x1;
+    if level == 0 {
+        false
+    } else {
+        true
     }
 }

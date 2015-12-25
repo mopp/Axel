@@ -26,6 +26,8 @@ pub enum Addr {
     GpioGpSet1,
     GpioGpClr0,  // GPIO Pin Output Clear 0 to 1, only write.
     GpioGpClr1,
+    GpioGpLev0,
+    GpioGpLev1,
 
     Spi0Base,
     Spi0RegisterCs,
@@ -95,6 +97,8 @@ impl Addr {
             Addr::GpioGpSet1       => gpio_base + 0x20,
             Addr::GpioGpClr0       => gpio_base + 0x28,
             Addr::GpioGpClr1       => gpio_base + 0x2C,
+            Addr::GpioGpLev0       => gpio_base + 0x34,
+            Addr::GpioGpLev1       => gpio_base + 0x38,
             Addr::Spi0Base         => spi_base,
             Addr::Spi0RegisterCs   => spi_base + 0x00,
             Addr::Spi0RegisterFifo => spi_base + 0x04,
