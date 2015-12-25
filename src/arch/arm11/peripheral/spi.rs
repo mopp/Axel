@@ -90,7 +90,7 @@ fn spi_transfer(trans_value: u8) -> u8
 /// References
 /// https://github.com/dwelch67/raspberrypi
 /// https://github.com/notro/fbtft
-mod ili9340 {
+pub mod ili9340 {
     use super::super::gpio;
     use super::super::addr::Addr;
     use super::super::timer;
@@ -728,7 +728,7 @@ mod ili9340 {
     }
 
 
-    fn fill_screen(color: u16)
+    pub fn fill_screen(color: u16)
     {
         set_draw_area(0, 320, 0, 240);
         for _ in 0..(320 * 240) {
@@ -737,14 +737,14 @@ mod ili9340 {
     }
 
 
-    fn draw_aa()
+    pub fn draw_aa()
     {
         let aart = "    ___                   __\n   /   |   _  __  ___    / /\n  / /| |  | |/_/ / _ \\  / /\n / ___ | _>  <  /  __/ / /\n/_/  |_|/_/|_|  \\___/ /_/";
-        draw_string(0, 0, aart, 0x0000, 0b1111100000000000);
+        draw_string(50, 100, aart, 0x0000, 0b1111100000000000);
     }
 
 
-    fn draw_girl()
+    pub fn draw_girl()
     {
         set_draw_area(0, GIRL_WIDTH, 0, GIRL_HEIGHT);
         for i in 0..(GIRL_HEIGHT as usize * GIRL_WIDTH as usize) {
