@@ -63,6 +63,13 @@ boot_kernel:
 
     ; ebx is pointer to multiboot info struct.
     push ebx
+    ; set ebx as pointer to argument array.
+    push esp
+
+    xor eax, eax
+    inc eax
+    push eax
+
     call main
 
 sleep:
