@@ -48,6 +48,8 @@ section .boot_kernel
 align 4
 global boot_kernel
 extern main
+extern LD_KERNEL_BSS_BEGIN
+extern LD_KERNEL_BSS_END
 boot_kernel:
     ; NOTE that We cannot use eax and ebx.
     ; Because eax and ebx has multiboot magic number and multiboot info struct addr.
@@ -58,6 +60,13 @@ boot_kernel:
     cmp eax, MULTIBOOT_BOOTLOADER_MAGIC
     jne sleep
 
+    ; Clean up BSS section.
+    mov edi, LD_KERNEL_BSS_BEGIN
+    mov ecx, LD_KERNEL_BSS_END
+    sub ecx, edi
+    xor eax, eax
+    rep stosb
+
     ; Set kernel stack.
     mov esp, kernel_init_stack_top
 
@@ -66,7 +75,6 @@ boot_kernel:
     ; set ebx as pointer to argument array.
     push esp
 
-    xor eax, eax
     inc eax
     push eax
 
@@ -84,7 +92,6 @@ sleep:
 section .bss
 align 4
 KERNEL_INIT_STACK_SIZE equ 0x1000
-global kernel_init_stack_top
 kernel_init_stack_bottom:
     resb KERNEL_INIT_STACK_SIZE
 kernel_init_stack_top:
