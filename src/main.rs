@@ -2,12 +2,14 @@
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(core_intrinsics)]
+#![feature(shared)]
 // no_main is unused, maybe json setting file set os type is 'none'.
 // #![no_main]
 #![no_std]
 
 mod arch;
 mod graphic;
+mod alist;
 
 #[no_mangle]
 #[start]

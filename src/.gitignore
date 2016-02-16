@@ -6,6 +6,7 @@
 !arch/arm11
 !arch/arm11/peripheral
 !arch/x86_32
+!arch/x86_32/memory
 !lib/
 !lib/rust
 !lib/rust-multiboot
