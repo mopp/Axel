@@ -1,21 +1,23 @@
 extern crate multiboot;
 extern crate core;
 
+#[macro_use]
+mod macros;
+
+mod buddy_system;
 mod frame;
 
-use graphic;
-use alist::AList;
-use graphic::Display;
-use core::fmt::Write;
+use alist::Node;
+use arch::x86_32::memory::buddy_system::BuddyManager;
+use arch::x86_32::memory::frame::Frame;
 use core::mem;
 use core::slice;
-use arch::x86_32::memory::buddy_system::BuddyManager;
 
 
 extern {
-    static LD_KERNEL_BEGIN: usize;
+    // static LD_KERNEL_BEGIN: usize;
     static LD_KERNEL_END :usize;
-    static LD_KERNEL_SIZE: usize;
+    // static LD_KERNEL_SIZE: usize;
     // static LD_KERNEL_BSS_BEGIN : usize;
     // static LD_KERNEL_BSS_END : usize;
 }
@@ -24,52 +26,12 @@ extern {
 #[allow(dead_code)]
 const VIRTUAL_KERNEL_BASE_ADDR: usize = 0;
 
-macro_rules! address_of_var {
-    ($x: expr) => (address_of_ref!(&$x));
-}
-
-macro_rules! address_of_ref {
-    ($x: expr) => (($x as *const _) as usize);
-}
-
-macro_rules! align_up {
-    ($align: expr, $n: expr) => {
-        {
-            let n = $n;
-            let mask = $align - 1;
-            (n + mask) & (!mask)
-        }
-    };
-}
-
-macro_rules! align_down {
-    ($align: expr, $n: expr) => {
-        {
-            let n = $n;
-            let mask = $align - 1;
-            n & (!mask)
-        }
-    };
-}
-
 
 pub fn init(mboot: &multiboot::Multiboot)
 {
-    const TEXT_MODE_VRAM_ADDR: usize = 0xB8000;
-    const TEXT_MODE_WIDTH: usize     = 80;
-    const TEXT_MODE_HEIGHT: usize    = 25;
-
-    let mut display = graphic::CharacterDisplay::new(TEXT_MODE_VRAM_ADDR, graphic::Position(TEXT_MODE_WIDTH, TEXT_MODE_HEIGHT));
-    display.clear_screen();
-
     // Kernel memory info.
-    let kernel_begin = address_of_var!(LD_KERNEL_BEGIN);
-    let kernel_end   = address_of_var!(LD_KERNEL_END);
-
-    writeln!(display, "Kernel").unwrap();
-    writeln!(display, "Begin : 0x{:08x}", kernel_begin).unwrap();
-    writeln!(display, "End   : 0x{:08x}", kernel_end).unwrap();
-    writeln!(display, "Size  : {:}KB", address_of_var!(LD_KERNEL_SIZE) / 1024).unwrap();
+    // let kernel_begin = addr_of_var!(LD_KERNEL_BEGIN);
+    let kernel_end   = addr_of_var!(LD_KERNEL_END);
 
     // Find physical free memory region for early allocator.
     let largest_region        = mboot.memory_regions().unwrap().max_by_key( |region| region.length() ).unwrap();
@@ -82,9 +44,12 @@ pub fn init(mboot: &multiboot::Multiboot)
 
     // Prepare allocator.
     let mut eallocator          = EarlyAllocator::new(free_region_begin, free_region_end);
+    let bman: &mut BuddyManager = eallocator.alloc_type_mut();
+    bman.num_each_free_frames   = eallocator.alloc_slice_mut(buddy_system::MAX_ORDER);
+    bman.frame_lists            = eallocator.alloc_slice_mut(buddy_system::MAX_ORDER);
 
     // Calculate the required size to allocate enough memory regions.
-    let struct_size   = mem::size_of::<Frame>() + mem::size_of::<AList<Frame>>();
+    let struct_size   = mem::size_of::<Node<Frame>>();
     let capacity      = eallocator.capacity();
     let num_frames    = capacity / frame::SIZE;
     let required_size = num_frames * struct_size;
@@ -93,28 +58,35 @@ pub fn init(mboot: &multiboot::Multiboot)
     let num_frames    = capacity / frame::SIZE;
 
     // Allocate structures for memory management.
-    let frames: &mut [Frame]               = eallocator.alloc_slice_mut(num_frames);
-    let frame_list: &mut [AList<Frame>]    = eallocator.alloc_slice_mut(num_frames);
-    let frame_list_head: &mut AList<Frame> = eallocator.alloc_type_mut();
+    let frames: &mut [Node<Frame>] = eallocator.alloc_slice_mut(num_frames);
 
-    // Initialize frames.
-    frame_list_head.init(&mut frames[0]);
-    for i in 0..(num_frames) {
-        frame_list[i].init(&mut frames[i]);
-        frame_list_head.push_back(&mut frame_list[i]);
-    }
+    // Destruct allocator.
+    let free_region_begin = eallocator.addr_begin;
+    drop(eallocator);
 
     // Align managed begin memory address for block management.
     let free_region_begin = align_up!(frame::SIZE, free_region_begin);
 
-    // Destruct allocator.
-    let EarlyAllocator { addr_begin: free_region_begin, addr_end: free_region_end } = eallocator;
-    drop(eallocator);
+    // Initalize buddy manager.
+    bman.frames           = frames;
+    bman.base_addr        = free_region_begin;
+    bman.num_total_frames = bman.frames.len();
+    bman.init();
 
-    writeln!(display, "Memory manage info").unwrap();
-    writeln!(display, "Begin: 0x{:08x}", free_region_begin).unwrap();
-    writeln!(display, "End  : 0x{:08x}", free_region_end).unwrap();
-    writeln!(display, "Size : {}KB", (free_region_end - free_region_begin) / 1024).unwrap();
+    // work well ?
+    let tmp1 = bman.alloc(10);
+    let tmp2 = bman.alloc(5);
+    bman.free(tmp1.unwrap());
+    bman.free(tmp2.unwrap());
+
+    let tmp = bman.alloc(5).unwrap();
+    let addr = bman.frame_addr(tmp);
+    let array = unsafe {
+        slice::from_raw_parts_mut(addr as *mut u8, tmp.get().size())
+    };
+    for a in array {
+        *a = *a + 100;
+    }
 }
 
 
