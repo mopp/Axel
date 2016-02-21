@@ -3,6 +3,8 @@
 // 4KB, Page size of x86_32.
 pub const SIZE: usize = 4096;
 
+
+#[derive(PartialEq)]
 pub enum FrameState {
     Free,
     Alloc,
@@ -10,6 +12,37 @@ pub enum FrameState {
 
 
 pub struct Frame {
-    pub status: FrameState,
     pub order: usize,
+    pub status: FrameState,
+}
+
+
+impl Frame {
+    pub fn size(&self) -> usize
+    {
+        SIZE * (1 << self.order)
+    }
+
+
+    pub fn is_alloc(&self) -> bool
+    {
+        self.status == FrameState::Alloc
+    }
+
+
+    pub fn is_free(&self) -> bool
+    {
+        !self.is_alloc()
+    }
+}
+
+
+impl Default for Frame {
+    fn default() -> Frame
+    {
+        Frame {
+            order: 0,
+            status: FrameState::Free,
+        }
+    }
 }
