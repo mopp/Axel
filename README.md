@@ -1,6 +1,6 @@
 # Axel
 Axel Accelerates All For Me !  
-This is monolithic kernel written by [Rust](https://www.rust-lang.org/) and some assembly language([nasm](http://www.nasm.us/), ARM assembly).  
+This is monolithic kernel written by [Rust](https://www.rust-lang.org/) and some assembly languages([nasm](http://www.nasm.us/), ARM assembly).  
 Support architectures are x86_32 and arm6 (Raspberry pi zero) now.
 
 Old version is [here.](./legacy/README.md)
@@ -20,7 +20,7 @@ We need these to build Axel.
 Optional
 - grub
 
-In case of Arch Linux, you can install these software easily to type below commands.
+In case of Arch Linux, you can install these software easily to execute below commands.
 ```shell
 # For ARM architecture.
 yaourt -S arm-none-eabi-binutils arm-none-eabi-gcc arm-none-eabi-newlib 
@@ -44,5 +44,4 @@ See [LICENSE](./LICENSE.txt)
 
 
 # :)
-Axel-Girl.
-![personification](./axel_tan.png)
+![LGTM](./axel_tan.png)
