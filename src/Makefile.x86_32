@@ -11,7 +11,7 @@
 # Please see below links for more details.
 # https://github.com/rust-lang/rfcs/blob/master/text/0131-target-specification.md
 # https://github.com/rust-lang/rust/blob/master/src/librustc_back/target/mod.rs
-TARGET_TRIPLE := i386-unknown-none-gnu
+TARGET_TRIPLE := i386-unknown-axel
 RUSTC_CFG     :=
 
 # We use gcc as linker to generate Axel binary because of libgcc.
