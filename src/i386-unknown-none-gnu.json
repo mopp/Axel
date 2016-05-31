@@ -10,6 +10,7 @@
     "pre-link-args" : "-Wl,--build-id=none -Wl,--gc-sections -static -ffreestanding -fno-builtin -nostdlib -nostartfiles -march=i386",
     "post-link-args" : "-lgcc",
     "cpu" : "i386",
+    "data-layout": "e-m:e-p:32:32-i1:8:32-i8:8:32-i16:16:32-i32:32:32-i64:64-v128:64:128-a:0:32-n8:16:32-S32",
     "dynamic-linking" : false,
     "executables" : false,
     "code-model" : "kernel",

@@ -20,10 +20,6 @@ pub extern fn main(argc: usize, argv: *const usize)
 }
 
 
-#[lang = "stack_exhausted"]
-pub extern fn stack_exhausted() {}
-
-
 #[lang = "eh_personality"]
 pub extern fn eh_personality() {}
 
