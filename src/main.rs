@@ -7,9 +7,16 @@
 // #![no_main]
 #![no_std]
 
-mod arch;
-mod graphic;
+
+#[macro_use]
+mod log;
+
 mod alist;
+mod arch;
+mod axel_context;
+mod graphic;
+
+
 
 #[no_mangle]
 #[start]

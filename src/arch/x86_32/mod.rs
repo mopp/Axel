@@ -1,12 +1,12 @@
-use graphic;
-use graphic::Display;
-
 extern crate multiboot;
 use self::multiboot::PAddr;
 
+use axel_context;
 use core::mem;
 use core::slice;
-// use core::fmt::Write;
+use graphic;
+use graphic::Display;
+use log;
 
 mod memory;
 
@@ -24,12 +24,16 @@ pub fn init(argc: usize, argv: *const usize)
         // unsafe {*(addr as *mut u32) = 0x00FF00};
     // }
 
-    const TEXT_MODE_VRAM_ADDR: usize = 0xB8000;
-    const TEXT_MODE_WIDTH: usize     = 80;
-    const TEXT_MODE_HEIGHT: usize    = 25;
-
-    let mut display = graphic::CharacterDisplay::new(TEXT_MODE_VRAM_ADDR, graphic::Position(TEXT_MODE_WIDTH, TEXT_MODE_HEIGHT));
-    display.clear_screen();
+    {
+        const TEXT_MODE_VRAM_ADDR: usize = 0xB8000;
+        const TEXT_MODE_WIDTH: usize     = 80;
+        const TEXT_MODE_HEIGHT: usize    = 25;
+        let mut display = graphic::CharacterDisplay::new(TEXT_MODE_VRAM_ADDR, graphic::Position(TEXT_MODE_WIDTH, TEXT_MODE_HEIGHT));
+        display.clear_screen();
+        unsafe { axel_context::AXEL_CONTEXT.kernel_output_device = Some(display); }
+        println!("Start Axel.");
+        println!("VRAM 0x{:X}", TEXT_MODE_VRAM_ADDR);
+    }
 
     let mboot = unsafe {
         let argv = slice::from_raw_parts(argv, argc);
