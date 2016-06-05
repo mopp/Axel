@@ -1,5 +1,4 @@
 use graphic::CharacterDisplay;
-use core::fmt::Write;
 
 pub struct AxelContext {
     pub kernel_output_device: Option<CharacterDisplay<'static>>,

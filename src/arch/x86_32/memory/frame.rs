@@ -30,6 +30,7 @@ impl Frame {
     }
 
 
+    #[allow(dead_code)]
     pub fn is_free(&self) -> bool
     {
         !self.is_alloc()

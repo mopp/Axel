@@ -20,6 +20,7 @@ pub struct BuddyManager<'a> {
 }
 
 
+#[allow(dead_code)]
 impl<'a> BuddyManager<'a> {
     pub fn init(&mut self)
     {

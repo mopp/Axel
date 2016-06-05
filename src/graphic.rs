@@ -2,7 +2,7 @@
 //!
 //! This includes display (text and visual) object.
 
-extern crate core;
+use core;
 
 
 /// This struct represents any position of 2d-coordinate.
@@ -61,9 +61,9 @@ pub trait Display {
 
 /// Text display struct to represent text display connected to the computer.
 #[allow(dead_code)]
-pub struct CharacterDisplay<'_> {
+pub struct CharacterDisplay<'a> {
     vram_addr: usize,
-    vram: &'_ mut [u16],
+    vram: &'a mut [u16],
     current_position: Position,
     max_position: Position,
     color_background: Color,
@@ -71,8 +71,8 @@ pub struct CharacterDisplay<'_> {
 }
 
 
-impl<'_> Default for CharacterDisplay<'_> {
-    fn default() -> CharacterDisplay<'_>
+impl<'a> Default for CharacterDisplay<'a> {
+    fn default() -> CharacterDisplay<'a>
     {
         CharacterDisplay {
             vram_addr: 0,
@@ -87,8 +87,8 @@ impl<'_> Default for CharacterDisplay<'_> {
 
 
 #[allow(dead_code)]
-impl<'_> CharacterDisplay<'_> {
-    pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'_>
+impl<'a> CharacterDisplay<'a> {
+    pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'a>
     {
         let max_texts_num  = max_p.area_from_origin();
         let vram_ptr       = vram_addr as *mut u16;
@@ -151,7 +151,7 @@ impl<'_> CharacterDisplay<'_> {
 }
 
 
-impl<'_> Display for CharacterDisplay<'_> {
+impl<'a> Display for CharacterDisplay<'a> {
     fn color_background(&self) -> &Color
     {
         &self.color_background
@@ -238,7 +238,7 @@ impl<'_> Display for CharacterDisplay<'_> {
 }
 
 
-impl<'_> core::fmt::Write for CharacterDisplay<'_> {
+impl<'a> core::fmt::Write for CharacterDisplay<'a> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result
     {
         self.print(s);

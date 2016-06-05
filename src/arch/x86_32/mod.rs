@@ -6,7 +6,6 @@ use core::mem;
 use core::slice;
 use graphic;
 use graphic::Display;
-use log;
 
 mod memory;
 
