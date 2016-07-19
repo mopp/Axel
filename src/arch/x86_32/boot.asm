@@ -67,6 +67,19 @@ boot_kernel:
     xor eax, eax
     rep stosb
 
+    ; Set global descripter table register.
+    ; GDTR has 32bit base address of GDT and 16bit table limit.
+    ; So, lgdt loads 6bytes data from memory.
+    lgdt [gdtr_info]
+    jmp 0x08:.change_cs
+.change_cs:
+    mov ax, 0x10
+    mov es, ax
+    mov ds, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
     ; Set kernel stack.
     mov esp, kernel_init_stack_top
 
@@ -83,6 +96,28 @@ boot_kernel:
 sleep:
     hlt
     jmp sleep
+; }}}
+
+
+; Read only data section
+; {{{
+section .rodata
+gdtr_info:
+    dw 8 * 6
+    dd axel_gdt
+axel_gdt:
+    dd 0x00000000 ; NULL_SEGMENT_INDEX        (0)
+    dd 0x00000000
+    dd 0x0000FFFF ; KERNEL_CODE_SEGMENT_INDEX (1)
+    dd 0x00CF9A00
+    dd 0x0000FFFF ; KERNEL_DATA_SEGMENT_INDEX (2)
+    dd 0x00CF9300
+    dd 0x0000FFFF ; USER_CODE_SEGMENT_INDEX   (3)
+    dd 0x00CFFA00
+    dd 0x0000FFFF ; USER_DATA_SEGMENT_INDEX   (4)
+    dd 0x00CFF300
+    dd 0x00000000 ; KERNEL_TSS_SEGMENT_INDEX  (5)
+    dd 0x00000000
 ; }}}
 
 
