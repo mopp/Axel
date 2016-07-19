@@ -1,0 +1,14 @@
+[package]
+name    = "axel"
+version = "0.2.0"
+authors = ["mopp <ac.kxp165@gmail.com>"]
+
+
+[lib]
+crate-type = ["staticlib"]
+path = "src/kernel.rs"
+
+
+[dependencies]
+rlibc = "1.0"
+multiboot = { git = "https://github.com/gz/rust-multiboot.git" }

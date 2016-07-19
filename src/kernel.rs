@@ -20,7 +20,7 @@ mod graphic;
 pub extern fn main(argc: usize, argv: *const usize)
 {
     // Initialize stuffs depending on the architecture.
-    arch::init_arch(argc, argv);
+    // arch::init_arch(argc, argv);
 }
 
 
@@ -54,3 +54,10 @@ pub unsafe extern fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8
 
 #[no_mangle]
 pub unsafe extern fn __mulodi4() {}
+
+
+#[allow(non_snake_case)]
+#[no_mangle]
+pub extern "C" fn _Unwind_Resume() -> ! {
+    loop {}
+}

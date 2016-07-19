@@ -1,0 +1,24 @@
+# All ignore
+*
+
+# allow directors
+!src
+!src/arch
+!src/arch/arm11
+!src/arch/arm11/peripheral
+!src/arch/x86_32
+!src/arch/x86_32/memory
+!lib/
+!lib/rust-core
+
+# allow files
+!.gitignore
+!Makefile*
+!*.asm
+!*.S
+!*.ld
+!*.cfg
+!*.txt
+!*.rs
+!*.json
+!Cargo.toml

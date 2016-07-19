@@ -1,13 +1,13 @@
 # Axel
 Axel Accelerates All For Me !  
 This is monolithic kernel written by [Rust](https://www.rust-lang.org/) and some assembly languages([nasm](http://www.nasm.us/), ARM assembly).  
-Support architectures are x86_32 and arm6 (Raspberry pi zero) now.
+Support architectures are x86_32 and arm6 (Raspberry pi zero) currently.
 
-Old version is [here.](./legacy/README.md)
+The old version is [here.](./legacy/README.md)
 
 
 # Requirements
-We need these to build Axel.
+We need some tools to build Axel.
 - gcc (cross-compiler)
 - binutils (cross)
 - rust (nightly)
@@ -32,7 +32,6 @@ yaourt -S gcc-multilib nasm qemu
 
 # Building
 ```shell
-cd src/
 make
 make run_kernel
 ```

@@ -10,7 +10,7 @@
 
 
 boot.o: boot.asm $(MAKEFILE)
-	$(NASM) -f elf32 -l $*.lst -o $@ $<
+	nasm -f elf32 -l $*.lst -o $@ $<
 
 clean:
 	$(RM) *.o *.lst
