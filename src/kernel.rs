@@ -4,7 +4,11 @@
 #![feature(shared)]
 #![no_std]
 
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 
+#[cfg(not(test))]
 #[macro_use]
 mod log;
 
@@ -14,8 +18,6 @@ mod axel_context;
 mod graphic;
 
 
-
-#[no_mangle]
 #[start]
 pub extern fn main(argc: usize, argv: *const usize)
 {
@@ -24,10 +26,12 @@ pub extern fn main(argc: usize, argv: *const usize)
 }
 
 
+#[cfg(not(test))]
 #[lang = "eh_personality"]
 pub extern fn eh_personality() {}
 
 
+#[cfg(not(test))]
 #[lang = "panic_fmt"]
 pub extern fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> !
 {
@@ -40,20 +44,6 @@ pub extern fn abort()
 {
     loop {}
 }
-
-
-#[no_mangle]
-pub unsafe extern fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8
-{
-    for i in 0..n {
-        *dest.offset(i as isize) = *src.offset(i as isize);
-    }
-    return dest;
-}
-
-
-#[no_mangle]
-pub unsafe extern fn __mulodi4() {}
 
 
 #[allow(non_snake_case)]

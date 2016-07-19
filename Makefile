@@ -97,3 +97,13 @@ $(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
 .PHONY: run_cdrom
 run_cdrom: $(AXEL_ISO)
 	$(QEMU) $(QEMU_FLAGS) -cdrom $<
+
+
+.PHONY: test
+test:
+	$(CARGO) test
+
+
+.PHONY: test_nocapture
+test_nocapture:
+	$(CARGO) test -- --nocapture

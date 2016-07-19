@@ -312,9 +312,9 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 #[cfg(test)]
 mod test {
     use core::mem;
-    use Node;
-    use AList;
-    use Get;
+    use super::Node;
+    use super::AList;
+    use super::Get;
 
     macro_rules! addr_of_var {
         ($x: expr) => (address_of_ref!(&$x));
