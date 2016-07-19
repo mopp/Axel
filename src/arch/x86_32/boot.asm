@@ -33,10 +33,10 @@ align 4
     dd $0
 
     ; Graphic field
-    dd $1
-    dd $80
-    dd $25
-    dd $0
+    dd 0
+    dd 640
+    dd 480
+    dd 32
 ; }}}
 
 

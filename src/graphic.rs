@@ -26,6 +26,7 @@ impl Area for Position {
 #[allow(dead_code)]
 pub enum Color {
     Rgb(i8, i8, i8),
+    Code(u32),
     Black,
     Blue,
     Green,
@@ -247,11 +248,130 @@ impl<'a> core::fmt::Write for CharacterDisplay<'a> {
 }
 
 
-/*
-/// Visual display struct to represent text display connected to the computer.
-struct GraphicalDisplay {
+/* This represents bit size and position infomation from VBE. */
+pub struct ColorBitInfo {
+    /* this shows each bit size. */
+    pub size_r: u8,
+    pub size_g: u8,
+    pub size_b: u8,
+    pub size_rsvd: u8,
+    /* this shows each bit position. */
+    pub pos_r: u8,
+    pub pos_g: u8,
+    pub pos_b: u8,
+    pub pos_rsvd: u8,
 }
-*/
+
+
+/// Visual display struct to represent text display connected to the computer.
+pub struct GraphicalDisplay {
+    vram_addr: usize,
+    max_position: Position,
+    bit_info: ColorBitInfo,
+    byte_per_pixel: usize,
+}
+
+
+impl GraphicalDisplay {
+    pub fn new(vram_addr: usize, max_position: Position, bit_info: ColorBitInfo) -> GraphicalDisplay
+    {
+        let bpp = (bit_info.size_r + bit_info.size_g + bit_info.size_b + bit_info.size_rsvd) / 8;
+        GraphicalDisplay {
+            vram_addr: vram_addr,
+            max_position: max_position,
+            bit_info: bit_info,
+            byte_per_pixel: bpp as usize,
+        }
+    }
+
+
+    pub fn fill_display(&self, c: &Color)
+    {
+        let Position(x, y) = self.max_position;
+        let color_bit = self.color(c);
+
+        for i in 0..(x * y){
+            let addr = self.vram_addr + (i * 4);
+            unsafe {*(addr as *mut u32) = color_bit};
+        }
+    }
+
+
+    pub fn fill_area(&self, begin: Position, end: Position, c: &Color)
+    {
+        let Position(size_x, size_y) = self.max_position;
+        let begin_x = begin.0 * self.byte_per_pixel;
+        let begin_y = begin.1 * self.byte_per_pixel * size_x;
+        let end_x   = end.0 * self.byte_per_pixel;
+        let end_y   = end.1 * self.byte_per_pixel * size_x;
+        let dy      = size_x * self.byte_per_pixel;
+        let ccode   = self.color(c);
+
+        let vy_e   = self.vram_addr + end_y;
+        let mut vy = self.vram_addr + begin_y;
+        loop {
+            if !(vy < vy_e) {
+                break;
+            }
+
+            let ve = vy + end_x;
+
+            let mut v = vy + begin_x;
+            loop {
+                if !(v < ve) {
+                    break
+                }
+
+                unsafe {*(v as *mut u32) = ccode};
+
+                v += self.byte_per_pixel;
+            }
+
+            vy += dy;
+        }
+    }
+
+    pub fn fill_area_by_size(&self, origin: Position, size: Position, c: &Color)
+    {
+        let end = Position(origin.0 + size.0, origin.1 + size.1);
+        self.fill_area(origin, end, c);
+    }
+
+
+    /// Return color code based on Enum.
+    fn color(&self, c: &Color) -> u32 {
+        match *c {
+            // TODO:
+            Color::Black        => 0x0,
+            Color::Blue         => 0x1,
+            Color::Green        => 0x2,
+            Color::Cyan         => 0x3,
+            Color::Red          => 0x4,
+            Color::Magenta      => 0x5,
+            Color::Brown        => 0x6,
+            Color::LightGray    => 0x7,
+            Color::DarkGray     => 0x8,
+            Color::LightBlue    => 0x9,
+            Color::LightGreen   => 0xA,
+            Color::LightCyan    => 0xB,
+            Color::LightRed     => 0xC,
+            Color::LightMagenta => 0xD,
+            Color::Yellow       => 0xE,
+            Color::White        => 0xF,
+            Color::Code(rgb) => {
+                let r = (rgb >> 16) as u8;
+                let g = (rgb >> 8) as u8;
+                let b = (rgb & 0xFF) as u8;
+                let bit_info = &self.bit_info;
+                ((0u32) << bit_info.pos_rsvd) | ((r as u32) << bit_info.pos_r) | ((g as u32) << bit_info.pos_g) | ((b as u32) << bit_info.pos_b)
+            },
+            Color::Rgb(r, g, b) => {
+                let bit_info = &self.bit_info;
+                ((0u32) << bit_info.pos_rsvd) | ((r as u32) << bit_info.pos_r) | ((g as u32) << bit_info.pos_g) | ((b as u32) << bit_info.pos_b)
+            }
+        }
+    }
+}
 
 
 
