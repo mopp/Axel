@@ -19,10 +19,11 @@ mod graphic;
 
 
 #[start]
+#[no_mangle]
 pub extern fn main(argc: usize, argv: *const usize)
 {
     // Initialize stuffs depending on the architecture.
-    // arch::init_arch(argc, argv);
+    arch::init_arch(argc, argv);
 }
 
 
@@ -35,6 +36,7 @@ pub extern fn eh_personality() {}
 #[lang = "panic_fmt"]
 pub extern fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> !
 {
+    println!("panic_fmt");
     loop {}
 }
 
@@ -42,12 +44,13 @@ pub extern fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> 
 #[no_mangle]
 pub extern fn abort()
 {
+    println!("abort");
     loop {}
 }
-
 
 #[allow(non_snake_case)]
 #[no_mangle]
 pub extern "C" fn _Unwind_Resume() -> ! {
+    println!("_Unwind_Resume");
     loop {}
 }

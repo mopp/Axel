@@ -27,7 +27,7 @@ extern {
 const VIRTUAL_KERNEL_BASE_ADDR: usize = 0;
 
 
-pub fn init(mboot: &multiboot::Multiboot)
+pub fn init<'a, F>(mboot: &'a multiboot::Multiboot<'a, F>) where F: Fn(multiboot::PAddr, usize) -> Option<&'a [u8]>
 {
     // Kernel memory info.
     // let kernel_begin = addr_of_var!(LD_KERNEL_BEGIN);
@@ -79,10 +79,10 @@ pub fn init(mboot: &multiboot::Multiboot)
     bman.free(tmp1.unwrap());
     bman.free(tmp2.unwrap());
 
-    let tmp = bman.alloc(5).unwrap();
+    let tmp = bman.alloc(0).unwrap();
     let addr = bman.frame_addr(tmp);
     let array = unsafe {
-        slice::from_raw_parts_mut(addr as *mut u8, tmp.get().size())
+        slice::from_raw_parts_mut(addr as *mut usize, tmp.get().size() / core::mem::size_of::<usize>())
     };
     for a in array {
         *a = *a + 100;

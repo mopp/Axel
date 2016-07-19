@@ -1,5 +1,4 @@
 extern crate multiboot;
-use self::multiboot::PAddr;
 
 use axel_context;
 use core::mem;
@@ -31,7 +30,6 @@ pub fn init(argc: usize, argv: *const usize)
         display.clear_screen();
         unsafe { axel_context::AXEL_CONTEXT.kernel_output_device = Some(display); }
         println!("Start Axel.");
-        println!("VRAM 0x{:X}", TEXT_MODE_VRAM_ADDR);
     }
 
     let mboot = unsafe {
@@ -46,6 +44,7 @@ pub fn init(argc: usize, argv: *const usize)
 
     memory::init(&mboot);
 
+    println!("HLT");
     loop {
         unsafe {
             asm!("hlt");
@@ -55,10 +54,12 @@ pub fn init(argc: usize, argv: *const usize)
 
 
 //  Translate a physical memory address and size into a slice
-pub unsafe fn paddr_to_slice<'a>(ptr_addr: PAddr, sz: usize) -> Option<&'a [u8]>
+pub fn paddr_to_slice<'a>(ptr_addr: multiboot::PAddr, sz: usize) -> Option<&'a [u8]>
 {
-    // TODO
-    // let ptr = mem::transmute(p + KERNEL_BASE);
-    let ptr = mem::transmute(ptr_addr as usize);
-    Some(slice::from_raw_parts(ptr,  sz))
+    unsafe {
+        // TODO
+        // let ptr = mem::transmute(p + KERNEL_BASE);
+        let ptr = mem::transmute(ptr_addr as usize);
+        Some(slice::from_raw_parts(ptr,  sz))
+    }
 }
