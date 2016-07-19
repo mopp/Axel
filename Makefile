@@ -14,12 +14,17 @@ include ./config/Makefile.$(ARCH)
 # Commands.
 export RM   := rm -rf
 CD          := cd
+CP          := cp
 MAKE        := make
 CARGO       := cargo
 CARGO_BUILD := cargo build --target=$(TARGET_TRIPLE)
+MKDIR       := mkdir -p
+MKIMAGE     := grub-mkimage
+MKRESCUE    := grub-mkrescue
 
 # Axel configs.
 AXEL_BIN  := axel.bin
+AXEL_ISO  := axel.iso
 AXEL_LIB  := target/$(TARGET_TRIPLE)/debug/libaxel.a
 AXEL_MAP  := axel.map
 ARCH_DIR  := src/arch/$(ARCH)
@@ -46,7 +51,7 @@ $(ARCH_DIR)/%.o:
 all: $(AXEL_BIN)
 
 
-$(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE)
+$(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE) cargo
 	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINK_FILE) -o $@ $(BOOT_OBJ) -L $(dir $(AXEL_LIB)) $(LIBS) -laxel
 
 
