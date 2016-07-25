@@ -36,6 +36,7 @@ GRUB_CFG  := config/grub.cfg
 CARGO_TOML     := Cargo.toml
 RUST_CORE_REPO := lib/rust-core/
 RUST_CORE_PATH := lib/rust-core/target/$(TARGET_TRIPLE)/release/
+RUST_LIBCORE   := $(RUST_CORE_PATH)libcore.rlib
 
 export RUST_TARGET_PATH := $(PWD)/config/
 export RUSTFLAGS        := -L$(RUST_CORE_PATH) -g -C opt-level=0 -Z no-landing-pads
@@ -51,20 +52,20 @@ $(ARCH_DIR)/%.o:
 all: $(AXEL_BIN)
 
 
-$(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE) cargo
+$(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE)
 	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINK_FILE) -o $@ $(BOOT_OBJ) -L $(dir $(AXEL_LIB)) $(LIBS) -laxel
 
 
-$(AXEL_LIB): $(RUST_CORE_PATH) $(CARGO_TOML) cargo
+$(AXEL_LIB): cargo
 
 
-$(RUST_CORE_PATH):
+$(RUST_LIBCORE):
 	$(CD) $(RUST_CORE_REPO) ;\
 	$(CARGO_BUILD) --release
 
 
 .PHONY: cargo
-cargo:
+cargo: $(CARGO_TOML) $(RUST_LIBCORE)
 	$(CARGO_BUILD)
 
 
