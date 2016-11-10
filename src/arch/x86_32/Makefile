@@ -3,7 +3,6 @@
 # @brief Building the part of Axel for x86_32.
 # @author mopp
 # @version 0.2
-# @date 2015-10-06
 #############################################################
 
 .PHONY: all clean

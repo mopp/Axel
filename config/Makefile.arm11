@@ -3,7 +3,6 @@
 # @brief Config for ARM11 to build Axel.
 # @author mopp
 # @version 0.2
-# @date 2015-12-10
 # 	Note:
 # 	Please pay attention to compiler.
 # 	`arm-linux-gnueabihf` toolchain is for Linux applications and libraries.

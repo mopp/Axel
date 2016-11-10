@@ -3,7 +3,6 @@
 # @brief Config for x86_32 to build Axel.
 # @author mopp
 # @version 0.2
-# @date 2015-12-10
 #############################################################
 
 # Target triple consists of 4 parts (Last part is option).
