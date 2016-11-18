@@ -3,6 +3,7 @@
 *.iso
 *.map
 *.sym
+*.lst
 Cargo.lock
 a.out
 

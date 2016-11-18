@@ -1,0 +1,29 @@
+#############################################################
+# @file Makefile
+# @brief Config for x86_32 to build Axel.
+# @author mopp
+# @version 0.2
+#############################################################
+
+# Target triple consists of 4 parts (Last part is option).
+# architecture-vendor-os-env_type
+# Please see below links for more details.
+# https://github.com/rust-lang/rfcs/blob/master/text/0131-target-specification.md
+# https://github.com/rust-lang/rust/blob/master/src/librustc_back/target/mod.rs
+TARGET_TRIPLE := x86_64-unknown-axel
+RUSTC_CFG     :=
+
+# We use gcc as linker to generate Axel binary because of libgcc.
+# So we build rustc using gcc in development.
+# gcc options
+# 	--build-id=none is very important in order to do multiboot.
+# 	The reason is described in this link http://stackoverflow.com/questions/27744126/grub-multiboot-header-not-found
+# 	Briefly, this option suppresses creating a note section.
+# 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
+# Also, Please pay attention the order of command line arguments.
+LD       := gcc
+LD_FLAGS := -g -O0 -Wl,-nmagic -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static
+LIBS     := -lgcc
+
+QEMU       := qemu-system-x86_64
+QEMU_FLAGS := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int

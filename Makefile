@@ -5,7 +5,7 @@
 # @version 0.2.0
 #############################################################
 
-ARCH := x86_32
+ARCH := x86_64
 
 # Load target specific configs.
 include ./config/Makefile.$(ARCH)
@@ -18,8 +18,10 @@ MAKE        := make
 CARGO       := cargo
 CARGO_BUILD := cargo build --target=$(TARGET_TRIPLE)
 MKDIR       := mkdir -p
-MKIMAGE     := grub-mkimage
 MKRESCUE    := grub-mkrescue
+OBJCOPY     := objcopy --only-keep-debug
+STRIP       := strip
+TOUCH       := touch --no-create
 
 # Axel configs.
 AXEL_BIN  := axel.bin
@@ -38,11 +40,10 @@ RUST_CORE_PATH := lib/rust-core/target/$(TARGET_TRIPLE)/release/
 RUST_LIBCORE   := $(RUST_CORE_PATH)libcore.rlib
 
 export RUST_TARGET_PATH := $(PWD)/config/
-export RUSTFLAGS        := -L$(RUST_CORE_PATH) -g -C opt-level=0 -Z no-landing-pads
+export RUSTFLAGS        := -L$(RUST_CORE_PATH) -g -C opt-level=s -Z no-landing-pads
 
 
-
-# Pattern rule for building architecture depending codes.
+# Pattern rule for building architecture depending stuffs.
 $(ARCH_DIR)/%.o:
 	$(MAKE) -C $(ARCH_DIR)
 
@@ -53,14 +54,12 @@ all: $(AXEL_BIN)
 
 $(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE)
 	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINK_FILE) -o $@ $(BOOT_OBJ) -L $(dir $(AXEL_LIB)) $(LIBS) -laxel
+	$(OBJCOPY) $@ axel.sym
+	$(STRIP) $@
 
 
 $(AXEL_LIB): cargo
-
-
-$(RUST_LIBCORE):
-	$(CD) $(RUST_CORE_REPO) ;\
-	$(CARGO_BUILD) --release
+	$(TOUCH) $(AXEL_LIB)
 
 
 .PHONY: cargo
@@ -68,12 +67,25 @@ cargo: $(CARGO_TOML) $(RUST_LIBCORE)
 	$(CARGO_BUILD)
 
 
+$(RUST_LIBCORE): $(RUST_CORE_REPO)
+	$(CD) $(RUST_CORE_REPO) ;\
+	$(CARGO_BUILD) --release
+
+
+$(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
+	$(MKDIR) ./iso/boot/grub/
+	$(CP) $(AXEL_BIN) ./iso/boot/
+	$(CP) $(GRUB_CFG) ./iso/boot/grub/grub.cfg
+	$(MKRESCUE) -o $@ ./iso/ 2> /dev/null
+	$(RM) ./iso/
+
+
 .PHONY: clean
 clean:
 	$(MAKE) -C $(ARCH_DIR) clean
 	$(CARGO) clean
 	$(RM) Cargo.lock
-	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags $(TEST_DIR) bx_enh_dbg.ini
+	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags bx_enh_dbg.ini
 
 
 .PHONY: distclean
@@ -88,15 +100,6 @@ distclean:
 run_kernel: $(AXEL_BIN)
 	$(MAKE) $(AXEL_BIN)
 	$(QEMU) $(QEMU_FLAGS) --kernel $<
-
-
-$(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
-	$(MKDIR) ./iso/boot/grub/
-	$(CP) $(AXEL_BIN) ./iso/boot/
-	$(CP) $(GRUB_CFG) ./iso/boot/grub/grub.cfg
-	$(MKIMAGE) --format i386-pc -o ./iso/efi.img multiboot biosdisk iso9660
-	$(MKRESCUE) -o $@ ./iso/
-	$(RM) ./iso/
 
 
 .PHONY: run_cdrom
