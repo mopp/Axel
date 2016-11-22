@@ -54,8 +54,14 @@ start_axel:
     ; 0x500 - 0x1000 is free to use.
     mov esp, 0x1000
 
+    ; Store the pointer to the multiboot information struct.
+    push ebx
+
     call check_cpu_requirements
     call enter_long_mode
+
+    ; Load the pointer.
+    pop ebx
 
     ; In the long mode, paging is enable.
     ; The instruction pointer points to the kernel load address here.
@@ -217,9 +223,6 @@ section .64bit_text
 ; @brief Enter 64-bit mode in IA-32e mode.
 enter_64bit_mode:
 ; {{{
-extern main
-    mov esp, kernel_stack_top
-
     ; Invalidate the entry for the kernel load address.
     ; It is never used in the long mode.
     mov dword [0x3000], 0
@@ -233,9 +236,22 @@ extern main
     mov gs, ax
     mov ss, ax
 
+    mov rsp, kernel_stack_top
+
+    ; rbx is pointer to multiboot info struct.
+    extern KERNEL_ADDR_VIRTUAL_BASE
+    lea rax, [KERNEL_ADDR_VIRTUAL_BASE]
+    add rbx, rax
+
+    push rbx
+
+    ; Set the arguments of the main function.
+    mov rdi, 1
+    mov rsi, rsp
+
+    extern main
     call main
 
-    mov ax, 0xaa
     hlt
 ; }}}
 
