@@ -47,10 +47,3 @@ pub extern fn abort()
     println!("abort");
     loop {}
 }
-
-#[allow(non_snake_case)]
-#[no_mangle]
-pub extern "C" fn _Unwind_Resume() -> ! {
-    println!("_Unwind_Resume");
-    loop {}
-}

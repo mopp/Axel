@@ -13,3 +13,11 @@ path = "src/kernel.rs"
 rlibc = "1.0"
 multiboot = { git = "https://github.com/gz/rust-multiboot.git" }
 multiboot2 = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }
+
+
+[profile.dev]
+panic = "abort"
+
+
+[profile.release]
+panic = "abort"
