@@ -8,7 +8,7 @@ use graphic::*;
 
 mod memory;
 
-pub fn init(argc: usize, argv: *const usize)
+pub fn init(argv: &[usize])
 {
     // let x = 640;
     // let y = 480;
@@ -61,7 +61,6 @@ pub fn init(argc: usize, argv: *const usize)
     // }
 
     let mboot = unsafe {
-        let argv = slice::from_raw_parts(argv, argc);
         let multiboot_info_addr = argv[0] as multiboot::PAddr;
         let wraped = multiboot::Multiboot::new(multiboot_info_addr, paddr_to_slice);
         match wraped {

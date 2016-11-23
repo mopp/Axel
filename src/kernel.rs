@@ -16,6 +16,7 @@ mod alist;
 mod arch;
 mod axel_context;
 mod graphic;
+use core::slice;
 
 
 #[cfg(not(test))]
@@ -23,8 +24,10 @@ mod graphic;
 #[no_mangle]
 pub extern fn main(argc: usize, argv: *const usize)
 {
+    let argv: &[usize] = unsafe { slice::from_raw_parts(argv, argc) };
+
     // Initialize stuffs depending on the architecture.
-    arch::init_arch(argc, argv);
+    arch::init_arch(argv);
 }
 
 
