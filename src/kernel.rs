@@ -18,6 +18,7 @@ mod axel_context;
 mod graphic;
 
 
+#[cfg(not(test))]
 #[start]
 #[no_mangle]
 pub extern fn main(argc: usize, argv: *const usize)
