@@ -1,9 +1,10 @@
 # Axel
+
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](LICENSE)
+
 Axel Accelerates All For Me !  
 This is monolithic kernel written by [Rust](https://www.rust-lang.org/) and some assembly languages([nasm](http://www.nasm.us/), ARM assembly).  
 Support architectures are x86_32 and arm6 (Raspberry pi zero) currently.
-
-The old version is [here.](./legacy/README.md)
 
 
 # Requirements
@@ -39,7 +40,7 @@ make run_kernel
 
 # License
 The MIT License (MIT)  
-See [LICENSE](./LICENSE.txt)
+See [LICENSE](./LICENSE)
 
 
 # :)
