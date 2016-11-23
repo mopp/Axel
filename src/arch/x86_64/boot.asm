@@ -35,11 +35,9 @@ multiboot2_end:
 
 
 
-; Before turning on the paging, we cannot use jump instruction.
-; Because the usual addresses of the symbols are linked at the higher kernel space.
-; It is unhandy.
-; This 32bit section is mapped to only the load memory addresses.
-; So, we can use jump instruction within this section.
+; Before turning on the paging, we cannot use jump instruction because the usual addresses of the symbols are linked at the higher kernel space.
+; It means that we cannot use a function.
+; However in order to use jump instruction, this 32bit section is mapped to only the load memory addresses.
 section .32bit_text
 
 ; @brief
@@ -50,18 +48,26 @@ start_axel:
     ; Clear interrupt.
     cli
 
-    ; Set early stack.
+    ; Set temporally stack.
     ; 0x500 - 0x1000 is free to use.
     mov esp, 0x1000
 
     ; Store the pointer to the multiboot information struct.
     push ebx
 
-    call check_cpu_requirements
+    ; Check eax has the correct multiboot2 magic number.
+    test eax, MULTIBOOT2_EAX_MAGIC
+    jz boot_failure
+
+    call is_cpuid_available
+
+    call is_sse_available
     call enable_sse
+
+    call is_long_mode_available
     call enter_long_mode
 
-    ; Load the pointer.
+    ; Load the pointer to the multiboot information struct.
     pop ebx
 
     ; In the long mode, paging is enable.
@@ -87,23 +93,6 @@ boot_failure:
 ; {{{
     hlt
     jmp boot_failure
-; }}}
-
-
-; @brief
-;   Check requirements to execute axel.
-;   If any one of these was NOT satisfied, jump to `boot_failure`.
-check_cpu_requirements:
-; {{{
-    ; Check eax has the correct multiboot2 magic number.
-    test eax, MULTIBOOT2_EAX_MAGIC
-    jz boot_failure
-
-    call is_cpuid_available
-    call is_long_mode_available
-    call is_sse_available
-
-    ret
 ; }}}
 
 
