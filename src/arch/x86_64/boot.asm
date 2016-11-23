@@ -58,6 +58,7 @@ start_axel:
     push ebx
 
     call check_cpu_requirements
+    call enable_sse
     call enter_long_mode
 
     ; Load the pointer.
@@ -100,6 +101,7 @@ check_cpu_requirements:
 
     call is_cpuid_available
     call is_long_mode_available
+    call is_sse_available
 
     ret
 ; }}}
@@ -110,7 +112,6 @@ check_cpu_requirements:
 ;   The ID flag (bit 21) in the EFLAGS register indicates support for the CPUID instruction.
 ;   If this flag can be modified, it refers this CPU has the CPUID.
 ;   For more information, please refer "19.1 USING THE CPUID INSTRUCTION" in the Intel manual.
-; @return If CPUID is available, EAX will have 1. Otherwise, it will have 0.
 is_cpuid_available:
 ; {{{
     ; Store the original values in the EFLAGS.
@@ -139,7 +140,6 @@ is_cpuid_available:
 ; @brief
 ;   Check long mode (IA-32e mode) available or not.
 ;   Long mode is the name in the AMD64 and IA-32e mode is the name in the Intel 64.
-; @return If long mode is available, EAX will have 1. Otherwise, it will have 0.
 is_long_mode_available:
 ; {{{
     ; Try to obtain Extended Function CPUID Information.
@@ -158,6 +158,43 @@ is_long_mode_available:
 
     test edx, (1 << 29)
     jz boot_failure
+
+    ret
+; }}}
+
+
+; @brief
+;   Check SSE extension is supported or not
+is_sse_available:
+; {{{
+    ; Try to obtain Feature Information.
+    mov eax, 0x1
+    cpuid
+
+    ; Check SSE extension.
+    test edx, (1 << 25)
+    jz boot_failure
+
+    ret
+; }}}
+
+
+; @brief
+;   Enable SSE extension.
+;   For more Information, Please refer 9.6 INITIALIZING SSE/SSE2/SSE3/SSSE3 EXTENSIONS.
+enable_sse:
+; {{{
+
+    ; Clear EM bit and set MP bit in CR0
+    mov eax, cr0
+    and ax, 0xFFFB
+    or ax, 0x2
+    mov cr0, eax
+
+    ; Set OSFXSR and OSXMMEXCPT bit in CR4.
+    mov eax, cr4
+    or ax, (3 << 9)
+    mov cr4, eax
 
     ret
 ; }}}
@@ -249,7 +286,7 @@ enter_64bit_mode:
     mov rdi, 1
     mov rsi, rsp
 
-    extern main
+extern main
     call main
 
     hlt
