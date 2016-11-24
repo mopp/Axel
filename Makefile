@@ -115,3 +115,8 @@ test:
 .PHONY: test_nocapture
 test_nocapture:
 	$(CARGO) test -- --nocapture
+
+
+.PHONY: doc
+doc:
+	$(CARGO) rustdoc -- --no-defaults --passes strip-hidden --passes collapse-docs --passes unindent-comments --passes strip-priv-imports
