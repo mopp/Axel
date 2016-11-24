@@ -83,7 +83,6 @@ start_axel:
     ; Let's go to the 64bit world :)
     ; Set the code segment and enter 64-bit long mode.
     jmp gdt64.descriptor_code:enter_64bit_mode
-    hlt
 ; }}}
 
 
@@ -218,9 +217,10 @@ enter_long_mode:
     ;   Level3 Table/Entry - Page Directory Pointer Table/Entry
     ;   Level2 Table/Entry - Page Directory Table/Entry
     ;   Level1 Table/Entry - Page Table/Entry
+    ; Each mapping region is 2MB for the kernel load address and the kernel virtual address.
     ; For more information, Please refer 4.5 IA-32E PAGING in the intel manual.
     mov dword [0x1000], 0x00002003 ; Set the level4 entry.
-    mov dword [0x2000], 0x00003003 ; Set the level3 entry for the kenel load address.
+    mov dword [0x2000], 0x00003003 ; Set the level3 entry for the kernel load address.
     mov dword [0x2008], 0x00004003 ; Set the level3 entry for the kernel virtual address.
     mov dword [0x3000], 0x00000083 ; Set the level2 entry for the kernel load address.
     mov dword [0x4000], 0x00000083 ; Set the level2 entry for the kernel virtual address.
