@@ -3,6 +3,7 @@
 macro_rules! generate {
     ($x:ident) => {
         mod $x;
+        pub use self::$x::obtain_kernel_console;
         pub fn init_arch(argv: &[usize])
         {
             $x::init(argv);

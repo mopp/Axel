@@ -11,8 +11,14 @@ path = "src/kernel.rs"
 
 [dependencies]
 rlibc = "1.0"
+spin = "0.4.5"
 multiboot = { git = "https://github.com/gz/rust-multiboot.git" }
 multiboot2 = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }
+
+
+[dependencies.lazy_static]
+features = ["spin_no_std"]
+version = "0.2.2"
 
 
 [profile.dev]

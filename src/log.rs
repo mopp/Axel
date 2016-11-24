@@ -2,12 +2,12 @@
 macro_rules! print {
     ($($args:tt)*) => {
         {
-            unsafe {
-                use axel_context;
-                if let Some(ref mut kernel_output_device) = axel_context::AXEL_CONTEXT.kernel_output_device {
-                    use core::fmt::Write;
-                    write!(kernel_output_device, $($args)*).unwrap();
-                }
+            use axel_context;
+            let ref context = *axel_context::GLOBAL_CONTEXT;
+            let mut kernel_output_device = context.kernel_output_device.lock();
+            if let Some(ref mut kernel_output_device) = *kernel_output_device {
+                use core::fmt::Write;
+                write!(kernel_output_device, $($args)*).unwrap();
             }
         }
     }

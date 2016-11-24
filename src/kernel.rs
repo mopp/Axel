@@ -8,7 +8,11 @@
 #[macro_use]
 extern crate std;
 
+#[macro_use]
+extern crate lazy_static;
+extern crate multiboot2;
 extern crate rlibc;
+extern crate spin;
 
 #[cfg(not(test))]
 #[macro_use]
