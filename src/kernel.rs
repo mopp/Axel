@@ -8,6 +8,8 @@
 #[macro_use]
 extern crate std;
 
+extern crate rlibc;
+
 #[cfg(not(test))]
 #[macro_use]
 mod log;
@@ -16,6 +18,7 @@ mod alist;
 mod arch;
 mod axel_context;
 mod graphic;
+mod memory;
 use core::slice;
 
 
@@ -24,6 +27,8 @@ use core::slice;
 #[no_mangle]
 pub extern fn main(argc: usize, argv: *const usize)
 {
+    memory::clean_bss_section();
+
     let argv: &[usize] = unsafe { slice::from_raw_parts(argv, argc) };
 
     // Initialize stuffs depending on the architecture.
