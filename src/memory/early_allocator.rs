@@ -1,3 +1,6 @@
+//! The `EarlyAllocator` is the simplest memory allocator.
+//! It cutouts a memory region from the given memory region.
+
 use core::mem;
 use core::slice;
 use super::Alignment;
@@ -12,6 +15,8 @@ struct EarlyAllocator {
 impl EarlyAllocator {
     fn new(addr_begin: usize, addr_end: usize) -> EarlyAllocator
     {
+        debug_assert!(addr_begin < addr_end);
+
         EarlyAllocator {
             addr_begin: addr_begin,
             addr_end: addr_end,
@@ -77,5 +82,33 @@ mod test {
         let eallocator = EarlyAllocator::new(0x0000, 0x1000);
 
         assert_eq!(eallocator.capacity(), 0x1000);
+    }
+
+
+    #[test]
+    fn test_early_allocator_alloc()
+    {
+        let mut eallocator = EarlyAllocator::new(0x0000, 0x1000);
+        let mut capacity = eallocator.capacity();
+
+        eallocator.alloc(0x100, 0x2);
+        capacity -= 0x100;
+        assert_eq!(eallocator.capacity(), capacity);
+
+        eallocator.alloc(0x100, 0x2);
+        capacity -= 0x100;
+        assert_eq!(eallocator.capacity(), capacity);
+
+        let number: &mut u64 = eallocator.alloc_type_mut();
+        capacity -= 8;
+        assert_eq!(eallocator.capacity(), capacity);
+
+        let number: &mut [u64] = eallocator.alloc_slice_mut(9);
+        capacity -= 8 * 9;
+        assert_eq!(eallocator.capacity(), capacity);
+
+        let mut eallocator2 = EarlyAllocator::new(0x1234, 0x2000);
+        eallocator2.alloc(0x100, 0x100);
+        assert_eq!(eallocator2.capacity(), 0x2000 - 0x1300 - 0x100);
     }
 }
