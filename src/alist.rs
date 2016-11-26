@@ -8,28 +8,28 @@ type Link<T> = Option<Shared<Node<T>>>;
 
 pub trait Get {
     type T;
-    unsafe fn get<'a>(&self) -> Option<&'a Self::T>;
-    unsafe fn get_mut<'a>(&self) -> Option<&'a mut Self::T>;
+    fn get<'a>(&self) -> Option<&'a Self::T>;
+    fn get_mut<'a>(&self) -> Option<&'a mut Self::T>;
 }
 
 
 impl<T> Get for Link<T> {
     type T = Node<T>;
 
-    unsafe fn get<'a>(&self) -> Option<&'a Self::T>
+    fn get<'a>(&self) -> Option<&'a Self::T>
     {
         match *self {
             None => None,
-            Some(shared) => Some(&**shared),
+            Some(shared) => Some(unsafe{ &**shared }),
         }
     }
 
 
-    unsafe fn get_mut<'a>(&self) -> Option<&'a mut Self::T>
+    fn get_mut<'a>(&self) -> Option<&'a mut Self::T>
     {
         match *self {
             None => None,
-            Some(shared) => Some(&mut**shared),
+            Some(shared) => Some(unsafe{ &mut**shared }),
         }
     }
 }
@@ -122,7 +122,7 @@ macro_rules! gen_accessor {
     ($func_name: ident, $var: ident, $getter: ident, $ret_type:ty) => {
         fn $func_name(&self) -> Option<$ret_type>
         {
-            match unsafe { self.$var.$getter() } {
+            match self.$var.$getter() {
                 None => None,
                 Some(node) => Some(node.$getter()),
             }
@@ -277,7 +277,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         match self.link {
             None => None,
             Some(_) => {
-                let current_node  = unsafe { self.link.get() }.unwrap();
+                let current_node  = self.link.get().unwrap();
                 self.link         = current_node.next;
                 Some(current_node.get())
             },
@@ -300,7 +300,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         match self.link {
             None => None,
             Some(_) => {
-                let current_node  = unsafe { self.link.get_mut() }.unwrap();
+                let current_node  = self.link.get_mut().unwrap();
                 self.link         = current_node.next;
                 Some(current_node.get())
             },
@@ -390,10 +390,10 @@ mod test {
 
         assert_eq!(list.is_empty(), false);
         assert_eq!(list.len(), 1);
-        assert_eq!(unsafe { list.head.get().unwrap().value }, unsafe { list.tail.get().unwrap().value });
+        assert_eq!(list.head.get().unwrap().value, list.tail.get().unwrap().value);
 
         list.push_front(&mut n2);
-        assert_eq!(unsafe { list.head.get().unwrap().value }, unsafe { list.tail.get().unwrap().prev.get().unwrap().value});
+        assert_eq!(list.head.get().unwrap().value, list.tail.get().unwrap().prev.get().unwrap().value);
     }
 
 
@@ -407,10 +407,10 @@ mod test {
 
         assert_eq!(list.is_empty(), false);
         assert_eq!(list.len(), 1);
-        assert_eq!(unsafe { list.head.get().unwrap().value }, unsafe { list.tail.get().unwrap().value });
+        assert_eq!(list.head.get().unwrap().value, list.tail.get().unwrap().value);
 
         list.push_back(&mut n2);
-        assert_eq!(unsafe { list.head.get().unwrap().value }, unsafe { list.tail.get().unwrap().prev.get().unwrap().value});
+        assert_eq!(list.head.get().unwrap().value, list.tail.get().unwrap().prev.get().unwrap().value);
     }
 
 
