@@ -6,8 +6,6 @@ use core::slice;
 use graphic;
 use graphic::*;
 
-mod memory;
-
 pub fn init(argv: &[usize])
 {
     // let x = 640;
@@ -68,8 +66,6 @@ pub fn init(argv: &[usize])
             Some(mboot) => mboot,
         }
     };
-
-    memory::init(&mboot);
 
     println!("HLT");
     loop {

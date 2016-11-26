@@ -37,6 +37,8 @@ pub extern fn main(argc: usize, argv: *const usize)
     // Initialize stuffs depending on the architecture.
     arch::init_arch(argv);
 
+    memory::init();
+
     println!("Start Axel");
 
     let ref mut memory_region_manager = *context::GLOBAL_CONTEXT.memory_region_manager.lock();

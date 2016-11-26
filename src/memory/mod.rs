@@ -1,39 +1,37 @@
 pub mod region;
+mod early_allocator;
 
 
-#[macro_export]
 macro_rules! addr_of_var {
     ($x: expr) => (addr_of_ref!(&$x));
 }
 
 
-#[macro_export]
 macro_rules! addr_of_ref {
     ($x: expr) => (($x as *const _) as usize);
 }
 
 
-#[macro_export]
-macro_rules! align_up {
-    ($align: expr, $n: expr) => {
-        {
-            let n = $n;
-            let mask = $align - 1;
-            (n + mask) & (!mask)
-        }
-    };
+/// The trait to make n-byte aligned address (where n is a power of 2).
+pub trait Alignment {
+    fn align_up(self, alignment: Self) -> Self;
+    fn align_down(self, alignment: Self) -> Self;
 }
 
 
-#[macro_export]
-macro_rules! align_down {
-    ($align: expr, $n: expr) => {
-        {
-            let n = $n;
-            let mask = $align - 1;
-            n & (!mask)
-        }
-    };
+impl Alignment for usize {
+    fn align_up(self, alignment: Self) -> Self
+    {
+        let mask = alignment - 1;
+        (self + mask) & (!mask)
+    }
+
+
+    fn align_down(self, alignment: Self) -> Self
+    {
+        let mask = alignment - 1;
+        self & (!mask)
+    }
 }
 
 
@@ -53,5 +51,29 @@ pub fn clean_bss_section()
 
         use rlibc;
         rlibc::memset(begin, size, 0x00);
+    }
+}
+
+
+pub fn init()
+{
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::{Alignment};
+
+
+    #[test]
+    fn test_alignment()
+    {
+        assert_eq!(0x1000.align_up(0x1000), 0x1000);
+        assert_eq!(0x1000.align_down(0x1000), 0x1000);
+        assert_eq!(0x1123.align_up(0x1000), 0x2000);
+        assert_eq!(0x1123.align_down(0x1000), 0x1000);
+
+        assert_eq!(0b1001.align_down(2), 0b1000);
+        assert_eq!(0b1001.align_up(2), 0b1010);
     }
 }
