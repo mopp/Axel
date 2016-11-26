@@ -58,9 +58,10 @@ pub extern fn eh_personality()
 
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
-pub extern fn panic_fmt(_: &core::fmt::Arguments, _: &(&'static str, usize)) -> !
+pub extern fn panic_fmt(msg: core::fmt::Arguments, file: &'static str, line: u32) -> !
 {
-    println!("panic_fmt");
+    println!("Panic - {}", msg);
+    println!("Line {} in {}", line, file);
     loop {}
 }
 
