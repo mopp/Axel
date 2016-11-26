@@ -1,5 +1,4 @@
-use core;
-
+#![allow(dead_code)]
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum State {
@@ -188,7 +187,7 @@ mod test {
             assert_eq!(r.is_valid(), false);
         }
 
-        for r in r_man.regions_iter_with(State::Free) {
+        for _ in r_man.regions_iter_with(State::Free) {
             unreachable!();
         }
 
@@ -198,7 +197,7 @@ mod test {
             assert_eq!(r.size, mr.size);
         }
 
-        for r in r_man.regions_iter_with(State::Used) {
+        for _ in r_man.regions_iter_with(State::Used) {
             unreachable!();
         }
     }

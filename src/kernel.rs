@@ -5,10 +5,10 @@
 #![feature(conservative_impl_trait)]
 #![no_std]
 
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;
-
 #[macro_use]
 extern crate lazy_static;
 extern crate multiboot2;
@@ -18,13 +18,11 @@ extern crate spin;
 #[cfg(not(test))]
 #[macro_use]
 mod log;
-
 mod alist;
 mod arch;
 mod context;
 mod graphic;
 mod memory;
-use core::slice;
 
 
 #[cfg(not(test))]
@@ -34,7 +32,7 @@ pub extern fn main(argc: usize, argv: *const usize)
 {
     memory::clean_bss_section();
 
-    let argv: &[usize] = unsafe { slice::from_raw_parts(argv, argc) };
+    let argv: &[usize] = unsafe { core::slice::from_raw_parts(argv, argc) };
 
     // Initialize stuffs depending on the architecture.
     arch::init_arch(argv);
@@ -51,7 +49,9 @@ pub extern fn main(argc: usize, argv: *const usize)
 
 #[cfg(not(test))]
 #[lang = "eh_personality"]
-pub extern fn eh_personality() {}
+pub extern fn eh_personality()
+{
+}
 
 
 #[cfg(not(test))]

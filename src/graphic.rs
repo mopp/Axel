@@ -2,6 +2,7 @@
 //!
 //! This includes display (text and visual) object.
 
+#![allow(dead_code)]
 use core;
 
 
@@ -23,7 +24,6 @@ impl Area for Position {
 }
 
 
-#[allow(dead_code)]
 pub enum Color {
     Rgb(i8, i8, i8),
     Code(u32),
@@ -61,7 +61,6 @@ pub trait Display {
 
 
 /// Text display struct to represent text display connected to the computer.
-#[allow(dead_code)]
 pub struct CharacterDisplay<'a> {
     vram_addr: usize,
     vram: &'a mut [u16],
@@ -87,7 +86,6 @@ impl<'a> Default for CharacterDisplay<'a> {
 }
 
 
-#[allow(dead_code)]
 impl<'a> CharacterDisplay<'a> {
     pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'a>
     {
@@ -299,7 +297,7 @@ impl GraphicalDisplay {
 
     pub fn fill_area(&self, begin: Position, end: Position, c: &Color)
     {
-        let Position(size_x, size_y) = self.max_position;
+        let Position(size_x, _) = self.max_position;
         let begin_x = begin.0 * self.byte_per_pixel;
         let begin_y = begin.1 * self.byte_per_pixel * size_x;
         let end_x   = end.0 * self.byte_per_pixel;
