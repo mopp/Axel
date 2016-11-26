@@ -2,6 +2,7 @@
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(shared)]
+#![feature(conservative_impl_trait)]
 #![no_std]
 
 #[cfg(test)]
@@ -37,6 +38,14 @@ pub extern fn main(argc: usize, argv: *const usize)
 
     // Initialize stuffs depending on the architecture.
     arch::init_arch(argv);
+
+    println!("Start Axel");
+
+    let ref mut memory_region_manager = *context::GLOBAL_CONTEXT.memory_region_manager.lock();
+    for region in memory_region_manager.regions_iter_with(memory::region::State::Free) {
+        println!("Base addr : 0x{:08X}", region.base_addr());
+        println!("Size      : {}KB", region.size() / 1024);
+    }
 }
 
 

@@ -1,3 +1,4 @@
+use context;
 use graphic;
 use graphic::Display;
 use memory;
@@ -6,31 +7,18 @@ use multiboot2;
 
 pub fn init(argv: &[usize])
 {
-    println!("Start Axel.");
-
-    let memory_regions: [memory::Region; 5] = [Default::default(); 5];
-    for (i, m) in memory_regions.iter().enumerate() {
-        println!("String #{} is {}", i, m.size);
-    }
-    println!("size {}", memory_regions.len());
-
+    // Copy memory information into the global context.
+    let ref mut memory_region_manager = *context::GLOBAL_CONTEXT.memory_region_manager.lock();
     let multiboot_info = unsafe { multiboot2:: load(argv[0]) };
     if let Some(memory_map_tag) = multiboot_info.memory_map_tag() {
         for memory_area in memory_map_tag.memory_areas() {
-            println!("Base addr: 0x{:X}", memory_area.base_addr);
-            println!("Length   : {}KB", memory_area.length / 1024);
-        }
-    }
+            let mut memory_region = memory::region::Region::new();
+            memory_region.set_base_addr(memory_area.base_addr as usize);
+            memory_region.set_size(memory_area.length as usize);
+            memory_region.set_state(memory::region::State::Free);
 
-    unsafe {
-        asm!("mov rax, $0
-              mov rbx, $1
-              mov rcx, 0xFFF"
-              :
-              : "r"(argv.len()), "r"(argv[0])
-              : "rax", "rbx", "rcx"
-              : "intel", "volatile"
-            );
+            memory_region_manager.append(memory_region);
+        }
     }
 }
 
