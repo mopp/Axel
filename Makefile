@@ -17,6 +17,7 @@ CP          := cp
 MAKE        := make
 CARGO       := cargo
 CARGO_BUILD := cargo build --target=$(TARGET_TRIPLE)
+CARGO_TEST  := RUSTFLAGS='' cargo test
 MKDIR       := mkdir -p
 MKRESCUE    := grub-mkrescue
 OBJCOPY     := objcopy --only-keep-debug
@@ -40,7 +41,7 @@ RUST_CORE_PATH := lib/rust-core/target/$(TARGET_TRIPLE)/release/
 RUST_LIBCORE   := $(RUST_CORE_PATH)libcore.rlib
 
 export RUST_TARGET_PATH := $(PWD)/config/
-export RUSTFLAGS        := -L$(RUST_CORE_PATH) -g -C opt-level=s -Z no-landing-pads
+export RUSTFLAGS        := -L$(RUST_CORE_PATH) -g -Z no-landing-pads
 
 
 # Pattern rule for building architecture depending stuffs.
@@ -109,12 +110,12 @@ run_cdrom: $(AXEL_ISO)
 
 .PHONY: test
 test:
-	$(CARGO) test
+	$(CARGO_TEST)
 
 
 .PHONY: test_nocapture
 test_nocapture:
-	$(CARGO) test -- --nocapture
+	$(CARGO_TEST) -- --nocapture
 
 
 .PHONY: doc
