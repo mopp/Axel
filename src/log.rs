@@ -3,11 +3,10 @@ macro_rules! print {
     ($($args:tt)*) => {
         {
             use context;
-            let ref context = *context::GLOBAL_CONTEXT;
-            let mut kernel_output_device = context.kernel_output_device.lock();
-            if let Some(ref mut kernel_output_device) = *kernel_output_device {
+            let ref mut default_output = *context::GLOBAL_CONTEXT.default_output.lock();
+            if let Some(ref mut default_output) = *default_output {
                 use core::fmt::Write;
-                write!(kernel_output_device, $($args)*).unwrap();
+                write!(default_output, $($args)*).unwrap();
             }
         }
     }
