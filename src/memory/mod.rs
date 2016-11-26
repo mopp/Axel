@@ -13,6 +13,8 @@ macro_rules! addr_of_ref {
 
 
 /// The trait to make n-byte aligned address (where n is a power of 2).
+/// However, this functions accept alignment 1.
+/// This means the number will not be changed.
 pub trait Alignment {
     fn align_up(self, alignment: Self) -> Self;
     fn align_down(self, alignment: Self) -> Self;
@@ -75,5 +77,8 @@ mod test {
 
         assert_eq!(0b1001.align_down(2), 0b1000);
         assert_eq!(0b1001.align_up(2), 0b1010);
+
+        assert_eq!(0b1001.align_up(1), 0b1001);
+        assert_eq!(0b1001.align_down(1), 0b1001);
     }
 }
