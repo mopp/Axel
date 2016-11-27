@@ -4,6 +4,7 @@
 ; @brief The codes boot the kernel.
 ;        Before entering these codes, The machine state must be 32-bit protected mode.
 ;        Reference:
+;           [Memory Map (x86)](http://wiki.osdev.org/Memory_Map_(x86))
 ;           [Setting Up Long Mode](http://wiki.osdev.org/Setting_Up_Long_Mode)
 ;           [Intel(R) 64 and IA-32 Architectures Software Developer's Manual]()
 ; @author mopp
@@ -262,13 +263,16 @@ enter_64bit_mode:
     mov gs, ax
     mov ss, ax
 
-    mov rsp, kernel_stack_top
-
-    ; rbx is pointer to multiboot info struct.
     extern KERNEL_ADDR_VIRTUAL_BEGIN
     lea rax, [KERNEL_ADDR_VIRTUAL_BEGIN]
-    add rbx, rax
 
+    ; Set the kernel stask.
+    mov rcx, 0x0007FFFF
+    add rcx, rax
+    mov rsp, rcx
+
+    ; rbx is pointer to multiboot info struct.
+    add rbx, rax
     push rbx
 
     ; Set the arguments of the main function.
@@ -279,18 +283,6 @@ extern main
     call main
 
     hlt
-; }}}
-
-
-section .bss
-
-KERNEL_STACK_SIZE_BYTE equ 0x1000
-
-global kernel_stack_top
-kernel_stack_bottom:
-;{{{
-    resb KERNEL_STACK_SIZE_BYTE
-kernel_stack_top:
 ; }}}
 
 
