@@ -34,9 +34,9 @@ impl Region {
     }
 
 
-    pub fn base_addr(&self) -> &usize
+    pub fn base_addr(&self) -> usize
     {
-        &self.base_addr
+        self.base_addr
     }
 
 
@@ -46,9 +46,9 @@ impl Region {
     }
 
 
-    pub fn size(&self) -> &usize
+    pub fn size(&self) -> usize
     {
-        &self.size
+        self.size
     }
 
 
@@ -58,9 +58,9 @@ impl Region {
     }
 
 
-    pub fn state(&self) -> &State
+    pub fn state(&self) -> State
     {
-        &self.state
+        self.state
     }
 
 
@@ -115,7 +115,7 @@ impl RegionManager {
 
 
     pub fn regions_iter_with<'a>(&'a self, state: State) -> impl Iterator<Item = &'a Region> {
-        self.regions().into_iter().filter(move |region| (*region.state() == state) && (region.is_valid() == true))
+        self.regions().into_iter().filter(move |region| (region.state() == state) && (region.is_valid() == true))
     }
 }
 

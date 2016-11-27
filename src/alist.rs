@@ -132,7 +132,7 @@ macro_rules! gen_accessor {
 
 
 impl<T> AList<T> {
-    fn new() -> AList<T>
+    pub fn new() -> AList<T>
     {
         AList {
             head: None,

@@ -1,6 +1,6 @@
-/// Frame module.
+//! `Frame` define a physical memory region.
+//! The size is 4096 and it corresponds page size.
 
-// 4KB, Page size of x86_32.
 pub const SIZE: usize = 4096;
 
 
@@ -11,6 +11,7 @@ pub enum FrameState {
 }
 
 
+#[repr(C, packed)]
 pub struct Frame {
     pub order: usize,
     pub status: FrameState,

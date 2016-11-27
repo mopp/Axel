@@ -265,8 +265,8 @@ enter_64bit_mode:
     mov rsp, kernel_stack_top
 
     ; rbx is pointer to multiboot info struct.
-    extern KERNEL_ADDR_VIRTUAL_BASE
-    lea rax, [KERNEL_ADDR_VIRTUAL_BASE]
+    extern KERNEL_ADDR_VIRTUAL_BEGIN
+    lea rax, [KERNEL_ADDR_VIRTUAL_BEGIN]
     add rbx, rax
 
     push rbx

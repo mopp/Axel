@@ -20,8 +20,8 @@ ENTRY(start_axel)
 
 SECTIONS
 {
-    KERNEL_ADDR_PHYSICAL_BASE = 0x00100000;
-    . = KERNEL_ADDR_PHYSICAL_BASE;
+    KERNEL_ADDR_PHYSICAL_BEGIN = 0x00100000;
+    . = KERNEL_ADDR_PHYSICAL_BEGIN;
 
     /*
      * The kernel LMA (Load Memory Address) and VMA (Virtual Memory Address) is equal here in order to use jump instruction in the protect mode.
@@ -39,42 +39,44 @@ SECTIONS
 
     /*
      * The kernel LMA and VMA is different each other from here.
-     *  LMA = KERNEL_ADDR_PHYSICAL_BASE
-     *  VMA = KERNEL_ADDR_PHYSICAL_BASE + KERNEL_ADDR_VIRTUAL_BASE
+     *  LMA = KERNEL_ADDR_PHYSICAL_BEGIN
+     *  VMA = KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN
      * The kernel will be load at this physical address by a bootloader.
      * After that, the kernel will be mapped to the higher address.
      * You can confirm these information using the command `objdump -w -x`.
      */
-    KERNEL_ADDR_VIRTUAL_BASE  = 0x40000000;
-    . = KERNEL_ADDR_PHYSICAL_BASE + KERNEL_ADDR_VIRTUAL_BASE + SIZEOF(.32bit_text);
+    KERNEL_ADDR_VIRTUAL_BEGIN  = 0x40000000;
+    . = KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN + SIZEOF(.32bit_text);
 
     /*
      * Each section will be aligned on 4096.
      * This alignment means the page size.
      */
-    .text : AT(ADDR(.text) - KERNEL_ADDR_VIRTUAL_BASE)
+    .text : AT(ADDR(.text) - KERNEL_ADDR_VIRTUAL_BEGIN)
     {
         *(.64bit_text)
         *(.text*)
     }
 
-    .data : AT(ADDR(.data) - KERNEL_ADDR_VIRTUAL_BASE)
+    .data : AT(ADDR(.data) - KERNEL_ADDR_VIRTUAL_BEGIN)
     {
         *(.data*)
     }
 
-    .bss : AT(ADDR(.bss) - KERNEL_ADDR_VIRTUAL_BASE)
+    .bss : AT(ADDR(.bss) - KERNEL_ADDR_VIRTUAL_BEGIN)
     {
         KERNEL_ADDR_BSS_BEGIN = .;
         *(.bss*)
         KERNEL_ADDR_BSS_END = .;
     }
 
-    .rodata : AT(ADDR(.rodata) - KERNEL_ADDR_VIRTUAL_BASE)
+    .rodata : AT(ADDR(.rodata) - KERNEL_ADDR_VIRTUAL_BEGIN)
     {
         *(.rodata*)
     }
 
     KERNEL_SIZE_BSS   = KERNEL_ADDR_BSS_END - KERNEL_ADDR_BSS_BEGIN;
-    KERNEL_SIZE_TOTAL = . - (KERNEL_ADDR_PHYSICAL_BASE + KERNEL_ADDR_VIRTUAL_BASE);
+    KERNEL_SIZE_TOTAL = . - (KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN);
+    KERNEL_ADDR_VIRTUAL_END = .;
+    KERNEL_ADDR_PHYSICAL_END = . - KERNEL_ADDR_VIRTUAL_BEGIN;
 }

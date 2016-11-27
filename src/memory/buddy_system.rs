@@ -1,15 +1,18 @@
 use alist::AList;
 use alist::Node;
-use arch::x86_32::memory::frame;
-use arch::x86_32::memory::frame::Frame;
-use arch::x86_32::memory::frame::FrameState;
-use core::mem;
 use core::cmp;
-
+use core::mem;
+use super::early_allocator::EarlyAllocator;
+use super::frame::Frame;
+use super::frame::FrameState;
+use super::frame;
+use super::Alignment;
+use super::AddressConverter;
 
 // Order in buddy system : 0  1  2  3  4  5  6   7   8   9   10   11   12   13    14
 // The number of frame   : 1  2  4  8 16 32 64 128 256 512 1024 2048 4096 8192 16384
 pub const MAX_ORDER: usize = 14 + 1;
+
 
 pub struct BuddyManager<'a> {
     pub frames: &'a mut [Node<Frame>],
@@ -20,13 +23,17 @@ pub struct BuddyManager<'a> {
 }
 
 
-#[allow(dead_code)]
 impl<'a> BuddyManager<'a> {
     pub fn init(&mut self)
     {
-        // Init all frames.
+        // Initialize the all frames.
         for node in self.frames.iter_mut() {
             node.init(Default::default());
+        }
+
+        // Initialize the all list.
+        for list in self.frame_lists.iter_mut() {
+            *list = AList::new();
         }
 
         // Make groups by order.
@@ -84,8 +91,8 @@ impl<'a> BuddyManager<'a> {
 
     fn frame_idx(&self, frame: &Node<Frame>) -> usize
     {
-        let base_addr = addr_of_var!(self.frames[0]);
-        let addr      = addr_of_ref!(frame);
+        let base_addr = address_of!(self.frames[0]);
+        let addr      = address_of!(*frame);
         let size      = mem::size_of::<Node<Frame>>();
         (addr - base_addr) / size
     }
@@ -144,7 +151,7 @@ impl<'a> BuddyManager<'a> {
     }
 
 
-    pub fn disjoint_frame(&mut self, idx: usize)
+    fn disjoint_frame(&mut self, idx: usize)
     {
         let order = self.frames[idx].get().order;
         self.num_each_free_frames[order] -= 1;
@@ -152,7 +159,7 @@ impl<'a> BuddyManager<'a> {
     }
 
 
-    pub fn free(&mut self, node: &mut Node<Frame>)
+    fn free(&mut self, node: &mut Node<Frame>)
     {
         // If buddy frame is free, the two frames should be merged.
         // And this procedure is repeated until buddy frame is not free.
