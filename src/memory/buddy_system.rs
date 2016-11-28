@@ -1,13 +1,11 @@
+#![allow(dead_code)]
+
 use alist::AList;
 use alist::Node;
 use core::cmp;
 use core::mem;
-use super::early_allocator::EarlyAllocator;
-use super::frame::Frame;
-use super::frame::FrameState;
 use super::frame;
-use super::Alignment;
-use super::AddressConverter;
+use super::frame::Frame;
 
 // Order in buddy system : 0  1  2  3  4  5  6   7   8   9   10   11   12   13    14
 // The number of frame   : 1  2  4  8 16 32 64 128 256 512 1024 2048 4096 8192 16384
@@ -47,7 +45,7 @@ impl<'a> BuddyManager<'a> {
                 {
                     // Set frame order.
                     let frame = node.get_mut();
-                    frame.order = order;
+                    frame.set_order(order);
                 }
                 self.frame_lists[order].push_back(node);
 
@@ -124,9 +122,9 @@ impl<'a> BuddyManager<'a> {
 
             {
                 // Change the frame configs.
-                let detach_frame    = node.get_mut();
-                detach_frame.status = FrameState::Alloc;
-                detach_frame.order  = request_order;
+                let detach_frame = node.get_mut();
+                detach_frame.set_state(frame::State::Alloc);
+                detach_frame.set_order(request_order);
             }
 
             // If the frame that has larger order than requested order, remain frames of the frame should be inserted into other frame lists.
@@ -136,9 +134,9 @@ impl<'a> BuddyManager<'a> {
                 // Find buddy frame (a half part of the frame)
                 let idx = self.buddy_frame_idx(node, order);
                 {
-                    let frame    = self.frames[idx].get_mut();
-                    frame.status = FrameState::Free;
-                    frame.order  = order;
+                    let frame = self.frames[idx].get_mut();
+                    frame.set_state(frame::State::Free);
+                    frame.set_order(order);
                 }
                 self.frame_lists[order].push_front(&mut self.frames[idx]);
                 self.num_each_free_frames[order] += 1;
@@ -153,7 +151,7 @@ impl<'a> BuddyManager<'a> {
 
     fn disjoint_frame(&mut self, idx: usize)
     {
-        let order = self.frames[idx].get().order;
+        let order = self.frames[idx].get().order();
         self.num_each_free_frames[order] -= 1;
         self.frames[idx].disjoint(&mut self.frame_lists[order]);
     }
@@ -167,7 +165,7 @@ impl<'a> BuddyManager<'a> {
         loop {
             let (buddy_idx, order) = {
                 let free_frame  = &self.frames[idx];
-                let order = free_frame.get().order;
+                let order = free_frame.get().order();
                 (self.buddy_frame_idx(free_frame, order), order)
             };
 
@@ -178,7 +176,7 @@ impl<'a> BuddyManager<'a> {
             {
                 let buddy_node = &mut self.frames[buddy_idx];
                 let buddy_frame = buddy_node.get();
-                if buddy_frame.is_alloc() || (order != buddy_frame.order) {
+                if buddy_frame.is_alloc() || (order != buddy_frame.order()) {
                     // The frame cannot be merged.
                     break;
                 }
@@ -190,10 +188,10 @@ impl<'a> BuddyManager<'a> {
             // Merge buddy frame and the frame.
             idx = cmp::min(idx, buddy_idx);
             let merged_frame = &mut self.frames[idx];
-            merged_frame.get_mut().order = order + 1;
+            merged_frame.get_mut().set_order(order + 1);
         };
 
-        let order = self.frames[idx].get_mut().order;
+        let order = self.frames[idx].get_mut().order();
         self.frame_lists[order].push_front(&mut self.frames[idx]);
         self.num_each_free_frames[order] += 1;
     }
