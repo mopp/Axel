@@ -2,6 +2,7 @@ use context;
 use graphic;
 use graphic::Display;
 use memory;
+use memory::AddressConverter;
 use multiboot2;
 
 
@@ -25,10 +26,13 @@ pub fn init(argv: &[usize])
 
 pub fn obtain_kernel_console() -> Option<graphic::CharacterDisplay<'static>>
 {
-    const TEXT_MODE_VRAM_ADDR: usize = 0xB8000 + 0x40000000;
-    const TEXT_MODE_WIDTH: usize     = 80;
-    const TEXT_MODE_HEIGHT: usize    = 25;
-    let mut display = graphic::CharacterDisplay::new(TEXT_MODE_VRAM_ADDR, graphic::Position(TEXT_MODE_WIDTH, TEXT_MODE_HEIGHT));
+    lazy_static! {
+        static ref TEXT_MODE_VRAM_ADDR: usize = 0xB8000.to_virtual_addr();
+        static ref TEXT_MODE_WIDTH: usize     = 80;
+        static ref TEXT_MODE_HEIGHT: usize    = 25;
+    }
+
+    let mut display = graphic::CharacterDisplay::new(*TEXT_MODE_VRAM_ADDR, graphic::Position(*TEXT_MODE_WIDTH, *TEXT_MODE_HEIGHT));
     display.clear_screen();
     Some(display)
 }

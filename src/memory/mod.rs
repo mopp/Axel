@@ -55,7 +55,7 @@ impl Alignment for usize {
 }
 
 
-trait AddressConverter {
+pub trait AddressConverter {
     fn to_physical_addr(self) -> usize;
     fn to_virtual_addr(self) -> usize;
 }
