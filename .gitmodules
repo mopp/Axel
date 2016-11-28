@@ -1,3 +1,3 @@
-[submodule "lib/rust-core/rust"]
-	path = lib/rust-core/rust
+[submodule "lib/rust"]
+	path = lib/rust
 	url = https://github.com/rust-lang/rust.git

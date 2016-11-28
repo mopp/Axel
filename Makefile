@@ -37,7 +37,7 @@ GRUB_CFG  := config/grub.cfg
 
 # Rust configs
 CARGO_TOML := Cargo.toml
-RUST_REPO  := ./lib/rust-core/rust
+RUST_REPO  := ./lib/rust
 RLIB_DIR   := ./rlibs
 RLIBS      := $(addprefix $(RLIB_DIR)/, libcore.rlib liballoc.rlib librustc_unicode.rlib libcollections.rlib)
 
