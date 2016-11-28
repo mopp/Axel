@@ -15,6 +15,7 @@ export RM   := rm -rf
 CD          := cd
 CP          := cp
 MAKE        := make
+RUSTC       := rustc --target=$(TARGET_TRIPLE)
 CARGO       := cargo
 CARGO_BUILD := cargo build --target=$(TARGET_TRIPLE)
 CARGO_TEST  := RUSTFLAGS='' cargo test
@@ -35,13 +36,13 @@ BOOT_OBJ  := $(ARCH_DIR)/boot.o
 GRUB_CFG  := config/grub.cfg
 
 # Rust configs
-CARGO_TOML     := Cargo.toml
-RUST_CORE_REPO := lib/rust-core/
-RUST_CORE_PATH := lib/rust-core/target/$(TARGET_TRIPLE)/release/
-RUST_LIBCORE   := $(RUST_CORE_PATH)libcore.rlib
+CARGO_TOML := Cargo.toml
+RUST_REPO  := ./lib/rust-core/rust
+RLIB_DIR   := ./rlibs
+RLIBS      := $(addprefix $(RLIB_DIR)/, libcore.rlib liballoc.rlib librustc_unicode.rlib libcollections.rlib)
 
 export RUST_TARGET_PATH := $(PWD)/config/
-export RUSTFLAGS        := -L$(RUST_CORE_PATH) -g -Z no-landing-pads
+export RUSTFLAGS        := -L$(RLIB_DIR) -g -Z no-landing-pads
 
 
 # Pattern rule for building architecture depending stuffs.
@@ -49,8 +50,20 @@ $(ARCH_DIR)/%.o:
 	$(MAKE) -C $(ARCH_DIR)
 
 
+$(RLIB_DIR)/%.rlib:
+	$(RUSTC) $(RUSTFLAGS) --out-dir $(RLIB_DIR) $(RUST_REPO)/src/$*/lib.rs
+
+
 .PHONY: all
 all: $(AXEL_BIN)
+
+
+$(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
+	$(MKDIR) ./iso/boot/grub/
+	$(CP) $(AXEL_BIN) ./iso/boot/
+	$(CP) $(GRUB_CFG) ./iso/boot/grub/grub.cfg
+	$(MKRESCUE) -o $@ ./iso/ 2> /dev/null
+	$(RM) ./iso/
 
 
 $(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE)
@@ -64,21 +77,12 @@ $(AXEL_LIB): cargo
 
 
 .PHONY: cargo
-cargo: $(CARGO_TOML) $(RUST_LIBCORE)
+cargo: $(RLIB_DIR) $(RLIBS) $(CARGO_TOML)
 	$(CARGO_BUILD)
 
 
-$(RUST_LIBCORE): $(RUST_CORE_REPO)
-	$(CD) $(RUST_CORE_REPO) ;\
-	$(CARGO_BUILD) --release
-
-
-$(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
-	$(MKDIR) ./iso/boot/grub/
-	$(CP) $(AXEL_BIN) ./iso/boot/
-	$(CP) $(GRUB_CFG) ./iso/boot/grub/grub.cfg
-	$(MKRESCUE) -o $@ ./iso/ 2> /dev/null
-	$(RM) ./iso/
+$(RLIB_DIR):
+	$(MKDIR) $@
 
 
 .PHONY: clean
@@ -92,9 +96,7 @@ clean:
 .PHONY: distclean
 distclean:
 	$(MAKE) clean
-	$(CD) $(RUST_CORE_REPO) ;\
-	$(CARGO) clean ;\
-	$(RM) Cargo.lock
+	$(RM) Cargo.lock $(RLIB_DIR)
 
 
 .PHONY: run_kernel

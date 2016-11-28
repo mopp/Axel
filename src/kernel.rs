@@ -1,14 +1,20 @@
+#![feature(alloc)]
 #![feature(asm)]
-#![feature(lang_items)]
-#![feature(start)]
-#![feature(shared)]
+#![feature(collections)]
 #![feature(conservative_impl_trait)]
+#![feature(lang_items)]
+#![feature(shared)]
+#![feature(start)]
 #![no_std]
-
 
 #[cfg(test)]
 #[macro_use]
 extern crate std;
+
+extern crate alloc;
+extern crate kernel_memory_allocator;
+#[macro_use]
+extern crate collections;
 #[macro_use]
 extern crate lazy_static;
 extern crate multiboot2;
@@ -46,6 +52,9 @@ pub extern fn main(argc: usize, argv: *const usize)
         println!("Base addr : 0x{:08X}", region.base_addr());
         println!("Size      : {}KB", region.size() / 1024);
     }
+
+    use alloc::boxed::Box;
+    let heap_test = Box::new(42);
 }
 
 
