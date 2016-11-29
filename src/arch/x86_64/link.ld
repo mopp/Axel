@@ -44,8 +44,12 @@ SECTIONS
      * The kernel will be load at this physical address by a bootloader.
      * After that, the kernel will be mapped to the higher address.
      * You can confirm these information using the command `objdump -w -x`.
+     *
+     * KERNEL_ADDR_VIRTUAL_BEGIN is determined based on 3.3.7.1 Canonical Addressing in the intel manual.
+     * For more information, please refer the intel manual or below link.
+     *  [Canonical form addresses](https://en.wikipedia.org/wiki/X86-64#Virtual_address_space_details)
      */
-    KERNEL_ADDR_VIRTUAL_BEGIN  = 0x40000000;
+    KERNEL_ADDR_VIRTUAL_BEGIN  = 0xFFFF800000000000;
     . = KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN + SIZEOF(.32bit_text);
 
     /*

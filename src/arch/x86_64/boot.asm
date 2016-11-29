@@ -41,6 +41,12 @@ multiboot2_end:
 ; However in order to use jump instruction, this 32bit section is mapped to only the load memory addresses.
 section .32bit_text
 
+; Please read the linker script.
+; When I tied to read this values using the linker script.
+; It caused the error `relocation truncated to fit: R_X86_64_32 against ~~~`.
+; Therefore, I had to write the value directly here :(
+KERNEL_ADDR_VIRTUAL_BEGIN equ 0xFFFF800000000000
+
 ; @brief
 ;   Axel starting function.
 global start_axel
@@ -71,20 +77,26 @@ start_axel:
     ; Load the pointer to the multiboot information struct.
     pop ebx
 
-    ; In the long mode, paging is enable.
-    ; The instruction pointer points to the kernel load address here.
-    ; So, It have to be changed to the kernel virtual address.
-    lea ecx, [.change_ip_register]
-    jmp ecx
+    ; Load 64-bit Global Descriptor Table Register (GDTR)
+    lgdt [gdtr64 - KERNEL_ADDR_VIRTUAL_BEGIN]
 
-.change_ip_register:
-    ; Set 64-bit Global Descriptor Table Register (GDTR)
-    lgdt [gdtr64]
+    ; Change the code segment register.
+    jmp gdt64.descriptor_code:.change_segment_register
 
-    ; Let's go to the 64bit world :)
-    ; Set the code segment and enter 64-bit long mode.
-    jmp gdt64.descriptor_code:enter_64bit_mode
+.change_segment_register:
+    ; Set the segment registers.
+    mov ax, gdt64.descriptor_data
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    jmp predule_to_64bit_mode
 ; }}}
+
+
+bits 32
 
 
 ; @brief
@@ -210,7 +222,7 @@ enter_long_mode:
 
     ; Clean up the memories for the paging.
     xor eax, eax
-    mov ecx, (0x5000 - 0x1000) / 4
+    mov ecx, (0x3000 - 0x1000) / 4
     rep stosd
 
     ; Configure the level4, level3 and level2 entries.
@@ -218,13 +230,16 @@ enter_long_mode:
     ;   Level3 Table/Entry - Page Directory Pointer Table/Entry
     ;   Level2 Table/Entry - Page Directory Table/Entry
     ;   Level1 Table/Entry - Page Table/Entry
-    ; Each mapping region is 2MB for the kernel load address and the kernel virtual address.
+    ; Each mapping region is 1GB for the kernel load address and the kernel virtual address.
     ; For more information, Please refer 4.5 IA-32E PAGING in the intel manual.
+
+    ; Entries for the kernel load address.
     mov dword [0x1000], 0x00002003 ; Set the level4 entry.
-    mov dword [0x2000], 0x00003003 ; Set the level3 entry for the kernel load address.
-    mov dword [0x2008], 0x00004003 ; Set the level3 entry for the kernel virtual address.
-    mov dword [0x3000], 0x00000083 ; Set the level2 entry for the kernel load address.
-    mov dword [0x4000], 0x00000083 ; Set the level2 entry for the kernel virtual address.
+    mov dword [0x2000], 0x00000083 ; Set the level3 entry
+
+    ; Entries for the kernel virtual address.
+    mov dword [0x1800], 0x00003003 ; Set the level4 entry.
+    mov dword [0x3000], 0x00000083 ; Set the level3 entry.
 
     ; Set the long mode bit in the EFER MSR.
     mov ecx, 0xC0000080
@@ -244,6 +259,15 @@ enter_long_mode:
 
 bits 64
 
+predule_to_64bit_mode:
+; {{{
+    ; Jump to the kernel virtual space.
+    mov rax, enter_64bit_mode
+
+    ; Let's go to the 64bit world at the canonical higher harf space :)
+    jmp rax
+; }}}
+
 
 section .64bit_text
 
@@ -252,19 +276,10 @@ enter_64bit_mode:
 ; {{{
     ; Invalidate the entry for the kernel load address.
     ; It is never used in the long mode.
-    mov dword [0x3000], 0
+    mov dword [0x1000], 0
     invlpg [0]
 
-    ; Set the segment registers.
-    mov ax, gdt64.descriptor_data
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-
-    extern KERNEL_ADDR_VIRTUAL_BEGIN
-    lea rax, [KERNEL_ADDR_VIRTUAL_BEGIN]
+    mov rax, KERNEL_ADDR_VIRTUAL_BEGIN
 
     ; Set the kernel stask.
     mov rcx, 0x0007FFFF
@@ -279,7 +294,7 @@ enter_64bit_mode:
     mov rdi, 1
     mov rsi, rsp
 
-extern main
+    extern main
     call main
 
     hlt

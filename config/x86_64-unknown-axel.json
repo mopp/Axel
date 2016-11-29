@@ -12,7 +12,7 @@
     "post-link-args" : "",
     "dynamic-linking" : false,
     "executables" : false,
-    "code-model" : "kernel",
+    "code-model" : "large",
     "no-compiler-rt" : true,
     "no-default-libraries" : true
 }
