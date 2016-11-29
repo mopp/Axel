@@ -51,7 +51,7 @@ $(ARCH_DIR)/%.o:
 
 
 $(RLIB_DIR)/%.rlib:
-	$(RUSTC) $(RUSTFLAGS) --out-dir $(RLIB_DIR) $(RUST_REPO)/src/$*/lib.rs
+	$(RUSTC) $(RUSTFLAGS) -C opt-level=z --out-dir $(RLIB_DIR) $(RUST_REPO)/src/$*/lib.rs
 
 
 .PHONY: all

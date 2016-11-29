@@ -22,8 +22,8 @@ RUSTC_CFG     :=
 # 	If this section exists, grub2 cannot find multiboot header because multiboot header is located after 8KB.
 # Also, Please pay attention the order of command line arguments.
 LD       := gcc
-LD_FLAGS := -g -O0 -Wl,-nmagic -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static
-LIBS     := -lgcc
+LD_FLAGS := -g -Og -flto -Wl,-nmagic -Wl,--build-id=none -Wl,--gc-sections -ffreestanding -fno-builtin -nostdlib -static
+LIBS     :=
 
 QEMU       := qemu-system-x86_64
 QEMU_FLAGS := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
