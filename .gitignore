@@ -6,6 +6,7 @@
 *.lst
 Cargo.lock
 a.out
+.gdb_history
 
 target
 rlibs

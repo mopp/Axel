@@ -24,6 +24,7 @@ MKRESCUE    := grub-mkrescue
 OBJCOPY     := objcopy --only-keep-debug
 STRIP       := strip
 TOUCH       := touch --no-create
+GDB         := rust-gdb --nh --nx -q -x ./config/axel.gdb
 
 # Axel configs.
 AXEL_BIN  := axel.bin
@@ -108,6 +109,16 @@ run_kernel: $(AXEL_BIN)
 .PHONY: run_cdrom
 run_cdrom: $(AXEL_ISO)
 	$(QEMU) $(QEMU_FLAGS) -cdrom $<
+
+
+.PHONY: run_cdrom_debug
+run_cdrom_debug: $(AXEL_ISO)
+	$(QEMU) $(QEMU_FLAGS) -s -S -cdrom $<
+
+
+.PHONY: gdb
+gdb:
+	$(GDB)
 
 
 .PHONY: test
