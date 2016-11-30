@@ -45,11 +45,7 @@ export RUST_TARGET_PATH := $(PWD)/config/
 export RUSTFLAGS        := -L$(RLIB_DIR) -g -Z no-landing-pads
 
 
-# Pattern rule for building architecture depending stuffs.
-$(ARCH_DIR)/%.o:
-	$(MAKE) -C $(ARCH_DIR)
-
-
+# Pattern rule to build rust libraries.
 $(RLIB_DIR)/%.rlib:
 	$(RUSTC) $(RUSTFLAGS) -C opt-level=z --out-dir $(RLIB_DIR) $(RUST_REPO)/src/$*/lib.rs
 
@@ -74,6 +70,10 @@ $(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE)
 
 $(AXEL_LIB): cargo
 	$(TOUCH) $(AXEL_LIB)
+
+
+$(BOOT_OBJ): $(BOOT_DEPS)
+	$(MAKE) -C $(ARCH_DIR)
 
 
 .PHONY: cargo

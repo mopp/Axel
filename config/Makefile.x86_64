@@ -27,3 +27,5 @@ LIBS     :=
 
 QEMU       := qemu-system-x86_64
 QEMU_FLAGS := -monitor stdio -vga std -m 32 -boot order=dc -no-reboot -d int
+
+BOOT_DEPS := src/arch/x86_64/boot.asm
