@@ -1,26 +1,29 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; vim:ft=nasm:foldmethod=marker
-; @file
-; @brief The codes boot the kernel.
-;        Before entering these codes, The machine state must be 32-bit protected mode.
-;        Reference:
-;           [Memory Map (x86)](http://wiki.osdev.org/Memory_Map_(x86))
-;           [Setting Up Long Mode](http://wiki.osdev.org/Setting_Up_Long_Mode)
-;           [Intel(R) 64 and IA-32 Architectures Software Developer's Manual]()
-; @author mopp
-; @version 0.2
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; @brief
+;   Program to boot the kernel.
+;   This program have to be called from a bootloader complying multiboot2 spec.
+;   Reference:
+;      [Memory Map (x86)](http://wiki.osdev.org/Memory_Map_(x86))
+;      [Setting Up Long Mode](http://wiki.osdev.org/Setting_Up_Long_Mode)
+;      [Intel(R) 64 and IA-32 Architectures Software Developer's Manual]()
+;      [Canonical form addresses](https://en.wikipedia.org/wiki/X86-64#Virtual_address_space_details)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 bits 32
 
-
+; This section is for the Multiboot header.
+; It must be located in the first 32768 bytes of the OS binary.
 section .multiboot2
+; {{{
 
-MULTIBOOT2_MAGIC equ 0xE85250D6
+; The multiboot magic numbers.
+MULTIBOOT2_MAGIC     equ 0xE85250D6
 MULTIBOOT2_EAX_MAGIC equ 0x36D76289
 
 ; @brief
 ;   Multiboot header region.
+align 8
 multiboot2_begin: ; {{{
     dd MULTIBOOT2_MAGIC                  ; Magic number
     dd 0                                 ; Architecture (i386 32-bit protected mode)
@@ -33,17 +36,20 @@ multiboot2_begin: ; {{{
     dd 8    ; size
 multiboot2_end:
 ; }}}
+; }}}
 
 
 
-; Before turning on the paging, we cannot use jump instruction because the usual addresses of the symbols are linked at the higher kernel space.
-; It means that we cannot use a function.
-; However in order to use jump instruction, this 32bit section is mapped to only the load memory addresses.
-section .32bit_text
+; This section is for configure the CPU.
+; Before turning on the paging, we cannot use some instruction such as jmp and call.
+; Because we are in 32-bit protected mode still here.
+; However, the symbols are linked at the higher kernel space (over 32-bit).
+; Then, in order to use the instruction, this section is mapped to the load memory addresses only using linker script.
+section .text_boot_32bit
+; {{{
 
-; Please read the linker script.
-; When I tied to read this values using the linker script.
-; It caused the error `relocation truncated to fit: R_X86_64_32 against ~~~`.
+; This constant refers the virtual kernel address.
+; When I tied to read this values using the linker script, an error `relocation truncated to fit: R_X86_64_32 against ~~~` was ommited.
 ; Therefore, I had to write the value directly here :(
 KERNEL_ADDR_VIRTUAL_BEGIN equ 0xFFFF800000000000
 
@@ -72,31 +78,15 @@ start_axel:
     call enable_sse
 
     call is_long_mode_available
-    call enter_long_mode
+    call enter_compatibility_mode
 
     ; Load the pointer to the multiboot information struct.
     pop ebx
 
-    ; Load 64-bit Global Descriptor Table Register (GDTR)
-    lgdt [gdtr64 - KERNEL_ADDR_VIRTUAL_BEGIN]
+    call enter_64bit_mode
 
-    ; Change the code segment register.
-    jmp gdt64.descriptor_code:.change_segment_register
-
-.change_segment_register:
-    ; Set the segment registers.
-    mov ax, gdt64.descriptor_data
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
-
-    jmp predule_to_64bit_mode
+    jmp prelude_to_canonical_higher_harf
 ; }}}
-
-
-bits 32
 
 
 ; @brief
@@ -201,14 +191,15 @@ enable_sse:
 ; }}}
 
 
-; @brief Enter long mode (Compatibility mode in IA-32e mode).
-;   1. Disable paging. (This is already done by the bootloader which complies with the multiboot2 specification.)
-;   2. Enable physical-address extensions (PAE) by setting PAE bit in CR4.
-;   3. Load CR3 with the physical base address of the Level 4 page map table (PML4).
-;   4. Enable long mode (IA-32e mode) by setting IA32_EFER.LME = 1.
-;   5. Enable paging.
-; For more information, please refer 9.8.5 Initializing IA-32e Mode in the intel manual.
-enter_long_mode:
+; @brief
+;   Enter compatibility mode (submode of IA-32e mode).
+;       1. Disable paging. (This is already done by the bootloader which complies with the multiboot2 specification.)
+;       2. Enable physical-address extensions (PAE) by setting PAE bit in CR4.
+;       3. Load CR3 with the physical base address of the Level 4 page map table (PML4).
+;       4. Enable long mode (IA-32e mode) by setting IA32_EFER.LME = 1.
+;       5. Enable paging.
+;   For more information, please refer 9.8.5 Initializing IA-32e Mode in the intel manual.
+enter_compatibility_mode:
 ; {{{
     ; Enable PAE.
     mov eax, cr4
@@ -217,12 +208,13 @@ enter_long_mode:
 
     ; Set the page struct address to CR3.
     ; 64-bit mode paging tables must be located in the first 4 GBytes of physical-address space prior to activating IA-32e mode.
+    ; The memory region 0x00500 ~ 0x7FFFF can be used.
     mov edi, 0x1000
     mov cr3, edi
 
     ; Clean up the memories for the paging.
     xor eax, eax
-    mov ecx, (0x3000 - 0x1000) / 4
+    mov ecx, (0x4000 - 0x1000) / 4
     rep stosd
 
     ; Configure the level4, level3 and level2 entries.
@@ -256,23 +248,68 @@ enter_long_mode:
 ; }}}
 
 
-
-bits 64
-
-predule_to_64bit_mode:
+; @brief Enter 64-bit mode (submode of IA-32e mode).
+;   Set GDT for 64-bit.
+;   Code segment-descriptor should be set correctly.
+;   For more information, please refer 9.8.5.3 64-bit Mode and Compatibility Mode Operation in the intel manual.
+enter_64bit_mode:
 ; {{{
-    ; Jump to the kernel virtual space.
-    mov rax, enter_64bit_mode
+    ; Load 64-bit Global Descriptor Table Register (GDTR)
+    lgdt [gdtr64 - KERNEL_ADDR_VIRTUAL_BEGIN]
 
-    ; Let's go to the 64bit world at the canonical higher harf space :)
-    jmp rax
+    ; Change the code segment register.
+    jmp gdt64.descriptor_code:.change_segment_register
+
+.change_segment_register:
+    ; Set the segment registers.
+    mov ax, gdt64.descriptor_data
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    ; 64-bit mode is already available here,
+    ; So, the ret instruction try to load 8bytes (not 4bytes) from the stack to return.
+    ; However, this function was called from 32-bit world.
+    ; We have to load correctly 4bytes.
+    mov eax, dword [esp]
+    add esp, 4
+    jmp eax
+; }}}
 ; }}}
 
 
-section .64bit_text
 
-; @brief Enter 64-bit mode in IA-32e mode.
-enter_64bit_mode:
+bits 64
+
+; This section is for 64-bit instruction, and it is located at the kernel load address.
+; The purpose of this section is to jump canonical higher harf space because the address is 64-bit.
+section .text_boot_64bit
+; {{{
+
+; @brief
+;   Jump via register.
+;   Because direct jump cause an error 'relocation truncated to fit: R_X86_64_PC32 against `.text_canonical_higher_harf''
+prelude_to_canonical_higher_harf:
+; {{{
+    mov rax, canonical_higher_harf
+
+    ; Let's go to the canonical higher harf space :)
+    jmp rax
+; }}}
+; }}}
+
+
+
+; This section is mapped to the kernel virtual address (KERNEL_ADDR_VIRTUAL_BEGIN).
+section .text_canonical_higher_harf
+; {{{
+
+; @brief
+;   Configure some information should be passed to the main function.
+;   Then, call the main function.
+canonical_higher_harf:
 ; {{{
     ; Invalidate the entry for the kernel load address.
     ; It is never used in the long mode.
@@ -299,9 +336,12 @@ enter_64bit_mode:
 
     hlt
 ; }}}
+; }}}
+
 
 
 section .rodata
+; {{{
 
 ; Global descriptor table in 64-bit mode.
 ; Note that the CPU does not perform segment limit checks at runtime in 64-bit mode.
@@ -317,10 +357,13 @@ gdt64:
     .descriptor_data: equ $ - gdt64
     dd 0x00000000
     dd 0x00009200
+; }}}
 
 ; Global descriptor table register in 64-bit mode.
 ; For more information, please refer 3.5.1 Segment Descriptor Tables in the intel manual.
 gdtr64:
+; {{{
     dw $ - gdt64 - 1
     dq gdt64
+; }}}
 ; }}}

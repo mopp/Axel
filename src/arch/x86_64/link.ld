@@ -1,8 +1,6 @@
 /**
- * @brief Linker script to link kernel.
- * @author mopp
- * @version 0.2
- *
+ * @brief
+ *  Linker script to link kernel.
  *  Please refer LD documents for more information.
  *  https://sourceware.org/binutils/docs/ld/index.html
  */
@@ -26,7 +24,7 @@ SECTIONS
     /*
      * The kernel LMA (Load Memory Address) and VMA (Virtual Memory Address) is equal here in order to use jump instruction in the protect mode.
      */
-    .32bit_text :
+    .boot :
     {
         /*
          * If linker option `--gc-sections` was passed, linker eliminates unused sections (e.g., multiboot2).
@@ -34,7 +32,8 @@ SECTIONS
          * So, KEEP is used to keep these sections here.
          */
         KEEP(*(.multiboot2))
-        *(.32bit_text)
+        *(.text_boot_32bit)
+        *(.text_boot_64bit)
     }
 
     /*
@@ -50,7 +49,7 @@ SECTIONS
      *  [Canonical form addresses](https://en.wikipedia.org/wiki/X86-64#Virtual_address_space_details)
      */
     KERNEL_ADDR_VIRTUAL_BEGIN  = 0xFFFF800000000000;
-    . = KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN + SIZEOF(.32bit_text);
+    . += KERNEL_ADDR_VIRTUAL_BEGIN;
 
     /*
      * Each section will be aligned on 4096.
@@ -58,7 +57,7 @@ SECTIONS
      */
     .text : AT(ADDR(.text) - KERNEL_ADDR_VIRTUAL_BEGIN)
     {
-        *(.64bit_text)
+        *(.text_canonical_higher_harf)
         *(.text*)
     }
 
@@ -79,8 +78,8 @@ SECTIONS
         *(.rodata*)
     }
 
-    KERNEL_SIZE_BSS   = KERNEL_ADDR_BSS_END - KERNEL_ADDR_BSS_BEGIN;
-    KERNEL_SIZE_TOTAL = . - (KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN);
-    KERNEL_ADDR_VIRTUAL_END = .;
+    KERNEL_SIZE_BSS          = KERNEL_ADDR_BSS_END - KERNEL_ADDR_BSS_BEGIN;
+    KERNEL_SIZE_TOTAL        = . - (KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN);
+    KERNEL_ADDR_VIRTUAL_END  = .;
     KERNEL_ADDR_PHYSICAL_END = . - KERNEL_ADDR_VIRTUAL_BEGIN;
 }
