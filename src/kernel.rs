@@ -11,12 +11,16 @@
 #[macro_use]
 extern crate std;
 
-extern crate alloc;
+#[cfg(not(test))]
 extern crate kernel_memory_allocator;
+
 #[macro_use]
 extern crate collections;
+
 #[macro_use]
 extern crate lazy_static;
+
+extern crate alloc;
 extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
@@ -24,6 +28,7 @@ extern crate spin;
 #[cfg(not(test))]
 #[macro_use]
 mod log;
+
 mod alist;
 mod arch;
 mod context;
