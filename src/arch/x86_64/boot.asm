@@ -255,7 +255,8 @@ enter_compatibility_mode:
 enter_64bit_mode:
 ; {{{
     ; Load 64-bit Global Descriptor Table Register (GDTR)
-    lgdt [gdtr64 - KERNEL_ADDR_VIRTUAL_BEGIN]
+    mov eax, gdtr64 - KERNEL_ADDR_VIRTUAL_BEGIN
+    lgdt [eax]
 
     ; Change the code segment register.
     jmp gdt64.descriptor_code:.change_segment_register
