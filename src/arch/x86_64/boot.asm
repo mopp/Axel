@@ -61,7 +61,7 @@ start_axel:
     ; Clear interrupt.
     cli
 
-    ; Set temporally stack.
+    ; Set temporal stack.
     ; 0x500 - 0x1000 is free to use.
     mov esp, 0x1000
 
@@ -217,7 +217,7 @@ enter_compatibility_mode:
     mov ecx, (0x4000 - 0x1000) / 4
     rep stosd
 
-    ; Configure the level4, level3 and level2 entries.
+    ; Configure temporal page settings.
     ;   Level4 Table/Entry - Page Map Level 4 Table/Entry
     ;   Level3 Table/Entry - Page Directory Pointer Table/Entry
     ;   Level2 Table/Entry - Page Directory Table/Entry
@@ -226,12 +226,15 @@ enter_compatibility_mode:
     ; For more information, Please refer 4.5 IA-32E PAGING in the intel manual.
 
     ; Entries for the kernel load address.
-    mov dword [0x1000], 0x00002003 ; Set the level4 entry.
-    mov dword [0x2000], 0x00000083 ; Set the level3 entry
+    mov dword [0x1000 + 8 *   0], 0x00002003 ; Set the level4 entry.
+    mov dword [0x2000 + 8 *   0], 0x00000083 ; Set the level3 entry
 
     ; Entries for the kernel virtual address.
-    mov dword [0x1800], 0x00003003 ; Set the level4 entry.
-    mov dword [0x3000], 0x00000083 ; Set the level3 entry.
+    mov dword [0x1000 + 8 * 256], 0x00003003 ; Set the level4 entry.
+    mov dword [0x3000 + 8 *   0], 0x00000083 ; Set the level3 entry.
+
+    ; Entry for the recursive page mapping.
+    mov dword [0x1000 + 8 * 511], 0x00001003 ; Set the level4 entry.
 
     ; Set the long mode bit in the EFER MSR.
     mov ecx, 0xC0000080
