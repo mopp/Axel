@@ -15,6 +15,9 @@ extern crate std;
 extern crate kernel_memory_allocator;
 
 #[macro_use]
+extern crate bitflags;
+
+#[macro_use]
 extern crate collections;
 
 #[macro_use]
@@ -29,11 +32,13 @@ extern crate spin;
 #[macro_use]
 mod log;
 
+#[macro_use]
+mod memory;
+
 mod alist;
 mod arch;
 mod context;
 mod graphic;
-mod memory;
 
 
 #[cfg(not(test))]

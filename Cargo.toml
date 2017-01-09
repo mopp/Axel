@@ -10,6 +10,7 @@ path = "src/kernel.rs"
 
 
 [dependencies]
+bitflags                = "0.7"
 rlibc                   = "1.0"
 spin                    = "0.4.5"
 multiboot               = { git = "https://github.com/gz/rust-multiboot.git" }
