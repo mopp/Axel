@@ -20,7 +20,7 @@ impl<T> Get for Link<T> {
     {
         match *self {
             None => None,
-            Some(shared) => Some(unsafe{ &**shared }),
+            Some(shared) => Some(unsafe{ &*shared.as_ptr() }),
         }
     }
 
@@ -29,7 +29,7 @@ impl<T> Get for Link<T> {
     {
         match *self {
             None => None,
-            Some(shared) => Some(unsafe{ &mut**shared }),
+            Some(shared) => Some(unsafe{ &mut*shared.as_ptr() }),
         }
     }
 }
@@ -63,7 +63,7 @@ impl<T> Node<T> {
 
     fn make_link(n: &mut Node<T>) -> Link<T>
     {
-        Some(unsafe {Shared::new(n)})
+        Shared::new(n)
     }
 
 
@@ -92,19 +92,19 @@ impl<T> Node<T> {
             (None, None) => {},
             (Some(next_shared), None) => {
                 // This node is a head of the list.
-                let next_node    = unsafe { &mut **next_shared };
+                let next_node    = unsafe { &mut *next_shared.as_ptr() };
                 next_node.prev   = None;
                 belong_list.head = self.next;
             },
             (None, Some(prev_shared)) => {
                 // This node is a tail of the list.
-                let prev_node    = unsafe { &mut **prev_shared };
+                let prev_node    = unsafe { &mut *prev_shared.as_ptr() };
                 prev_node.next   = None;
                 belong_list.tail = self.prev;
             },
             (Some(next_shared), Some(prev_shared)) => {
-                let next_node = unsafe { &mut **next_shared };
-                let prev_node = unsafe { &mut **prev_shared };
+                let next_node = unsafe { &mut *next_shared.as_ptr() };
+                let prev_node = unsafe { &mut *prev_shared.as_ptr() };
                 prev_node.set_next(next_node);
             },
         };
@@ -195,7 +195,7 @@ impl<T> AList<T> {
                 self.reset_links(Node::make_link(new));
             }
             Some(shared) => {
-                let node = unsafe { &mut **shared };
+                let node = unsafe { &mut *shared.as_ptr() };
                 new.set_next(node);
                 self.head = Node::make_link(new);
             }
@@ -208,14 +208,14 @@ impl<T> AList<T> {
         match self.head {
             None => None,
             Some(shared) => {
-                let node = unsafe { &mut **shared };
+                let node = unsafe { &mut *shared.as_ptr() };
                 self.head = node.next;
                 match node.next {
                     None => {
                         self.reset_links(None);
                     },
                     Some(next_shared) => {
-                        let next_node = unsafe { &mut **next_shared };
+                        let next_node = unsafe { &mut *next_shared.as_ptr() };
                         next_node.prev = None;
                     }
                 }
@@ -232,7 +232,7 @@ impl<T> AList<T> {
                 self.reset_links(Node::make_link(new));
             }
             Some(shared) => {
-                let node = unsafe { &mut **shared };
+                let node = unsafe { &mut *shared.as_ptr() };
                 node.set_next(new);
                 self.tail = Node::make_link(new);
             }
@@ -245,14 +245,14 @@ impl<T> AList<T> {
         match self.tail {
             None => None,
             Some(shared) => {
-                let node = unsafe { &mut **shared };
+                let node = unsafe { &mut *shared.as_ptr() };
                 self.tail = node.prev;
                 match node.prev {
                     None => {
                         self.reset_links(None);
                     },
                     Some(prev_shared) => {
-                        let prev_node = unsafe { &mut **prev_shared };
+                        let prev_node = unsafe { &mut *prev_shared.as_ptr() };
                         prev_node.next = None;
                     }
                 }

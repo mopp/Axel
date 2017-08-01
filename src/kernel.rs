@@ -1,6 +1,6 @@
-#![feature(alloc)]
+// #![feature(alloc)]
 #![feature(asm)]
-#![feature(collections)]
+// #![feature(collections)]
 #![feature(conservative_impl_trait)]
 #![feature(lang_items)]
 #![feature(shared)]
@@ -11,19 +11,19 @@
 #[macro_use]
 extern crate std;
 
-#[cfg(not(test))]
-extern crate kernel_memory_allocator;
+// #[cfg(not(test))]
+// extern crate kernel_memory_allocator;
 
-#[macro_use]
+// #[macro_use]
 extern crate bitflags;
 
-#[macro_use]
-extern crate collections;
+// #[macro_use]
+// extern crate collections;
 
 #[macro_use]
 extern crate lazy_static;
 
-extern crate alloc;
+// extern crate alloc;
 extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
@@ -63,8 +63,8 @@ pub extern fn main(argc: usize, argv: *const usize)
         println!("Size      : {}KB", region.size() / 1024);
     }
 
-    use alloc::boxed::Box;
-    let heap_test = Box::new(42);
+    // use alloc::boxed::Box;
+    // let heap_test = Box::new(42);
 }
 
 
@@ -77,6 +77,7 @@ pub extern fn eh_personality()
 
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
+#[no_mangle]
 pub extern fn panic_fmt(msg: core::fmt::Arguments, file: &'static str, line: u32) -> !
 {
     println!("Panic - {}", msg);

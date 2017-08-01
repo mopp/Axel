@@ -14,8 +14,8 @@ pub fn init(argv: &[usize])
     if let Some(memory_map_tag) = multiboot_info.memory_map_tag() {
         for memory_area in memory_map_tag.memory_areas() {
             let mut memory_region = memory::region::Region::new();
-            memory_region.set_base_addr(memory_area.base_addr as usize);
-            memory_region.set_size(memory_area.length as usize);
+            memory_region.set_base_addr(memory_area.start_address());
+            memory_region.set_size(memory_area.size());
             memory_region.set_state(memory::region::State::Free);
 
             memory_region_manager.append(memory_region);

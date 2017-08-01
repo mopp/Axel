@@ -16,9 +16,9 @@ CD          := cd
 CP          := cp
 MAKE        := make
 RUSTC       := rustc --target=$(TARGET_TRIPLE)
-CARGO       := cargo
-CARGO_BUILD := cargo build --target=$(TARGET_TRIPLE)
-CARGO_TEST  := RUSTFLAGS='' cargo test
+CARGO       := xargo
+CARGO_BUILD := $(CARGO) build --target=$(TARGET_TRIPLE)
+CARGO_TEST  := RUSTFLAGS='' $(CARGO) test
 MKDIR       := mkdir -p
 MKRESCUE    := grub-mkrescue
 OBJCOPY     := objcopy --only-keep-debug
@@ -37,18 +37,10 @@ BOOT_OBJ  := $(ARCH_DIR)/boot.o
 GRUB_CFG  := config/grub.cfg
 
 # Rust configs
-CARGO_TOML := Cargo.toml
-RUST_REPO  := ./lib/rust
-RLIB_DIR   := ./rlibs
-RLIBS      := $(addprefix $(RLIB_DIR)/, libcore.rlib liballoc.rlib librustc_unicode.rlib libcollections.rlib)
-
+CARGO_TOML              := Cargo.toml
+RUST_REPO               := ./lib/rust
 export RUST_TARGET_PATH := $(PWD)/config/
-export RUSTFLAGS        := -L$(RLIB_DIR) -g -Z no-landing-pads
-
-
-# Pattern rule to build rust libraries.
-$(RLIB_DIR)/%.rlib:
-	$(RUSTC) $(RUSTFLAGS) -C opt-level=z --out-dir $(RLIB_DIR) $(RUST_REPO)/src/$*/lib.rs
+export RUSTFLAGS        := -Z no-landing-pads
 
 
 .PHONY: all
@@ -78,12 +70,8 @@ $(BOOT_OBJ): $(BOOT_DEPS)
 
 
 .PHONY: cargo
-cargo: $(RLIB_DIR) $(RLIBS) $(CARGO_TOML)
+cargo: $(CARGO_TOML)
 	$(CARGO_BUILD)
-
-
-$(RLIB_DIR):
-	$(MKDIR) $@
 
 
 .PHONY: clean
@@ -97,12 +85,10 @@ clean:
 .PHONY: distclean
 distclean:
 	$(MAKE) clean
-	$(RM) Cargo.lock $(RLIB_DIR)
 
 
 .PHONY: run_kernel
 run_kernel: $(AXEL_BIN)
-	$(MAKE) $(AXEL_BIN)
 	$(QEMU) $(QEMU_FLAGS) --kernel $<
 
 
