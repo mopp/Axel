@@ -9,9 +9,9 @@ The current OS architecture is monolithic kernel.
 
 
 ## Support architecture
-- [] x86_32  
-- [] x86_64  
-- [] arm6 (Raspberry pi zero)
+- [ ] x86_32  
+- [ ] x86_64  
+- [ ] arm6 (Raspberry pi zero)
 
 
 ## Requirements
