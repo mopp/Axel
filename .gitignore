@@ -4,7 +4,6 @@
 *.map
 *.sym
 *.lst
-Cargo.lock
 a.out
 .gdb_history
 
