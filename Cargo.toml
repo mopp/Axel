@@ -14,9 +14,9 @@ bitflags   = "0.9.1"
 rlibc      = "1.0"
 spin       = "0.4.5"
 multiboot2 = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }
+kernel_memory_allocator = { path = "lib/kernel_memory_allocator" }
 # Just for x86_32
 # multiboot               = { git = "https://github.com/gz/rust-multiboot.git" }
-# kernel_memory_allocator = { path = "lib/kernel_memory_allocator" }
 
 [dependencies.lazy_static]
 features = ["spin_no_std"]

@@ -3,6 +3,7 @@ name = "axel"
 version = "0.2.0"
 dependencies = [
  "bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kernel_memory_allocator 0.2.0",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "multiboot2 0.3.2 (git+https://github.com/phil-opp/multiboot2-elf64.git)",
  "rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -18,6 +19,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "bitflags"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "kernel_memory_allocator"
+version = "0.2.0"
 
 [[package]]
 name = "lazy_static"

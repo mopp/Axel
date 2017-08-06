@@ -1,7 +1,7 @@
-// #![feature(alloc)]
 #![feature(asm)]
-// #![feature(collections)]
+#![feature(alloc)]
 #![feature(conservative_impl_trait)]
+#![feature(global_allocator)]
 #![feature(lang_items)]
 #![feature(shared)]
 #![feature(start)]
@@ -11,14 +11,17 @@
 #[macro_use]
 extern crate std;
 
-// #[cfg(not(test))]
-// extern crate kernel_memory_allocator;
+extern crate alloc;
+
+#[cfg(not(test))]
+extern crate kernel_memory_allocator;
+use kernel_memory_allocator::KernelMemoryAllocator;
+
+#[global_allocator]
+static GLOBAL: KernelMemoryAllocator = KernelMemoryAllocator;
 
 // #[macro_use]
 extern crate bitflags;
-
-// #[macro_use]
-// extern crate collections;
 
 #[macro_use]
 extern crate lazy_static;
@@ -63,8 +66,10 @@ pub extern fn main(argc: usize, argv: *const usize)
         println!("Size      : {}KB", region.size() / 1024);
     }
 
-    // use alloc::boxed::Box;
-    // let heap_test = Box::new(42);
+    {
+        use alloc::boxed::Box;
+        let heap_test = Box::new(42);
+    }
 }
 
 
