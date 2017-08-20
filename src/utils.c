@@ -48,7 +48,7 @@ int memcmp(void const* s1, void const* s2, size_t n) {
             "movl %%eax, %[r]       \n"
             : [r] "=m"(result)
             : "S"((void*)((uintptr_t)s1 + t)), "D"((void*)((uintptr_t)s2 + t)), "c"(nr)
-            : "memory", "%esi", "%edi", "%ecx", "%eax"
+            : "memory"
         );
         t = nr << 2;
         n -= t;
@@ -66,7 +66,7 @@ int memcmp(void const* s1, void const* s2, size_t n) {
             "movl %%eax, %[r]       \n"
             : [r] "=m"(result)
             : "S"((void*)((uintptr_t)s1 + t)), "D"((void*)((uintptr_t)s2 + t)), "c"(nr)
-            : "memory", "%esi", "%edi", "%ecx", "%eax"
+            : "memory"
         );
         t = nr << 1;
         n -= t;
@@ -83,7 +83,7 @@ int memcmp(void const* s1, void const* s2, size_t n) {
             "movl %%eax, %[r] \n"
             : [r] "=m"(result)
             : "S"((void*)((uintptr_t)s1 + t)), "D"((void*)((uintptr_t)s2 + t)), "c"(n)
-            : "memory", "%esi", "%edi", "%ecx", "%eax"
+            : "memory"
         );
     }
 
@@ -104,7 +104,7 @@ void* memcpy(void* restrict b1, const void* restrict b2, size_t n) {
                 "rep movsd  \n"
                 :
                 : "S"(p2), "D"(p1), "c"(nr)
-                : "memory", "%esi", "%edi", "%ecx"
+                : "memory"
         );
         t = nr * 4;
         n -= t;
@@ -119,7 +119,7 @@ void* memcpy(void* restrict b1, const void* restrict b2, size_t n) {
                 "rep movsw   \n"
                 :
                 : "S"(p2), "D"(p1), "c"(nr)
-                : "memory", "%esi", "%edi", "%ecx"
+                : "memory"
         );
         t = nr * 2;
         n -= t;
@@ -131,7 +131,7 @@ void* memcpy(void* restrict b1, const void* restrict b2, size_t n) {
             "rep movsb   \n"
             :
             : "S"(p2), "D"(p1), "c"(n)
-            : "memory", "%esi", "%edi", "%ecx"
+            : "memory"
     );
 
     return b1;

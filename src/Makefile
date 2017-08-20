@@ -169,7 +169,7 @@ $(ISO_NAME): $(MAKEFILE) $(AXEL_BIN) $(GRUB_CONFIG)
 	$(MKDIR) $(ISO_DIR)boot/grub
 	$(CP) $(AXEL_BIN) $(ISO_DIR)boot/
 	$(CP) $(GRUB_CONFIG) $(ISO_DIR)boot/grub/grub.cfg
-	grub-mkimage -O i386-pc -o $(ISO_DIR)efi.img multiboot biosdisk iso9660
+	grub-mkimage -O i386-pc -p $(ISO_DIR) -o $(ISO_DIR)/efi.img multiboot biosdisk iso9660
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR)
 
 

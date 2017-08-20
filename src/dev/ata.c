@@ -386,7 +386,7 @@ Axel_state_code ata_access(uint8_t const direction, Ata_dev* d, uint32_t lba, ui
                     "rep insw   \n"
                     :
                     : "d"(port), "D"(buffer), "c"(sec_word_size)
-                    : "memory", "%ecx", "%edx", "%edi");
+                    : "memory");
 
             /* Shift read size. */
             buffer += (sec_size);
@@ -405,7 +405,7 @@ Axel_state_code ata_access(uint8_t const direction, Ata_dev* d, uint32_t lba, ui
                     "rep outsw  \n"
                     :
                     : "d"(port), "S"(buffer), "c"(sec_word_size)
-                    : "memory", "%ecx", "%edx", "%esi");
+                    : "memory");
 
             /* Shift write size. */
             buffer += (sec_size);
@@ -563,7 +563,7 @@ Axel_state_code init_ata(void) {
                     "rep insw   \n"
                     :
                     : "d"(get_port_number(ch, ATA_REG_DATA)), "D"(id_buffer), "c"(ATA_IDSP_DATA_WORD_SIZE)
-                    : "memory", "%ecx", "%edx", "%edi");
+                    : "memory");
 
             /* Get device information. */
             d->gen_conf = id_buffer[ATA_IDSP_GEN_CONF];

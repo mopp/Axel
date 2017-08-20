@@ -40,7 +40,7 @@ int fork(void) {
             "add eax, 8             \n"   \
             : "=a"(args)                  \
             :                             \
-            : "eax");                     \
+            : );                     \
         axel_api(api_number, args);       \
         return return_code;               \
     }
