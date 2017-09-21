@@ -1,4 +1,5 @@
 #![feature(asm)]
+#![feature(collections)]
 #![feature(alloc)]
 #![feature(conservative_impl_trait)]
 #![feature(global_allocator)]
@@ -69,6 +70,9 @@ pub extern fn main(argc: usize, argv: *const usize)
     {
         use alloc::boxed::Box;
         let heap_test = Box::new(42);
+
+        use alloc::LinkedList;
+        let list: LinkedList<u32> = LinkedList::new();
     }
 }
 
