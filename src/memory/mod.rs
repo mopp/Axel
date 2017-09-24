@@ -107,15 +107,12 @@ pub fn init()
 
     let mut eallocator = EarlyAllocator::new(free_region_addr_begin, free_region_addr_end);
     let mut bman = allocate_buddy_manager(&mut eallocator);
+    println!("Available memory: {} KB", bman.free_memory_size() / 1024);
 }
 
 
-fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> &'b mut BuddyManager
+fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyManager
 {
-    let bman: &mut BuddyManager = eallocator.alloc_type_mut();
-    bman.num_each_free_frames   = eallocator.alloc_slice_mut(buddy_system::MAX_ORDER);
-    bman.frame_lists            = eallocator.alloc_slice_mut(buddy_system::MAX_ORDER);
-
     // Calculate the required size for frame information.
     let struct_size   = mem::size_of::<Node<Frame>>();
     let capacity      = eallocator.capacity();
@@ -125,12 +122,10 @@ fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> &'b mut BuddyM
     let capacity      = capacity - required_size;
     let num_frames    = capacity / frame::SIZE;
 
-    bman.frames           = eallocator.alloc_slice_mut(num_frames);
-    bman.base_addr        = eallocator.available_space().0.align_up(frame::SIZE).to_physical_addr();
-    bman.num_total_frames = bman.frames.len();
-    bman.init();
+    let frames    = eallocator.alloc_slice_mut(num_frames);
+    let base_addr = eallocator.available_space().0.align_up(frame::SIZE).to_physical_addr();
 
-    bman
+    BuddyManager::new(&mut frames[0] as *mut _, num_frames, base_addr, frame::SIZE)
 }
 
 

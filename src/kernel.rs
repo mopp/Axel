@@ -1,10 +1,11 @@
 #![feature(alloc)]
 #![feature(asm)]
 #![feature(collections)]
+#![feature(compiler_builtins_lib)]
 #![feature(conservative_impl_trait)]
-#![feature(offset_to)]
 #![feature(global_allocator)]
 #![feature(lang_items)]
+#![feature(offset_to)]
 #![feature(shared)]
 #![feature(start)]
 #![feature(unique)]
@@ -15,6 +16,7 @@
 extern crate std;
 
 extern crate alloc;
+extern crate compiler_builtins;
 
 #[cfg(not(test))]
 extern crate kernel_memory_allocator;

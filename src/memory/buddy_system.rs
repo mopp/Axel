@@ -1,7 +1,7 @@
 use core::mem;
 use core::ptr::Unique;
 use core::ptr;
-use memory::frame::Frame;
+use memory::frame::{Frame, State};
 use memory::list::LinkedList;
 use memory::list::Node;
 
@@ -35,7 +35,7 @@ impl BuddyManager {
 
         let nodes = match Unique::new(nodes) {
             Some(u) => u,
-            None  => panic!("The node pointer is null !"),
+            None    => panic!("The node pointer is null !"),
         };
 
         let mut bman = BuddyManager {
@@ -146,7 +146,7 @@ impl BuddyManager {
                         let mut buddy_node= self.get_buddy_node(node, i);
                         {
                             let buddy_frame   = unsafe { buddy_node.as_mut() }.as_mut();
-                            buddy_frame.order = i as u8;
+                            buddy_frame.set_order(i);
                         }
 
                         self.push_node_frame(i, buddy_node);
@@ -154,8 +154,8 @@ impl BuddyManager {
 
                     // Set the order and the extra parts are stored into the other lists.
                     let allocated_frame     = unsafe { node.as_mut() }.as_mut();
-                    allocated_frame.order   = request_order as u8;
-                    allocated_frame.is_free = false;
+                    allocated_frame.set_order(request_order);
+                    allocated_frame.set_state(State::Alloc);
                 }
             }
 
@@ -170,22 +170,22 @@ impl BuddyManager {
         let node = unsafe { &mut *unique_node.as_ptr() };
         let frame = node.as_mut();
 
-        for order in (frame.order as usize)..MAX_ORDER {
+        for order in frame.order()..MAX_ORDER {
             // Try to merge the buddy frames.
             let mut unique_buddy_node = self.get_buddy_node(unique_node, order);
             let buddy_node = unsafe { unique_buddy_node.as_mut() };
             {
                 let buddy_frame = buddy_node.as_ref();
-                if buddy_frame.is_free == false {
+                if buddy_frame.state() == State::Free {
                     break;
                 }
-                self.count_free_frames[buddy_frame.order as usize] -= 1;
+                self.count_free_frames[buddy_frame.order()] -= 1;
             }
 
             buddy_node.detach();
         }
 
-        self.push_node_frame(frame.order as usize, unique_node);
+        self.push_node_frame(frame.order(), unique_node);
     }
 }
 
