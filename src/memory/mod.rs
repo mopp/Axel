@@ -5,15 +5,16 @@ macro_rules! address_of {
     }};
 }
 
-mod frame;
-mod early_allocator;
 mod buddy_system;
+mod early_allocator;
+mod frame;
+mod list;
 pub mod region;
 
 use context;
 use self::early_allocator::EarlyAllocator;
 use self::buddy_system::BuddyManager;
-use alist::Node;
+use self::list::Node;
 use self::frame::Frame;
 use core::mem;
 
@@ -109,7 +110,7 @@ pub fn init()
 }
 
 
-fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> &'b mut BuddyManager<'b>
+fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> &'b mut BuddyManager
 {
     let bman: &mut BuddyManager = eallocator.alloc_type_mut();
     bman.num_each_free_frames   = eallocator.alloc_slice_mut(buddy_system::MAX_ORDER);

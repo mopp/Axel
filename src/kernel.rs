@@ -1,11 +1,13 @@
+#![feature(alloc)]
 #![feature(asm)]
 #![feature(collections)]
-#![feature(alloc)]
 #![feature(conservative_impl_trait)]
+#![feature(offset_to)]
 #![feature(global_allocator)]
 #![feature(lang_items)]
 #![feature(shared)]
 #![feature(start)]
+#![feature(unique)]
 #![no_std]
 
 #[cfg(test)]
@@ -39,7 +41,6 @@ mod log;
 #[macro_use]
 mod memory;
 
-mod alist;
 mod arch;
 mod context;
 mod graphic;
