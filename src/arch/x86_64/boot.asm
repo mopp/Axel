@@ -41,15 +41,15 @@ multiboot2_end:
 
 
 ; This section is for configure the CPU.
-; Before turning on the paging, we cannot use some instruction such as jmp and call.
+; Before turning on the paging, we cannot use some instructions such as jmp and call, which want to use 64 bit addresses.
 ; Because we are in 32-bit protected mode still here.
 ; However, the symbols are linked at the higher kernel space (over 32-bit).
-; Then, in order to use the instruction, this section is mapped to the load memory addresses only using linker script.
+; Then, in order to use the instructions, this section is mapped to the load memory addresses only using linker script.
 section .text_boot_32bit
 ; {{{
 
 ; This constant refers the virtual kernel address.
-; When I tied to read this values using the linker script, an error `relocation truncated to fit: R_X86_64_32 against ~~~` was ommited.
+; When I tried to read this values using the linker script, an error `relocation truncated to fit: R_X86_64_32 against ~~~` was ommited.
 ; Therefore, I had to write the value directly here :(
 KERNEL_ADDR_VIRTUAL_BEGIN equ 0xFFFF800000000000
 
