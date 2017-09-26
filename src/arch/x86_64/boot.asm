@@ -27,9 +27,9 @@ align 8
 multiboot2_begin: ; {{{
     dd MULTIBOOT2_MAGIC                  ; Magic number
     dd 0                                 ; Architecture (i386 32-bit protected mode)
-    dd multiboot2_end - multiboot2_end   ; Header length
+    dd multiboot2_end - multiboot2_begin ; Header length
     ; Checksum, it subtracts from 0x100000000 to avoid compiler warning.
-    dd 0x100000000 - (MULTIBOOT2_MAGIC + 0 + (multiboot2_end - multiboot2_end))
+    dd 0x100000000 - (MULTIBOOT2_MAGIC + 0 + (multiboot2_end - multiboot2_begin))
     ; The tag for terminating.
     dw 0    ; type
     dw 0    ; flags
