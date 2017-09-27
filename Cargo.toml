@@ -10,7 +10,7 @@ path = "src/kernel.rs"
 
 
 [dependencies]
-bitflags                = "0.9.1"
+bitflags                = "1.0.0"
 compiler_builtins       = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
 kernel_memory_allocator = { path = "lib/kernel_memory_allocator" }
 multiboot2              = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }

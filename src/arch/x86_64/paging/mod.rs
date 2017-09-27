@@ -30,55 +30,25 @@
 //! Reference:
 //!     [Page Tables](http://os.phil-opp.com/modifying-page-tables.html)
 
+mod entry;
 
 use core::ops::{Index, IndexMut};
 use core::marker::PhantomData;
+use self::entry::{PageEntry, PageEntryFlags};
 
 
-bitflags! {
-    pub flags EntryFlags: usize {
-        const PRESENT         = 1 << 0,
-        const WRITABLE        = 1 << 1,
-        const USER_ACCESSIBLE = 1 << 2,
-        const WRITE_THROUGH   = 1 << 3,
-        const CACHE_DISABLE   = 1 << 4,
-        const ACCESSED        = 1 << 5,
-        const DIRTY           = 1 << 6,
-        const HUGE_PAGE       = 1 << 7,
-        const GLOBAL          = 1 << 8,
-        const NO_EXECUTE      = 1 << 63,
-    }
-}
+pub type PhysicalAddress = usize;
+pub type VirtualAddress = usize;
 
 
-/// A page entry.
-struct Entry(usize);
-
-
-impl Entry {
-    /// Return `EntryFlags`.
-    fn flags(&self) -> EntryFlags
-    {
-        EntryFlags::from_bits_truncate(self.0)
-    }
-
-
-    /// Clear the all flags (set the all flags zero).
-    fn clear_all(&mut self)
-    {
-        self.0 = 0;
-    }
-}
-
-
-/// Signature enum for Level1 page table.
-enum Level1 {}
-/// Signature enum for Level2 page table.
-enum Level2 {}
-/// Signature enum for Level3 page table.
-enum Level3 {}
-/// Signature enum for Level4 page table.
-enum Level4 {}
+/// Signature struct for Level1 page table.
+struct Level1;
+/// Signature struct for Level2 page table.
+struct Level2;
+/// Signature struct for Level3 page table.
+struct Level3;
+/// Signature struct for Level4 page table.
+struct Level4;
 
 
 /// Signature trait for manipulating enries in the `Table<T>` struct.
@@ -98,13 +68,14 @@ impl HierarchicalLevel for Level4 { type NextLevel = Level3; }
 impl HierarchicalLevel for Level3 { type NextLevel = Level2; }
 impl HierarchicalLevel for Level2 { type NextLevel = Level1; }
 
+const LEVEL4_PAGE_TABLE: *mut Table<Level4> = 0xffff_ffff_ffff_f000 as *mut _;
 
 const MAX_ENTRY_COUNT: usize = 512;
 
 
 /// A page table.
 struct Table<T> where T: Level {
-    entries: [Entry; MAX_ENTRY_COUNT],
+    entries: [PageEntry; MAX_ENTRY_COUNT],
     level: PhantomData<T>,
 }
 
@@ -118,10 +89,11 @@ impl<T> Table<T> where T: Level {
     }
 }
 
+
 impl<T> Table<T> where T: HierarchicalLevel {
     fn next_level_table_address(&self, index: usize) -> Option<usize> {
         let entry_flags = self[index].flags();
-        if (entry_flags.contains(PRESENT) == true) && (entry_flags.contains(HUGE_PAGE) == false) {
+        if (entry_flags.contains(PageEntryFlags::PRESENT) == true) && (entry_flags.contains(PageEntryFlags::HUGE_PAGE) == false) {
             Some((address_of!(self) << 9) | (index << 12))
         } else {
             None
@@ -143,9 +115,9 @@ impl<T> Table<T> where T: HierarchicalLevel {
 
 
 impl<T> Index<usize> for Table<T> where T: Level {
-    type Output = Entry;
+    type Output = PageEntry;
 
-    fn index(&self, index: usize) -> &Entry
+    fn index(&self, index: usize) -> &PageEntry
     {
         &self.entries[index]
     }
@@ -153,23 +125,8 @@ impl<T> Index<usize> for Table<T> where T: Level {
 
 
 impl<T> IndexMut<usize> for Table<T> where T: Level {
-    fn index_mut(&mut self, index: usize) -> &mut Entry
+    fn index_mut(&mut self, index: usize) -> &mut PageEntry
     {
         &mut self.entries[index]
-    }
-}
-
-
-const LEVEL4_PAGE_TABLE: *mut Table<Level4> = 0xffff_ffff_ffff_f000 as *mut _;
-
-
-
-#[cfg(test)]
-mod test {
-    // use super::{LEVEL4_PAGE_TABLE, Table};
-
-    #[test]
-    fn test_invalid_page_table()
-    {
     }
 }

@@ -25,7 +25,7 @@ use kernel_memory_allocator::KernelMemoryAllocator;
 #[global_allocator]
 static GLOBAL: KernelMemoryAllocator = KernelMemoryAllocator;
 
-// #[macro_use]
+#[macro_use]
 extern crate bitflags;
 
 #[macro_use]
