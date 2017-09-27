@@ -11,6 +11,8 @@
 #![feature(unique)]
 #![no_std]
 
+#![cfg_attr(test, feature(allocator_api))]
+
 #[cfg(test)]
 #[macro_use]
 extern crate std;
@@ -20,8 +22,10 @@ extern crate compiler_builtins;
 
 #[cfg(not(test))]
 extern crate kernel_memory_allocator;
+#[cfg(not(test))]
 use kernel_memory_allocator::KernelMemoryAllocator;
 
+#[cfg(not(test))]
 #[global_allocator]
 static GLOBAL: KernelMemoryAllocator = KernelMemoryAllocator;
 

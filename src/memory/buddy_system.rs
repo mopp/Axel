@@ -252,14 +252,14 @@ mod tests {
         assert_eq!(bman.count_free_frames(), 1024);
 
         let node = bman.allocate_frame_by_order(1).unwrap();
-        assert_eq!(unsafe {node.as_ref()}.as_ref().order, 1);
-        assert_eq!(unsafe {node.as_ref()}.as_ref().is_free, false);
+        assert_eq!(unsafe {node.as_ref()}.as_ref().order(), 1);
+        assert_eq!(unsafe {node.as_ref()}.as_ref().state(), State::Alloc);
 
         assert_eq!(bman.count_free_frames(), 1022);
 
         let node = bman.allocate_frame_by_order(0).unwrap();
-        assert_eq!(unsafe {node.as_ref()}.as_ref().order, 0);
-        assert_eq!(unsafe {node.as_ref()}.as_ref().is_free, false);
+        assert_eq!(unsafe {node.as_ref()}.as_ref().order(), 0);
+        assert_eq!(unsafe {node.as_ref()}.as_ref().state(), State::Alloc);
         assert_eq!(bman.count_free_frames(), 1021);
         assert_eq!(bman.count_used_frames(), 3);
         assert_eq!(bman.free_memory_size(), 1021 * FRAME_SIZE);

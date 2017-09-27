@@ -6,7 +6,7 @@
 pub const SIZE: usize = 4096;
 
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum State {
     Free,
     Alloc,

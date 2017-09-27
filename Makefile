@@ -18,7 +18,7 @@ MAKE        := make
 RUSTC       := rustc --target=$(TARGET_TRIPLE)
 CARGO       := xargo
 CARGO_BUILD := $(CARGO) build --target=$(TARGET_TRIPLE)
-CARGO_TEST  := RUSTFLAGS='' $(CARGO) test
+CARGO_TEST  := cargo test
 MKDIR       := mkdir -p
 MKRESCUE    := grub-mkrescue
 OBJCOPY     := objcopy --only-keep-debug
