@@ -1,5 +1,3 @@
-pub mod paging;
-
 use context;
 use graphic;
 use graphic::Display;

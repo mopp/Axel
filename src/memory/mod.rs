@@ -9,6 +9,7 @@ mod buddy_system;
 mod early_allocator;
 mod frame;
 mod list;
+mod paging;
 pub mod region;
 
 use context;
