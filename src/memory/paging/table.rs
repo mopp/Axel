@@ -1,5 +1,6 @@
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
+use core::ptr::Unique;
 use super::entry::{PageEntry, PageEntryFlags};
 
 
@@ -109,5 +110,30 @@ impl<T> IndexMut<usize> for Table<T> where T: Level {
     fn index_mut(&mut self, index: usize) -> &mut PageEntry
     {
         &mut self.entries[index]
+    }
+}
+
+
+pub struct ActivePageTable {
+    level4_page_table: Unique<Table<Level4>>,
+}
+
+
+impl ActivePageTable {
+    pub unsafe fn new() -> ActivePageTable
+    {
+        ActivePageTable {
+            level4_page_table: Unique::new_unchecked(LEVEL4_PAGE_TABLE),
+        }
+    }
+
+    fn level4_page_table(&self) -> &Table<Level4>
+    {
+        unsafe { self.level4_page_table.as_ref() }
+    }
+
+    fn level4_page_table_mut(&mut self) -> &mut Table<Level4>
+    {
+        unsafe { self.level4_page_table.as_mut() }
     }
 }
