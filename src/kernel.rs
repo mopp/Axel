@@ -76,10 +76,10 @@ pub extern fn main(argc: usize, argv: *const usize)
 
     {
         use alloc::boxed::Box;
-        let heap_test = Box::new(42);
+        let _heap_test = Box::new(42);
 
         use alloc::LinkedList;
-        let list: LinkedList<u32> = LinkedList::new();
+        let _list: LinkedList<u32> = LinkedList::new();
     }
 }
 
