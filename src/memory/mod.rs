@@ -77,6 +77,7 @@ impl AddressConverter for usize {
 }
 
 
+#[inline(always)]
 pub fn clean_bss_section()
 {
     unsafe {
