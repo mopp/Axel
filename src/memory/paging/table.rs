@@ -68,7 +68,7 @@ impl<T> Table<T> where T: HierarchicalLevel {
     fn next_level_table_address(&self, index: usize) -> Option<usize> {
         let entry_flags = self[index].flags();
         if (entry_flags.contains(PageEntryFlags::PRESENT) == true) && (entry_flags.contains(PageEntryFlags::HUGE_PAGE) == false) {
-            Some((address_of!(self) << 9) | (index << 12))
+            Some((((self as *const _) as usize) << 9) | (index << 12))
         } else {
             None
         }
