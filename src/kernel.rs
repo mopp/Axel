@@ -44,12 +44,10 @@ extern crate spin;
 #[macro_use]
 mod log;
 
-#[macro_use]
-mod memory;
-
 mod arch;
 mod context;
 mod graphic;
+mod memory;
 
 
 #[cfg(not(test))]

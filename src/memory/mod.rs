@@ -1,10 +1,3 @@
-#[macro_export]
-macro_rules! address_of {
-    ($x: expr) => {{
-        (&$x as *const _) as usize
-    }};
-}
-
 mod buddy_system;
 mod early_allocator;
 mod frame;
@@ -66,13 +59,13 @@ pub trait AddressConverter {
 impl AddressConverter for usize {
     fn to_physical_addr(self) -> usize
     {
-        self - unsafe { address_of!(KERNEL_ADDR_VIRTUAL_BEGIN) }
+        self - unsafe { address_of(&KERNEL_ADDR_VIRTUAL_BEGIN) }
     }
 
 
     fn to_virtual_addr(self) -> usize
     {
-        self + unsafe { address_of!(KERNEL_ADDR_VIRTUAL_BEGIN) }
+        self + unsafe { address_of(&KERNEL_ADDR_VIRTUAL_BEGIN) }
     }
 }
 
@@ -81,8 +74,8 @@ impl AddressConverter for usize {
 pub fn clean_bss_section()
 {
     unsafe {
-        let begin = address_of!(KERNEL_ADDR_BSS_BEGIN) as *mut u8;
-        let size  = address_of!(KERNEL_SIZE_BSS) as i32;
+        let begin = address_of(&KERNEL_ADDR_BSS_BEGIN) as *mut u8;
+        let size  = address_of(&KERNEL_SIZE_BSS) as i32;
 
         use rlibc;
         rlibc::memset(begin, size, 0x00);
@@ -93,7 +86,7 @@ pub fn clean_bss_section()
 pub fn init()
 {
     let ref mut memory_region_manager = *context::GLOBAL_CONTEXT.memory_region_manager.lock();
-    let kernel_addr_physical_begin = unsafe { address_of!(KERNEL_ADDR_PHYSICAL_BEGIN) };
+    let kernel_addr_physical_begin = unsafe { address_of(&KERNEL_ADDR_PHYSICAL_BEGIN) };
     let mut usable_memory_regions = memory_region_manager.regions_iter_with(region::State::Free).filter(|region| kernel_addr_physical_begin <= region.base_addr());
 
     // TODO: Support multiple region.
@@ -102,7 +95,7 @@ pub fn init()
         unreachable!("No usable memory regions");
     }
 
-    let kernel_addr_physical_end = unsafe { address_of!(KERNEL_ADDR_PHYSICAL_END) };
+    let kernel_addr_physical_end = unsafe { address_of(&KERNEL_ADDR_PHYSICAL_END) };
     let free_memory_region       = free_memory_region.unwrap();
     let free_region_addr_begin   = kernel_addr_physical_end.to_virtual_addr();
     let free_region_addr_end     = (free_memory_region.base_addr() + free_memory_region.size()).to_virtual_addr();
@@ -128,6 +121,12 @@ fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyManager
     let base_addr = eallocator.available_space().0.align_up(frame::SIZE).to_physical_addr();
 
     BuddyManager::new(&mut frames[0] as *mut _, num_frames, base_addr, frame::SIZE)
+}
+
+
+fn address_of<T>(obj: &T) -> usize
+{
+    (obj as *const _) as usize
 }
 
 
