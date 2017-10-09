@@ -6,33 +6,33 @@ use super::entry::{PageEntry, PageEntryFlags};
 
 
 /// Signature trait for manipulating enries in the `Table<T>` struct.
-trait Level {}
+pub trait Level {}
 
 
 /// It provides trait bound for generating next level page table struct.
-trait HierarchicalLevel: Level {
+pub trait HierarchicalLevel: Level {
     type NextLevel: Level;
 }
 
 
 /// Signature struct for Level1 page table.
-struct Level1;
+pub struct Level1;
 
 
 /// Signature struct for Level2 page table.
-struct Level2;
+pub struct Level2;
 
 
 /// Signature struct for Level3 page table.
-struct Level3;
+pub struct Level3;
 
 
 /// Signature struct for Level4 page table.
-struct Level4;
+pub struct Level4;
 
 
 /// A page table.
-struct Table<T> where T: Level {
+pub struct Table<T> where T: Level {
     entries: [PageEntry; MAX_ENTRY_COUNT],
     level: PhantomData<T>,
 }
@@ -127,12 +127,12 @@ impl ActivePageTable {
         }
     }
 
-    fn level4_page_table(&self) -> &Table<Level4>
+    pub fn level4_page_table(&self) -> &Table<Level4>
     {
         unsafe { self.level4_page_table.as_ref() }
     }
 
-    fn level4_page_table_mut(&mut self) -> &mut Table<Level4>
+    pub fn level4_page_table_mut(&mut self) -> &mut Table<Level4>
     {
         unsafe { self.level4_page_table.as_mut() }
     }

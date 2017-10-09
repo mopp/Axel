@@ -32,6 +32,8 @@
 
 mod entry;
 mod table;
+use self::table::ActivePageTable;
+use self::super::address_of;
 
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
@@ -44,6 +46,7 @@ trait PageIndex {
     fn level1_index(self) -> usize;
     fn offset(self) -> usize;
 }
+
 
 impl PageIndex for VirtualAddress {
     fn level4_index(self) -> usize
@@ -70,6 +73,27 @@ impl PageIndex for VirtualAddress {
     {
         self & 0xFFF
     }
+}
+
+
+pub fn init()
+{
+    let active_page_table = unsafe { ActivePageTable::new() };
+    let level4_table = active_page_table.level4_page_table();
+    println!("level4_table - {:x}", address_of(level4_table));
+    level4_table
+        .next_level_table(511)
+        .and_then(|level3_table| {
+            println!("level3_table - {:x}", address_of(level3_table));
+            level3_table.next_level_table(511)
+        })
+        .and_then(|level2_table| {
+            println!("level2_table - {:x}", address_of(level2_table));
+            level2_table.next_level_table(511)
+        })
+        .map(|level1_table| {
+            println!("level1_table - {:x}", address_of(level1_table));
+        });
 }
 
 

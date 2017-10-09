@@ -15,6 +15,7 @@ bitflags! {
 
 
 /// A page entry.
+#[derive(Debug)]
 pub struct PageEntry(usize);
 
 
