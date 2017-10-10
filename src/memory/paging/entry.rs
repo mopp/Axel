@@ -32,4 +32,12 @@ impl PageEntry {
     {
         self.0 = 0;
     }
+
+
+    pub fn set_frame_addr(&mut self, addr: usize)
+    {
+        debug_assert_eq!(addr & 0xFFF, 0);
+        debug_assert_eq!(addr & 0xFFFF_0000_0000_0000, 0);
+        self.0 = self.0 | addr;
+    }
 }
