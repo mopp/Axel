@@ -18,6 +18,8 @@
 extern crate std;
 
 extern crate alloc;
+
+#[cfg(not(test))]
 extern crate compiler_builtins;
 
 #[cfg(not(test))]
