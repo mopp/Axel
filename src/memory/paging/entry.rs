@@ -41,3 +41,15 @@ impl PageEntry {
         self.0 = self.0 | addr;
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_flags() {
+        let e = PageEntry(0xFFFF_FFFF_FFFF_FF00);
+        assert_eq!(false, e.flags().contains(PageEntryFlags::PRESENT));
+    }
+}
