@@ -3,7 +3,7 @@
 
 use core::mem;
 use core::slice;
-use super::Alignment;
+use super::address::Alignment;
 
 
 pub struct EarlyAllocator {

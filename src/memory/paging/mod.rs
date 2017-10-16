@@ -32,11 +32,9 @@
 
 mod entry;
 mod table;
+use memory::address::VirtualAddress;
+use memory::address::address_of;
 use self::table::ActivePageTable;
-use self::super::address_of;
-
-pub type PhysicalAddress = usize;
-pub type VirtualAddress = usize;
 
 
 trait PageIndex {
@@ -94,6 +92,8 @@ pub fn init()
         .map(|level1_table| {
             println!("level1_table - {:x}", address_of(level1_table));
         });
+
+    // TODO: create new kernel page table.
 }
 
 

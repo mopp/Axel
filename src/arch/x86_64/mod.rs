@@ -2,7 +2,7 @@ use context;
 use graphic;
 use graphic::Display;
 use memory;
-use memory::AddressConverter;
+use memory::address::Converter;
 use multiboot2;
 
 
