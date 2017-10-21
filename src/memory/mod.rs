@@ -9,7 +9,6 @@ pub mod region;
 use context;
 use core::mem;
 use self::address::*;
-use self::address::Converter;
 use self::buddy_system::BuddyManager;
 use self::early_allocator::EarlyAllocator;
 use self::frame::Frame;
