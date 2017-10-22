@@ -1,5 +1,3 @@
-#![cfg_attr(test, feature(allocator_api))]
-
 use core::convert::{AsRef, AsMut};
 use core::default::Default;
 use core::ptr::{Unique, Shared};
