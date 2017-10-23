@@ -83,7 +83,7 @@ pub trait ToVirtualAddr {
 
 
 impl ToPhysicalAddr for VirtualAddress {
-    fn to_physical_addr(self) -> usize
+    fn to_physical_addr(self) -> PhysicalAddress
     {
         self - kernel_addr_begin_virtual()
     }
@@ -91,7 +91,7 @@ impl ToPhysicalAddr for VirtualAddress {
 
 
 impl ToVirtualAddr for PhysicalAddress {
-    fn to_virtual_addr(self) -> usize
+    fn to_virtual_addr(self) -> VirtualAddress
     {
         self + kernel_addr_begin_virtual()
     }
