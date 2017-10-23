@@ -51,15 +51,16 @@ mod context;
 mod graphic;
 mod memory;
 
+use memory::address::VirtualAddress;
 
 #[cfg(not(test))]
 #[start]
 #[no_mangle]
-pub extern fn main(argc: usize, argv: *const usize)
+pub extern fn main(argc: usize, argv: *const VirtualAddress)
 {
     memory::clean_bss_section();
 
-    let argv: &[usize] = unsafe { core::slice::from_raw_parts(argv, argc) };
+    let argv: &[PhysicalAddress] = unsafe { core::slice::from_raw_parts(argv, argc) };
 
     // Initialize stuffs depending on the architecture.
     arch::init_arch(argv);

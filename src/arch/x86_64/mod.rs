@@ -1,12 +1,13 @@
 use context;
-use graphic;
 use graphic::Display;
-use memory;
+use graphic;
+use memory::address::VirtualAddress;
 use memory::address::ToVirtualAddr;
+use memory;
 use multiboot2;
 
 
-pub fn init(argv: &[usize])
+pub fn init(argv: &[VirtualAddress])
 {
     // Copy memory information into the global context.
     let ref mut memory_region_manager = *context::GLOBAL_CONTEXT.memory_region_manager.lock();
