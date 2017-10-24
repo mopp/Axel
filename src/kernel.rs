@@ -60,7 +60,7 @@ pub extern fn main(argc: usize, argv: *const VirtualAddress)
 {
     memory::clean_bss_section();
 
-    let argv: &[PhysicalAddress] = unsafe { core::slice::from_raw_parts(argv, argc) };
+    let argv: &[VirtualAddress] = unsafe { core::slice::from_raw_parts(argv, argc) };
 
     // Initialize stuffs depending on the architecture.
     arch::init_arch(argv);
