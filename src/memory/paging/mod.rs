@@ -34,6 +34,7 @@ mod entry;
 mod table;
 use memory::address::VirtualAddress;
 use memory::address::address_of;
+use memory::buddy_system::BuddyManager;
 use self::table::ActivePageTable;
 
 
@@ -74,7 +75,7 @@ impl PageIndex for VirtualAddress {
 }
 
 
-pub fn init()
+pub fn init(bman: BuddyManager)
 {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();

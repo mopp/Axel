@@ -51,7 +51,7 @@ pub fn init()
     let mut bman = allocate_buddy_manager(&mut eallocator);
     println!("Available memory: {} KB", bman.free_memory_size() / 1024);
 
-    paging::init();
+    paging::init(bman);
 }
 
 
