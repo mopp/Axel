@@ -1,9 +1,9 @@
 //! The `EarlyAllocator` is the simplest memory allocator.
 //! It cutouts a memory region from the given memory region.
 
+use super::address::Alignment;
 use core::mem;
 use core::slice;
-use super::address::Alignment;
 
 
 pub struct EarlyAllocator {
@@ -13,8 +13,7 @@ pub struct EarlyAllocator {
 
 
 impl EarlyAllocator {
-    pub fn new(addr_begin: usize, addr_end: usize) -> EarlyAllocator
-    {
+    pub fn new(addr_begin: usize, addr_end: usize) -> EarlyAllocator {
         debug_assert!(addr_begin < addr_end);
 
         EarlyAllocator {
@@ -24,26 +23,22 @@ impl EarlyAllocator {
     }
 
 
-    pub fn capacity(&self) -> usize
-    {
+    pub fn capacity(&self) -> usize {
         self.addr_end - self.addr_begin
     }
 
 
-    pub fn available_space(&self) -> (usize, usize)
-    {
+    pub fn available_space(&self) -> (usize, usize) {
         (self.addr_begin, self.addr_end)
     }
 
 
-    fn align_addr_begin(&mut self, alignment: usize)
-    {
+    fn align_addr_begin(&mut self, alignment: usize) {
         self.addr_begin = self.addr_begin.align_up(alignment);
     }
 
 
-    fn alloc(&mut self, size: usize, alignment: usize) -> *mut u8
-    {
+    fn alloc(&mut self, size: usize, alignment: usize) -> *mut u8 {
         self.align_addr_begin(alignment);
         let addr = self.addr_begin;
         self.addr_begin += size;
@@ -52,39 +47,32 @@ impl EarlyAllocator {
     }
 
 
-    pub fn alloc_type_mut<'a, T: Sized>(&mut self) -> &'a mut T
-    {
-        let size  = mem::size_of::<T>();
+    pub fn alloc_type_mut<'a, T: Sized>(&mut self) -> &'a mut T {
+        let size = mem::size_of::<T>();
         let align = mem::align_of::<T>();
-        let ptr   = self.alloc(size, align);
+        let ptr = self.alloc(size, align);
 
-        unsafe {
-            mem::transmute(ptr)
-        }
+        unsafe { mem::transmute(ptr) }
     }
 
 
-    pub fn alloc_slice_mut<'a, T: Sized>(&mut self, num: usize) -> &'a mut [T]
-    {
-        let size  = mem::size_of::<T>();
+    pub fn alloc_slice_mut<'a, T: Sized>(&mut self, num: usize) -> &'a mut [T] {
+        let size = mem::size_of::<T>();
         let align = mem::align_of::<T>();
-        let ptr   = self.alloc(size * num, align);
+        let ptr = self.alloc(size * num, align);
 
-        unsafe {
-            slice::from_raw_parts_mut(ptr as *mut T, num)
-        }
+        unsafe { slice::from_raw_parts_mut(ptr as *mut T, num) }
     }
 }
 
 
 #[cfg(test)]
 mod test {
-    use super::{EarlyAllocator};
+    use super::EarlyAllocator;
 
 
     #[test]
-    fn test_early_allocator_new()
-    {
+    fn test_early_allocator_new() {
         let eallocator = EarlyAllocator::new(0x0000, 0x1000);
 
         assert_eq!(eallocator.capacity(), 0x1000);
@@ -92,8 +80,7 @@ mod test {
 
 
     #[test]
-    fn test_early_allocator_alloc()
-    {
+    fn test_early_allocator_alloc() {
         let mut eallocator = EarlyAllocator::new(0x0000, 0x1000);
         let mut capacity = eallocator.capacity();
 

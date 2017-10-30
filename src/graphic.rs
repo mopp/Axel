@@ -17,8 +17,7 @@ trait Area {
 
 
 impl Area for Position {
-    fn area_from_origin(&self) -> usize
-    {
+    fn area_from_origin(&self) -> usize {
         (self.0 * self.1)
     }
 }
@@ -72,8 +71,7 @@ pub struct CharacterDisplay<'a> {
 
 
 impl<'a> Default for CharacterDisplay<'a> {
-    fn default() -> CharacterDisplay<'a>
-    {
+    fn default() -> CharacterDisplay<'a> {
         CharacterDisplay {
             vram_addr: 0,
             vram: &mut [],
@@ -87,11 +85,10 @@ impl<'a> Default for CharacterDisplay<'a> {
 
 
 impl<'a> CharacterDisplay<'a> {
-    pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'a>
-    {
-        let max_texts_num  = max_p.area_from_origin();
-        let vram_ptr       = vram_addr as *mut u16;
-        let vram           = unsafe { core::slice::from_raw_parts_mut(vram_ptr, max_texts_num) };
+    pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'a> {
+        let max_texts_num = max_p.area_from_origin();
+        let vram_ptr = vram_addr as *mut u16;
+        let vram = unsafe { core::slice::from_raw_parts_mut(vram_ptr, max_texts_num) };
 
         CharacterDisplay {
             vram_addr: vram_addr,
@@ -102,8 +99,7 @@ impl<'a> CharacterDisplay<'a> {
     }
 
 
-    pub fn set_current_position(&mut self, pos: Position) -> &mut Self
-    {
+    pub fn set_current_position(&mut self, pos: Position) -> &mut Self {
         self.current_position = pos;
         self
     }
@@ -112,23 +108,23 @@ impl<'a> CharacterDisplay<'a> {
     /// Return color code based on Enum.
     fn color(c: &Color) -> u8 {
         match *c {
-            Color::Black        => 0x0,
-            Color::Blue         => 0x1,
-            Color::Green        => 0x2,
-            Color::Cyan         => 0x3,
-            Color::Red          => 0x4,
-            Color::Magenta      => 0x5,
-            Color::Brown        => 0x6,
-            Color::LightGray    => 0x7,
-            Color::DarkGray     => 0x8,
-            Color::LightBlue    => 0x9,
-            Color::LightGreen   => 0xA,
-            Color::LightCyan    => 0xB,
-            Color::LightRed     => 0xC,
+            Color::Black => 0x0,
+            Color::Blue => 0x1,
+            Color::Green => 0x2,
+            Color::Cyan => 0x3,
+            Color::Red => 0x4,
+            Color::Magenta => 0x5,
+            Color::Brown => 0x6,
+            Color::LightGray => 0x7,
+            Color::DarkGray => 0x8,
+            Color::LightBlue => 0x9,
+            Color::LightGreen => 0xA,
+            Color::LightCyan => 0xB,
+            Color::LightRed => 0xC,
             Color::LightMagenta => 0xD,
-            Color::Yellow       => 0xE,
-            Color::White        => 0xF,
-            _                   => panic!("Should NOT use Rgb in CharacterDisplay."), // TODO: add error handling Rgb
+            Color::Yellow => 0xE,
+            Color::White => 0xF,
+            _ => panic!("Should NOT use Rgb in CharacterDisplay."), // TODO: add error handling Rgb
         }
     }
 
@@ -140,8 +136,7 @@ impl<'a> CharacterDisplay<'a> {
     ///     |||||||| ^^^^^^^^-Character
     ///     ||||^^^^-fore colour
     ///     ^^^^-----back colour
-    fn gen_pixel(&self, c: char) -> u16
-    {
+    fn gen_pixel(&self, c: char) -> u16 {
         let bg = Self::color(&self.color_background) as u16;
         let fg = Self::color(&self.color_foreground) as u16;
 
@@ -151,33 +146,28 @@ impl<'a> CharacterDisplay<'a> {
 
 
 impl<'a> Display for CharacterDisplay<'a> {
-    fn color_background(&self) -> &Color
-    {
+    fn color_background(&self) -> &Color {
         &self.color_background
     }
 
 
-    fn set_color_background(&mut self, bg: Color) -> &mut Self
-    {
+    fn set_color_background(&mut self, bg: Color) -> &mut Self {
         self.color_background = bg;
         self
     }
 
 
-    fn color_foreground(&self) -> &Color
-    {
+    fn color_foreground(&self) -> &Color {
         &self.color_foreground
     }
 
 
-    fn set_color_foreground(&mut self, fg: Color) -> &mut Self
-    {
+    fn set_color_foreground(&mut self, fg: Color) -> &mut Self {
         self.color_foreground = fg;
         self
     }
 
-    fn clear_screen(&mut self)
-    {
+    fn clear_screen(&mut self) {
         let space = self.gen_pixel(' ');
         for i in 0..(self.max_position.area_from_origin()) {
             self.vram[i] = space;
@@ -185,15 +175,14 @@ impl<'a> Display for CharacterDisplay<'a> {
     }
 
 
-    fn print(&mut self, string: &str)
-    {
+    fn print(&mut self, string: &str) {
         for c in string.chars() {
             let width = self.max_position.0;
 
             if c != '\n' {
-                let code                 = self.gen_pixel(c);
-                let x                    = &mut self.current_position.0;
-                let y                    = self.current_position.1;
+                let code = self.gen_pixel(c);
+                let x = &mut self.current_position.0;
+                let y = self.current_position.1;
                 self.vram[*x + y * width] = code;
                 *x += 1;
             } else {
@@ -229,8 +218,7 @@ impl<'a> Display for CharacterDisplay<'a> {
     }
 
 
-    fn println(&mut self, s: &str)
-    {
+    fn println(&mut self, s: &str) {
         self.print(s);
         self.print("\n");
     }
@@ -238,22 +226,21 @@ impl<'a> Display for CharacterDisplay<'a> {
 
 
 impl<'a> core::fmt::Write for CharacterDisplay<'a> {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result
-    {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.print(s);
         Ok(())
     }
 }
 
 
-/* This represents bit size and position infomation from VBE. */
+// This represents bit size and position infomation from VBE.
 pub struct ColorBitInfo {
-    /* this shows each bit size. */
+    // this shows each bit size.
     pub size_r: u8,
     pub size_g: u8,
     pub size_b: u8,
     pub size_rsvd: u8,
-    /* this shows each bit position. */
+    // this shows each bit position.
     pub pos_r: u8,
     pub pos_g: u8,
     pub pos_b: u8,
@@ -271,8 +258,7 @@ pub struct GraphicalDisplay {
 
 
 impl GraphicalDisplay {
-    pub fn new(vram_addr: usize, max_position: Position, bit_info: ColorBitInfo) -> GraphicalDisplay
-    {
+    pub fn new(vram_addr: usize, max_position: Position, bit_info: ColorBitInfo) -> GraphicalDisplay {
         let bpp = (bit_info.size_r + bit_info.size_g + bit_info.size_b + bit_info.size_rsvd) / 8;
         GraphicalDisplay {
             vram_addr: vram_addr,
@@ -283,29 +269,27 @@ impl GraphicalDisplay {
     }
 
 
-    pub fn fill_display(&self, c: &Color)
-    {
+    pub fn fill_display(&self, c: &Color) {
         let Position(x, y) = self.max_position;
         let color_bit = self.color(c);
 
-        for i in 0..(x * y){
+        for i in 0..(x * y) {
             let addr = self.vram_addr + (i * 4);
-            unsafe {*(addr as *mut u32) = color_bit};
+            unsafe { *(addr as *mut u32) = color_bit };
         }
     }
 
 
-    pub fn fill_area(&self, begin: Position, end: Position, c: &Color)
-    {
+    pub fn fill_area(&self, begin: Position, end: Position, c: &Color) {
         let Position(size_x, _) = self.max_position;
         let begin_x = begin.0 * self.byte_per_pixel;
         let begin_y = begin.1 * self.byte_per_pixel * size_x;
-        let end_x   = end.0 * self.byte_per_pixel;
-        let end_y   = end.1 * self.byte_per_pixel * size_x;
-        let dy      = size_x * self.byte_per_pixel;
-        let ccode   = self.color(c);
+        let end_x = end.0 * self.byte_per_pixel;
+        let end_y = end.1 * self.byte_per_pixel * size_x;
+        let dy = size_x * self.byte_per_pixel;
+        let ccode = self.color(c);
 
-        let vy_e   = self.vram_addr + end_y;
+        let vy_e = self.vram_addr + end_y;
         let mut vy = self.vram_addr + begin_y;
         loop {
             if !(vy < vy_e) {
@@ -317,10 +301,10 @@ impl GraphicalDisplay {
             let mut v = vy + begin_x;
             loop {
                 if !(v < ve) {
-                    break
+                    break;
                 }
 
-                unsafe {*(v as *mut u32) = ccode};
+                unsafe { *(v as *mut u32) = ccode };
 
                 v += self.byte_per_pixel;
             }
@@ -329,8 +313,7 @@ impl GraphicalDisplay {
         }
     }
 
-    pub fn fill_area_by_size(&self, origin: Position, size: Position, c: &Color)
-    {
+    pub fn fill_area_by_size(&self, origin: Position, size: Position, c: &Color) {
         let end = Position(origin.0 + size.0, origin.1 + size.1);
         self.fill_area(origin, end, c);
     }
@@ -340,29 +323,29 @@ impl GraphicalDisplay {
     fn color(&self, c: &Color) -> u32 {
         match *c {
             // TODO:
-            Color::Black        => 0x0,
-            Color::Blue         => 0x1,
-            Color::Green        => 0x2,
-            Color::Cyan         => 0x3,
-            Color::Red          => 0x4,
-            Color::Magenta      => 0x5,
-            Color::Brown        => 0x6,
-            Color::LightGray    => 0x7,
-            Color::DarkGray     => 0x8,
-            Color::LightBlue    => 0x9,
-            Color::LightGreen   => 0xA,
-            Color::LightCyan    => 0xB,
-            Color::LightRed     => 0xC,
+            Color::Black => 0x0,
+            Color::Blue => 0x1,
+            Color::Green => 0x2,
+            Color::Cyan => 0x3,
+            Color::Red => 0x4,
+            Color::Magenta => 0x5,
+            Color::Brown => 0x6,
+            Color::LightGray => 0x7,
+            Color::DarkGray => 0x8,
+            Color::LightBlue => 0x9,
+            Color::LightGreen => 0xA,
+            Color::LightCyan => 0xB,
+            Color::LightRed => 0xC,
             Color::LightMagenta => 0xD,
-            Color::Yellow       => 0xE,
-            Color::White        => 0xF,
+            Color::Yellow => 0xE,
+            Color::White => 0xF,
             Color::Code(rgb) => {
                 let r = (rgb >> 16) as u8;
                 let g = (rgb >> 8) as u8;
                 let b = (rgb & 0xFF) as u8;
                 let bit_info = &self.bit_info;
                 ((0u32) << bit_info.pos_rsvd) | ((r as u32) << bit_info.pos_r) | ((g as u32) << bit_info.pos_g) | ((b as u32) << bit_info.pos_b)
-            },
+            }
             Color::Rgb(r, g, b) => {
                 let bit_info = &self.bit_info;
                 ((0u32) << bit_info.pos_rsvd) | ((r as u32) << bit_info.pos_r) | ((g as u32) << bit_info.pos_g) | ((b as u32) << bit_info.pos_b)
@@ -375,7 +358,7 @@ impl GraphicalDisplay {
 
 #[cfg(test)]
 mod test {
-    use super::{CharacterDisplay, Display, Color, Position, Area};
+    use super::{Area, CharacterDisplay, Color, Display, Position};
 
     #[test]
     fn creating_position() {
@@ -395,11 +378,12 @@ mod test {
     }
 
     #[test]
-    fn setting_bg_fg_color()
-    {
+    fn setting_bg_fg_color() {
         let mut c_disp = CharacterDisplay::new(0xB8000, Position(800, 600));
 
-        c_disp.set_color_background(Color::Red).set_color_foreground(Color::LightBlue);
+        c_disp
+            .set_color_background(Color::Red)
+            .set_color_foreground(Color::LightBlue);
         let color_code = CharacterDisplay::color(c_disp.color_background());
         assert_eq!(color_code, 0x4);
 

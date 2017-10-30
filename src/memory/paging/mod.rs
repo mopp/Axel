@@ -32,10 +32,10 @@
 
 mod entry;
 mod table;
+use self::table::ActivePageTable;
 use memory::address::VirtualAddress;
 use memory::address::address_of;
 use memory::buddy_system::BuddyManager;
-use self::table::ActivePageTable;
 
 
 trait PageIndex {
@@ -48,35 +48,29 @@ trait PageIndex {
 
 
 impl PageIndex for VirtualAddress {
-    fn level4_index(self) -> usize
-    {
+    fn level4_index(self) -> usize {
         (self >> 39) & 0o777
     }
 
-    fn level3_index(self) -> usize
-    {
+    fn level3_index(self) -> usize {
         (self >> 30) & 0o777
     }
 
-    fn level2_index(self) -> usize
-    {
+    fn level2_index(self) -> usize {
         (self >> 21) & 0o777
     }
 
-    fn level1_index(self) -> usize
-    {
+    fn level1_index(self) -> usize {
         (self >> 12) & 0o777
     }
 
-    fn offset(self) -> usize
-    {
+    fn offset(self) -> usize {
         self & 0xFFF
     }
 }
 
 
-pub fn init(bman: BuddyManager)
-{
+pub fn init(bman: BuddyManager) {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));

@@ -21,28 +21,24 @@ pub struct PageEntry(usize);
 
 impl PageEntry {
     /// Return `EntryFlags`.
-    pub fn flags(&self) -> PageEntryFlags
-    {
+    pub fn flags(&self) -> PageEntryFlags {
         PageEntryFlags::from_bits_truncate(self.0)
     }
 
 
     /// Clear the all flags (set the all flags zero).
-    pub fn clear_all(&mut self)
-    {
+    pub fn clear_all(&mut self) {
         self.0 = 0;
     }
 
 
-    pub fn set_frame_addr(&mut self, addr: usize)
-    {
+    pub fn set_frame_addr(&mut self, addr: usize) {
         debug_assert_eq!(addr & 0xFFF, 0);
         debug_assert_eq!(addr & 0xFFFF_0000_0000_0000, 0);
         self.0 = self.0 | addr;
     }
 
-    pub fn get_frame_addr(&mut self) -> usize
-    {
+    pub fn get_frame_addr(&mut self) -> usize {
         self.0 | 0xFFF
     }
 }

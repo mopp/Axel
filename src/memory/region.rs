@@ -4,12 +4,14 @@
 pub enum State {
     Free,
     Used,
-    Reserved
+    Reserved,
 }
 
 
 impl Default for State {
-    fn default() -> State { State::Free }
+    fn default() -> State {
+        State::Free
+    }
 }
 
 
@@ -22,53 +24,45 @@ pub struct Region {
 
 
 impl Region {
-    pub fn new() -> Region
-    {
+    pub fn new() -> Region {
         Default::default()
     }
 
 
-    pub fn set_base_addr(&mut self, base_addr: usize)
-    {
+    pub fn set_base_addr(&mut self, base_addr: usize) {
         self.base_addr = base_addr;
     }
 
 
-    pub fn base_addr(&self) -> usize
-    {
+    pub fn base_addr(&self) -> usize {
         self.base_addr
     }
 
 
-    pub fn set_size(&mut self, size: usize)
-    {
+    pub fn set_size(&mut self, size: usize) {
         self.size = size;
     }
 
 
-    pub fn size(&self) -> usize
-    {
+    pub fn size(&self) -> usize {
         self.size
     }
 
 
-    pub fn set_state(&mut self, state: State)
-    {
+    pub fn set_state(&mut self, state: State) {
         self.state = state;
     }
 
 
-    pub fn state(&self) -> State
-    {
+    pub fn state(&self) -> State {
         self.state
     }
 
 
-    pub fn is_valid(&self) -> bool
-    {
+    pub fn is_valid(&self) -> bool {
         match self {
             _ if self.size == 0 => false,
-            _  => true,
+            _ => true,
         }
     }
 }
@@ -84,8 +78,7 @@ pub struct RegionManager {
 
 
 impl RegionManager {
-    pub fn new() -> RegionManager
-    {
+    pub fn new() -> RegionManager {
         RegionManager {
             regions: [Default::default(); MAX_REGION_COUNT],
             valid_region_count: 0,
@@ -93,8 +86,7 @@ impl RegionManager {
     }
 
 
-    pub fn append(&mut self, r: Region)
-    {
+    pub fn append(&mut self, r: Region) {
         if self.valid_region_count == MAX_REGION_COUNT {
             panic!("Region manager does not have enough space.");
         }
@@ -108,14 +100,15 @@ impl RegionManager {
     }
 
 
-    pub fn regions(&self) -> &[Region]
-    {
+    pub fn regions(&self) -> &[Region] {
         &self.regions
     }
 
 
     pub fn regions_iter_with<'a>(&'a self, state: State) -> impl Iterator<Item = &'a Region> {
-        self.regions().into_iter().filter(move |region| (region.state() == state) && (region.is_valid() == true))
+        self.regions().into_iter().filter(move |region| {
+            (region.state() == state) && (region.is_valid() == true)
+        })
     }
 }
 
@@ -126,8 +119,7 @@ mod test {
 
 
     #[test]
-    fn test_region_create()
-    {
+    fn test_region_create() {
         let mr: Region = Region::new();
 
         assert_eq!(mr.base_addr, 0);
@@ -137,8 +129,7 @@ mod test {
 
 
     #[test]
-    fn test_region_is_valid()
-    {
+    fn test_region_is_valid() {
         let mut mr: Region = Region::new();
 
         assert_eq!(mr.is_valid(), false);
@@ -149,23 +140,20 @@ mod test {
 
 
     #[test]
-    fn test_region_state()
-    {
+    fn test_region_state() {
         let mut mr: Region = Region::new();
     }
 
 
     #[test]
-    fn test_region_manager_create()
-    {
+    fn test_region_manager_create() {
         let r_man = RegionManager::new();
         assert_eq!(r_man.valid_region_count, 0);
     }
 
 
     #[test]
-    fn test_region_manager_append()
-    {
+    fn test_region_manager_append() {
         let mut r_man = RegionManager::new();
         let mut mr: Region = Region::new();
         mr.size = 0x100;
@@ -177,8 +165,7 @@ mod test {
 
 
     #[test]
-    fn test_region_manager_iter()
-    {
+    fn test_region_manager_iter() {
         let mut r_man = RegionManager::new();
         let mut mr: Region = Region::new();
         mr.size = 0x100;

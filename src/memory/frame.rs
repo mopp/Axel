@@ -21,54 +21,46 @@ pub struct Frame {
 
 
 impl Frame {
-    pub fn order(&self) -> usize
-    {
+    pub fn order(&self) -> usize {
         self.order as usize
     }
 
 
-    pub fn set_order(&mut self, order: usize)
-    {
+    pub fn set_order(&mut self, order: usize) {
         use core;
         debug_assert!(order <= (core::u8::MAX as usize));
         self.order = order as u8;
     }
 
 
-    pub fn state(&self) -> State
-    {
+    pub fn state(&self) -> State {
         self.state
     }
 
 
-    pub fn set_state(&mut self, state: State)
-    {
+    pub fn set_state(&mut self, state: State) {
         self.state = state;
     }
 
 
-    pub fn is_alloc(&self) -> bool
-    {
+    pub fn is_alloc(&self) -> bool {
         self.state == State::Alloc
     }
 
 
-    pub fn is_free(&self) -> bool
-    {
+    pub fn is_free(&self) -> bool {
         !self.is_alloc()
     }
 
 
-    pub fn size(&self) -> usize
-    {
+    pub fn size(&self) -> usize {
         SIZE * (1 << self.order)
     }
 }
 
 
 impl Default for Frame {
-    fn default() -> Frame
-    {
+    fn default() -> Frame {
         Frame {
             order: 0,
             state: State::Free,
@@ -84,8 +76,7 @@ mod test {
 
     #[test]
     #[should_panic]
-    fn test_frame()
-    {
+    fn test_frame() {
         let mut frame = Frame {
             order: 0,
             state: State::Free,

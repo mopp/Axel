@@ -10,7 +10,6 @@
 #![feature(start)]
 #![feature(unique)]
 #![no_std]
-
 #![cfg_attr(test, feature(allocator_api))]
 
 #[cfg(test)]
@@ -56,8 +55,7 @@ use memory::address::VirtualAddress;
 #[cfg(not(test))]
 #[start]
 #[no_mangle]
-pub extern fn main(argc: usize, argv: *const VirtualAddress)
-{
+pub extern "C" fn main(argc: usize, argv: *const VirtualAddress) {
     memory::clean_bss_section();
 
     let argv: &[VirtualAddress] = unsafe { core::slice::from_raw_parts(argv, argc) };
@@ -87,16 +85,14 @@ pub extern fn main(argc: usize, argv: *const VirtualAddress)
 
 #[cfg(not(test))]
 #[lang = "eh_personality"]
-pub extern fn eh_personality()
-{
+pub extern "C" fn eh_personality() {
 }
 
 
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn panic_fmt(msg: core::fmt::Arguments, file: &'static str, line: u32) -> !
-{
+pub extern "C" fn panic_fmt(msg: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
     println!("Panic - {}", msg);
     println!("Line {} in {}", line, file);
     loop {}
@@ -104,8 +100,7 @@ pub extern fn panic_fmt(msg: core::fmt::Arguments, file: &'static str, line: u32
 
 
 #[no_mangle]
-pub extern fn abort()
-{
+pub extern "C" fn abort() {
     println!("abort");
     loop {}
 }

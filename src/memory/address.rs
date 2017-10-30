@@ -9,7 +9,7 @@ pub type VirtualAddress = usize;
 
 // These variable are defined in the linker script and their value do NOT have any meanings.
 // Their addressees have meanings.
-extern {
+extern "C" {
     static KERNEL_ADDR_PHYSICAL_BEGIN: usize;
     static KERNEL_ADDR_PHYSICAL_END: usize;
     static KERNEL_ADDR_VIRTUAL_BEGIN: usize;
@@ -24,50 +24,43 @@ lazy_static! {
 
 
 #[inline(always)]
-pub fn kernel_addr_begin_virtual() -> VirtualAddress
-{
+pub fn kernel_addr_begin_virtual() -> VirtualAddress {
     address_of(unsafe { &KERNEL_ADDR_VIRTUAL_BEGIN })
 }
 
 
 #[inline(always)]
-pub fn kernel_addr_begin_physical() -> PhysicalAddress
-{
+pub fn kernel_addr_begin_physical() -> PhysicalAddress {
     address_of(unsafe { &KERNEL_ADDR_PHYSICAL_BEGIN })
 }
 
 
 #[inline(always)]
-pub fn kernel_addr_end_physical() -> PhysicalAddress
-{
+pub fn kernel_addr_end_physical() -> PhysicalAddress {
     *(*CURRENT_KERNEL_ADDR_PHYSICAL_END).lock()
 }
 
 
 #[inline(always)]
-pub fn update_kernel_addr_end_physical(new_addr: PhysicalAddress)
-{
+pub fn update_kernel_addr_end_physical(new_addr: PhysicalAddress) {
     *(*CURRENT_KERNEL_ADDR_PHYSICAL_END).lock() = new_addr
 }
 
 
 #[inline(always)]
-pub fn kernel_bss_section_addr_begin() -> VirtualAddress
-{
+pub fn kernel_bss_section_addr_begin() -> VirtualAddress {
     address_of(unsafe { &KERNEL_ADDR_BSS_BEGIN })
 }
 
 
 #[inline(always)]
-pub fn kernel_bss_section_size() -> VirtualAddress
-{
+pub fn kernel_bss_section_size() -> VirtualAddress {
     address_of(unsafe { &KERNEL_SIZE_BSS })
 }
 
 
 #[inline(always)]
-pub fn address_of<T>(obj: &T) -> VirtualAddress
-{
+pub fn address_of<T>(obj: &T) -> VirtualAddress {
     (obj as *const _) as usize
 }
 
@@ -83,16 +76,14 @@ pub trait ToVirtualAddr {
 
 
 impl ToPhysicalAddr for VirtualAddress {
-    fn to_physical_addr(self) -> PhysicalAddress
-    {
+    fn to_physical_addr(self) -> PhysicalAddress {
         self - kernel_addr_begin_virtual()
     }
 }
 
 
 impl ToVirtualAddr for PhysicalAddress {
-    fn to_virtual_addr(self) -> VirtualAddress
-    {
+    fn to_virtual_addr(self) -> VirtualAddress {
         self + kernel_addr_begin_virtual()
     }
 }
@@ -108,15 +99,13 @@ pub trait Alignment {
 
 
 impl Alignment for usize {
-    fn align_up(self, alignment: Self) -> Self
-    {
+    fn align_up(self, alignment: Self) -> Self {
         let mask = alignment - 1;
         (self + mask) & (!mask)
     }
 
 
-    fn align_down(self, alignment: Self) -> Self
-    {
+    fn align_down(self, alignment: Self) -> Self {
         let mask = alignment - 1;
         self & (!mask)
     }
@@ -125,12 +114,11 @@ impl Alignment for usize {
 
 #[cfg(test)]
 mod test {
-    use super::{Alignment};
+    use super::Alignment;
 
 
     #[test]
-    fn test_alignment()
-    {
+    fn test_alignment() {
         assert_eq!(0x1000.align_up(0x1000), 0x1000);
         assert_eq!(0x1000.align_down(0x1000), 0x1000);
         assert_eq!(0x1123.align_up(0x1000), 0x2000);
