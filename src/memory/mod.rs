@@ -1,18 +1,16 @@
 mod buddy_system;
 mod early_allocator;
 mod frame;
-mod list;
+mod frame_allocator;
 mod paging;
 pub mod address;
 pub mod region;
 
-use self::address::*;
-use self::buddy_system::BuddyManager;
-use self::early_allocator::EarlyAllocator;
-use self::frame::Frame;
-use self::list::Node;
 use context;
-use core::mem;
+use self::address::*;
+use self::early_allocator::EarlyAllocator;
+use self::frame_allocator::FrameAllocator;
+use self::frame::Frame;
 
 
 #[inline(always)]
@@ -46,29 +44,8 @@ pub fn init() {
     let free_region_addr_end = (free_memory_region.base_addr() + free_memory_region.size()).to_virtual_addr();
 
     let mut eallocator = EarlyAllocator::new(free_region_addr_begin, free_region_addr_end);
-    let mut bman = allocate_buddy_manager(&mut eallocator);
+    let mut bman = buddy_system::allocate_buddy_manager(&mut eallocator);
     println!("Available memory: {} KB", bman.free_memory_size() / 1024);
 
     paging::init(bman);
-}
-
-
-fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyManager {
-    // Calculate the required size for frame information.
-    let struct_size = mem::size_of::<Node<Frame>>();
-    let capacity = eallocator.capacity();
-    let num_frames = capacity / frame::SIZE;
-    let required_size = num_frames * struct_size;
-
-    let capacity = capacity - required_size;
-    let num_frames = capacity / frame::SIZE;
-
-    let frames = eallocator.alloc_slice_mut(num_frames);
-    let base_addr = eallocator
-        .available_space()
-        .0
-        .align_up(frame::SIZE)
-        .to_physical_addr();
-
-    BuddyManager::new(&mut frames[0] as *mut _, num_frames, base_addr, frame::SIZE)
 }

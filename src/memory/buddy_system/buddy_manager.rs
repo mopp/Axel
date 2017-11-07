@@ -1,9 +1,9 @@
 use core::mem;
-use core::ptr;
 use core::ptr::Unique;
-use memory::frame::{Frame, State};
-use memory::list::LinkedList;
-use memory::list::Node;
+use core::ptr;
+use super::buddy_frame::{BuddyFrame, State};
+use super::list::LinkedList;
+use super::list::Node;
 
 
 // 2^MAX_ORDER
@@ -11,19 +11,19 @@ pub const MAX_ORDER: usize = 16 + 1;
 
 
 pub struct BuddyManager {
-    nodes: Unique<Node<Frame>>,
+    nodes: Unique<Node<BuddyFrame>>,
     count_frames: usize,
     base_addr: usize,
     frame_size_unit: usize,
     count_free_frames: [usize; MAX_ORDER],
-    lists: [LinkedList<Frame>; MAX_ORDER],
+    lists: [LinkedList<BuddyFrame>; MAX_ORDER],
 }
 
 
 impl BuddyManager {
-    pub fn new(nodes: *mut Node<Frame>, count: usize, base_addr: usize, frame_size_unit: usize) -> BuddyManager {
+    pub fn new(nodes: *mut Node<BuddyFrame>, count: usize, base_addr: usize, frame_size_unit: usize) -> BuddyManager {
         let lists = unsafe {
-            let mut lists: [LinkedList<Frame>; MAX_ORDER] = mem::uninitialized();
+            let mut lists: [LinkedList<BuddyFrame>; MAX_ORDER] = mem::uninitialized();
 
             for l in lists.iter_mut() {
                 ptr::write(l, LinkedList::new())
@@ -51,12 +51,12 @@ impl BuddyManager {
         bman
     }
 
-    fn push_node_frame(&mut self, order: usize, node_ptr: Unique<Node<Frame>>) {
+    fn push_node_frame(&mut self, order: usize, node_ptr: Unique<Node<BuddyFrame>>) {
         self.lists[order].push_back(node_ptr);
         self.count_free_frames[order] += 1;
     }
 
-    fn pop_node_frame(&mut self, order: usize) -> Option<Unique<Node<Frame>>> {
+    fn pop_node_frame(&mut self, order: usize) -> Option<Unique<Node<BuddyFrame>>> {
         self.count_free_frames[order] -= 1;
         self.lists[order].pop_front()
     }
@@ -84,7 +84,7 @@ impl BuddyManager {
         self.count_used_frames() * self.frame_size_unit
     }
 
-    fn supply_frame_nodes(&mut self, nodes: Unique<Node<Frame>>, count: usize) {
+    fn supply_frame_nodes(&mut self, nodes: Unique<Node<BuddyFrame>>, count: usize) {
         debug_assert!(count != 0);
 
         let mut count_rest_frames = count;
@@ -101,20 +101,20 @@ impl BuddyManager {
         }
     }
 
-    fn get_frame_index(&self, node: Unique<Node<Frame>>) -> usize {
+    fn get_frame_index(&self, node: Unique<Node<BuddyFrame>>) -> usize {
         self.nodes.as_ptr().offset_to(node.as_ptr()).unwrap() as usize
     }
 
-    fn get_buddy_node(&mut self, node: Unique<Node<Frame>>, order: usize) -> Unique<Node<Frame>> {
+    fn get_buddy_node(&mut self, node: Unique<Node<BuddyFrame>>, order: usize) -> Unique<Node<BuddyFrame>> {
         let buddy_index = self.get_frame_index(node) ^ (1 << order);
         unsafe { Unique::new_unchecked(self.nodes.as_ptr().offset(buddy_index as isize)) }
     }
 
-    fn get_addr(&self, node: Unique<Node<Frame>>) -> usize {
+    fn get_addr(&self, node: Unique<Node<BuddyFrame>>) -> usize {
         self.base_addr + self.get_frame_index(node) * self.frame_size_unit
     }
 
-    pub fn allocate_frame_by_order(&mut self, request_order: usize) -> Option<Unique<Node<Frame>>> {
+    pub fn allocate_frame_by_order(&mut self, request_order: usize) -> Option<Unique<Node<BuddyFrame>>> {
         if MAX_ORDER <= request_order {
             return None;
         }
@@ -152,7 +152,7 @@ impl BuddyManager {
         None
     }
 
-    pub fn free_frame(&mut self, unique_node: Unique<Node<Frame>>) {
+    pub fn free_frame(&mut self, unique_node: Unique<Node<BuddyFrame>>) {
         let node = unsafe { &mut *unique_node.as_ptr() };
         let frame = node.as_mut();
 
@@ -202,7 +202,7 @@ mod tests {
         let mut expected_counts = [0usize; MAX_ORDER];
 
         let count = 1024;
-        let nodes = allocate_node_objs::<Node<Frame>>(count);
+        let nodes = allocate_node_objs::<Node<BuddyFrame>>(count);
 
         let bman = BuddyManager::new(&mut nodes[0] as *mut _, count, 0, FRAME_SIZE);
         expected_counts[10] += 1;
@@ -212,7 +212,7 @@ mod tests {
     #[test]
     fn test_get_frame_index() {
         let count = 1024;
-        let nodes = allocate_node_objs::<Node<Frame>>(count);
+        let nodes = allocate_node_objs::<Node<BuddyFrame>>(count);
         let bman = BuddyManager::new(&mut nodes[0] as *mut _, count, 0, FRAME_SIZE);
 
         assert_eq!(
@@ -232,14 +232,14 @@ mod tests {
     #[test]
     fn test_get_buddy_node() {
         let count = 1024;
-        let nodes = allocate_node_objs::<Node<Frame>>(count);
+        let nodes = allocate_node_objs::<Node<BuddyFrame>>(count);
         let _bman = BuddyManager::new(&mut nodes[0] as *mut _, count, 0, FRAME_SIZE);
     }
 
     #[test]
     fn test_allocate_frame_by_order_and_free() {
         let count = 1024;
-        let nodes = allocate_node_objs::<Node<Frame>>(count);
+        let nodes = allocate_node_objs::<Node<BuddyFrame>>(count);
         let mut bman = BuddyManager::new(&mut nodes[0] as *mut _, count, 0, FRAME_SIZE);
 
         assert_eq!(bman.count_free_frames(), 1024);
@@ -262,7 +262,7 @@ mod tests {
         assert_eq!(bman.count_free_frames(), 1022);
 
         let count = 512;
-        let nodes = allocate_node_objs::<Node<Frame>>(count);
+        let nodes = allocate_node_objs::<Node<BuddyFrame>>(count);
         let mut bman = BuddyManager::new(&mut nodes[0] as *mut _, count, 0, FRAME_SIZE);
         let node1 = bman.allocate_frame_by_order(1).unwrap();
         assert_eq!(bman.count_free_frames(), 510);
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn test_get_addr() {
         let count = 128;
-        let nodes = allocate_node_objs::<Node<Frame>>(count);
+        let nodes = allocate_node_objs::<Node<BuddyFrame>>(count);
         let base_addr = 1024;
         let mut bman = BuddyManager::new(&mut nodes[0] as *mut _, count, base_addr, FRAME_SIZE);
 

@@ -1,8 +1,6 @@
-// TODO replace
-struct Frame {
-}
+use super::frame::Frame;
 
-trait FrameAllocator {
+pub trait FrameAllocator {
     fn alloc() -> Frame;
     fn free(Frame);
 }
