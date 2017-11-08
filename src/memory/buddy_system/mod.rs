@@ -2,13 +2,13 @@ pub mod buddy_manager;
 pub mod buddy_frame;
 mod list;
 
-pub use self::buddy_manager::BuddyManager;
-use core::mem;
 use self::buddy_frame::BuddyFrame;
+pub use self::buddy_manager::BuddyManager;
 use self::list::Node;
 use super::EarlyAllocator;
 use super::address::*;
 use super::frame;
+use core::mem;
 
 
 pub fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyManager {

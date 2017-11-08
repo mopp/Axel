@@ -1,9 +1,9 @@
-use core::mem;
-use core::ptr::Unique;
-use core::ptr;
 use super::buddy_frame::{BuddyFrame, State};
 use super::list::LinkedList;
 use super::list::Node;
+use core::mem;
+use core::ptr;
+use core::ptr::Unique;
 
 
 // 2^MAX_ORDER
@@ -174,7 +174,6 @@ impl BuddyManager {
         self.push_node_frame(frame.order(), unique_node);
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -6,11 +6,11 @@ mod paging;
 pub mod address;
 pub mod region;
 
-use context;
 use self::address::*;
 use self::early_allocator::EarlyAllocator;
-use self::frame_allocator::FrameAllocator;
 use self::frame::Frame;
+use self::frame_allocator::FrameAllocator;
+use context;
 
 
 #[inline(always)]
