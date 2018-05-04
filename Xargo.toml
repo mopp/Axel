@@ -1,1 +1,2 @@
-[dependencies.alloc]
+[target.x86_64-unknown-axel.dependencies]
+alloc = {}

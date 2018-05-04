@@ -10,19 +10,16 @@ path = "src/kernel.rs"
 
 
 [dependencies]
-bitflags                = "1.0.0"
-compiler_builtins       = { git = "https://github.com/rust-lang-nursery/compiler-builtins" }
-kernel_memory_allocator = { path = "lib/kernel_memory_allocator" }
-multiboot2              = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }
-rlibc                   = "1.0"
-spin                    = "0.4.6"
-
+bitflags   = "1.0.0"
+multiboot2 = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }
+rlibc      = "1.0"
+spin       = "0.4.8"
 # Just for x86_32
-# multiboot               = { git = "https://github.com/gz/rust-multiboot.git" }
+# multiboot  = { git = "https://github.com/gz/rust-multiboot.git" }
 
 [dependencies.lazy_static]
 features = ["spin_no_std"]
-version = "0.2.9"
+version = "1.0.0"
 
 
 [profile.dev]

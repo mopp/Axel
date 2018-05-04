@@ -2,15 +2,32 @@
 //! The size is 4096 and it corresponds page size.
 pub const SIZE: usize = 4096;
 
-use super::VirtualAddress;
+use core::ptr::NonNull;
+use list::Node;
+use memory::buddy_system::Object;
+use VirtualAddress;
+
+#[derive(PartialEq, Eq)]
+enum State {
+    Used,
+    Free,
+}
 
 pub struct Frame {
+    next: Option<NonNull<Frame>>,
+    prev: Option<NonNull<Frame>>,
     number: usize,
+    order: usize,
+    state: State,
 }
 
 impl Frame {
     pub fn from_addr(addr: VirtualAddress) -> Frame {
         Frame {
+            next: None,
+            prev: None,
+            order: 0,
+            state: State::Free,
             number: addr / SIZE,
         }
     }
@@ -32,6 +49,45 @@ impl Frame {
     }
 }
 
+impl Node<Frame> for Frame {
+    fn set_next(&mut self, ptr: Option<NonNull<Self>>) {
+        self.next = ptr;
+    }
+
+    fn set_prev(&mut self, ptr: Option<NonNull<Self>>) {
+        self.prev = ptr;
+    }
+
+    fn next(&self) -> Option<NonNull<Self>> {
+        self.next
+    }
+
+    fn prev(&self) -> Option<NonNull<Self>> {
+        self.prev
+    }
+}
+
+impl Object for Frame {
+    fn mark_used(&mut self) {
+        self.state = State::Used;
+    }
+
+    fn mark_free(&mut self) {
+        self.state = State::Free;
+    }
+
+    fn is_used(&self) -> bool {
+        self.state == State::Free
+    }
+
+    fn order(&self) -> usize {
+        self.order
+    }
+
+    fn set_order(&mut self, order: usize) {
+        self.order = order;
+    }
+}
 
 #[cfg(test)]
 mod tests {

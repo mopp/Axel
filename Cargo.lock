@@ -2,48 +2,32 @@
 name = "axel"
 version = "0.2.0"
 dependencies = [
- "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.1.0 (git+https://github.com/rust-lang-nursery/compiler-builtins)",
- "kernel_memory_allocator 0.2.0",
- "lazy_static 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "multiboot2 0.3.2 (git+https://github.com/phil-opp/multiboot2-elf64.git)",
+ "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "multiboot2 0.5.0 (git+https://github.com/phil-opp/multiboot2-elf64.git)",
  "rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "spin 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spin 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "bitflags"
-version = "0.4.0"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "bitflags"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "compiler_builtins"
-version = "0.1.0"
-source = "git+https://github.com/rust-lang-nursery/compiler-builtins#2d414afec5e9bd41cc3a507b745ab6925cd29413"
-
-[[package]]
-name = "kernel_memory_allocator"
-version = "0.2.0"
 
 [[package]]
 name = "lazy_static"
-version = "0.2.9"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "spin 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spin 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "multiboot2"
-version = "0.3.2"
-source = "git+https://github.com/phil-opp/multiboot2-elf64.git#08c6162e0a0fbd9f0593c8d5d37a1c84bfd922c9"
+version = "0.5.0"
+source = "git+https://github.com/phil-opp/multiboot2-elf64.git#784cfb527d7165fa82b5be5a5d87355248e6a687"
 dependencies = [
- "bitflags 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -53,14 +37,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "spin"
-version = "0.4.6"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
-"checksum bitflags 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8dead7461c1127cf637931a1e50934eb6eee8bff2f74433ac7909e9afcee04a3"
-"checksum bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f5cde24d1b2e2216a726368b2363a273739c91f4e3eb4e0dd12d672d396ad989"
-"checksum compiler_builtins 0.1.0 (git+https://github.com/rust-lang-nursery/compiler-builtins)" = "<none>"
-"checksum lazy_static 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)" = "c9e5e58fa1a4c3b915a561a78a22ee0cac6ab97dca2504428bc1cb074375f8d5"
-"checksum multiboot2 0.3.2 (git+https://github.com/phil-opp/multiboot2-elf64.git)" = "<none>"
+"checksum bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d0c54bb8f454c567f21197eefcdbf5679d0bd99f2ddbe52e84c77061952e6789"
+"checksum lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c8f31047daa365f19be14b47c29df4f7c3b581832407daabe6ae77397619237d"
+"checksum multiboot2 0.5.0 (git+https://github.com/phil-opp/multiboot2-elf64.git)" = "<none>"
 "checksum rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc874b127765f014d792f16763a81245ab80500e2ad921ed4ee9e82481ee08fe"
-"checksum spin 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "7e4deb3c2455c73779e6d3eebceae9599fc70957e54c69fe88f93aa48e62f432"
+"checksum spin 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14db77c5b914df6d6173dda9a3b3f5937bd802934fa5edaf934df06a3491e56f"

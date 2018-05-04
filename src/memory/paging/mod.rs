@@ -35,7 +35,8 @@ mod table;
 use self::table::ActivePageTable;
 use memory::address::VirtualAddress;
 use memory::address::address_of;
-use memory::buddy_system::BuddyManager;
+use memory::frame::Frame;
+use memory::buddy_system::BuddyAllocator;
 
 
 trait PageIndex {
@@ -70,7 +71,7 @@ impl PageIndex for VirtualAddress {
 }
 
 
-pub fn init(bman: BuddyManager) {
+pub fn init(_bman: BuddyAllocator<Frame>) {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));

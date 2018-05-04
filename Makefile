@@ -1,32 +1,22 @@
-#############################################################
-# @file Makefile
-# @brief Building Axel.
-# @author mopp
-# @version 0.2.0
-#############################################################
-
 ARCH := x86_64
 
 # Load target specific configs.
 include ./config/Makefile.$(ARCH)
 
-# Commands.
-export RM   := rm -rf
-CD          := cd
-CP          := cp
-MAKE        := make
-RUSTC       := rustc --target=$(TARGET_TRIPLE)
-CARGO       := xargo
-CARGO_BUILD := $(CARGO) build --target=$(TARGET_TRIPLE)
-CARGO_TEST  := cargo test
-MKDIR       := mkdir -p
-MKRESCUE    := grub-mkrescue
-OBJCOPY     := objcopy --only-keep-debug
-STRIP       := strip
-TOUCH       := touch --no-create
-GDB         := rust-gdb --nh --nx -q -x ./config/axel.gdb
+# Define commands.
+export RM := rm -rf
+export CC := gcc
+CP        := cp
+MAKE      := make
+CARGO     := cargo
+XARGO     := xargo
+MKDIR     := mkdir -p
+MKRESCUE  := grub-mkrescue
+OBJCOPY   := objcopy --only-keep-debug
+STRIP     := strip
+GDB       := rust-gdb --nh --nx -q -x ./config/axel.gdb
 
-# Axel configs.
+# Define file names and config files.
 AXEL_BIN  := axel.bin
 AXEL_ISO  := axel.iso
 AXEL_LIB  := target/$(TARGET_TRIPLE)/debug/libaxel.a
@@ -36,9 +26,7 @@ LINK_FILE := $(ARCH_DIR)/link.ld
 BOOT_OBJ  := $(ARCH_DIR)/boot.o
 GRUB_CFG  := config/grub.cfg
 
-# Rust configs
-CARGO_TOML              := Cargo.toml
-RUST_REPO               := ./lib/rust
+# Define Rust configs.
 export RUST_TARGET_PATH := $(PWD)/config/
 export RUSTFLAGS        := -Z no-landing-pads
 
@@ -51,7 +39,7 @@ $(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
 	$(MKDIR) ./iso/boot/grub/
 	$(CP) $(AXEL_BIN) ./iso/boot/
 	$(CP) $(GRUB_CFG) ./iso/boot/grub/grub.cfg
-	$(MKRESCUE) -o $@ ./iso/ 2> /dev/null
+	$(MKRESCUE) -o $@ ./iso/
 	$(RM) ./iso/
 
 
@@ -62,7 +50,6 @@ $(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE)
 
 
 $(AXEL_LIB): cargo
-	$(TOUCH) $(AXEL_LIB)
 
 
 $(BOOT_OBJ): $(BOOT_DEPS)
@@ -70,21 +57,15 @@ $(BOOT_OBJ): $(BOOT_DEPS)
 
 
 .PHONY: cargo
-cargo: $(CARGO_TOML)
-	$(CARGO_BUILD)
+cargo:
+	$(XARGO) build --target=$(TARGET_TRIPLE)
 
 
 .PHONY: clean
 clean:
 	$(MAKE) -C $(ARCH_DIR) clean
-	$(CARGO) clean
-	$(RM) Cargo.lock
+	$(XARGO) clean
 	$(RM) *.d *.o *.bin *.iso *.map *.lst *.log *.sym tags bx_enh_dbg.ini
-
-
-.PHONY: distclean
-distclean:
-	$(MAKE) clean
 
 
 .PHONY: run_kernel
@@ -109,12 +90,14 @@ gdb:
 
 .PHONY: test
 test:
-	$(CARGO_TEST)
+	# Xargo does not support building test.
+	# [Is there a way to do `xargo test`? · Issue #104 · japaric/xargo](https://github.com/japaric/xargo/issues/104)
+	$(CARGO) test
 
 
 .PHONY: test_nocapture
 test_nocapture:
-	$(CARGO_TEST) -- --nocapture
+	$(CARGO) test -- --nocapture
 
 
 .PHONY: doc
