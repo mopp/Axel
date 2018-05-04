@@ -88,10 +88,10 @@ gdb:
 	$(GDB)
 
 
+# Xargo does not support building test.
+# [Is there a way to do `xargo test`? · Issue #104 · japaric/xargo](https://github.com/japaric/xargo/issues/104)
 .PHONY: test
 test:
-	# Xargo does not support building test.
-	# [Is there a way to do `xargo test`? · Issue #104 · japaric/xargo](https://github.com/japaric/xargo/issues/104)
 	$(CARGO) test
 
 
