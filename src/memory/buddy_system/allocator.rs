@@ -184,7 +184,6 @@ impl<T: Object> BuddyAllocator<T> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

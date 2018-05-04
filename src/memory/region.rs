@@ -7,13 +7,11 @@ pub enum State {
     Reserved,
 }
 
-
 impl Default for State {
     fn default() -> State {
         State::Free
     }
 }
-
 
 #[derive(Copy, Clone, Default)]
 pub struct Region {
@@ -22,42 +20,34 @@ pub struct Region {
     state: State,
 }
 
-
 impl Region {
     pub fn new() -> Region {
         Default::default()
     }
 
-
     pub fn set_base_addr(&mut self, base_addr: usize) {
         self.base_addr = base_addr;
     }
-
 
     pub fn base_addr(&self) -> usize {
         self.base_addr
     }
 
-
     pub fn set_size(&mut self, size: usize) {
         self.size = size;
     }
-
 
     pub fn size(&self) -> usize {
         self.size
     }
 
-
     pub fn set_state(&mut self, state: State) {
         self.state = state;
     }
 
-
     pub fn state(&self) -> State {
         self.state
     }
-
 
     pub fn is_valid(&self) -> bool {
         match self {
@@ -67,15 +57,12 @@ impl Region {
     }
 }
 
-
 const MAX_REGION_COUNT: usize = 5;
-
 
 pub struct RegionManager {
     regions: [Region; MAX_REGION_COUNT],
     valid_region_count: usize,
 }
-
 
 impl RegionManager {
     pub fn new() -> RegionManager {
@@ -84,7 +71,6 @@ impl RegionManager {
             valid_region_count: 0,
         }
     }
-
 
     pub fn append(&mut self, r: Region) {
         if self.valid_region_count == MAX_REGION_COUNT {
@@ -99,24 +85,18 @@ impl RegionManager {
         self.valid_region_count += 1;
     }
 
-
     pub fn regions(&self) -> &[Region] {
         &self.regions
     }
 
-
     pub fn regions_iter_with<'a>(&'a self, state: State) -> impl Iterator<Item = &'a Region> {
-        self.regions().into_iter().filter(move |region| {
-            (region.state() == state) && (region.is_valid() == true)
-        })
+        self.regions().into_iter().filter(move |region| (region.state() == state) && (region.is_valid() == true))
     }
 }
-
 
 #[cfg(test)]
 mod test {
     use super::{Region, RegionManager, State};
-
 
     #[test]
     fn test_region_create() {
@@ -126,7 +106,6 @@ mod test {
         assert_eq!(mr.size, 0);
         assert_eq!(mr.state, State::Free);
     }
-
 
     #[test]
     fn test_region_is_valid() {
@@ -138,19 +117,16 @@ mod test {
         assert_eq!(mr.is_valid(), true);
     }
 
-
     #[test]
     fn test_region_state() {
         let mut mr: Region = Region::new();
     }
-
 
     #[test]
     fn test_region_manager_create() {
         let r_man = RegionManager::new();
         assert_eq!(r_man.valid_region_count, 0);
     }
-
 
     #[test]
     fn test_region_manager_append() {
@@ -162,7 +138,6 @@ mod test {
 
         assert_eq!(r_man.regions[0].size, mr.size);
     }
-
 
     #[test]
     fn test_region_manager_iter() {

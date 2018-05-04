@@ -3,33 +3,25 @@ use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
 
-
-
 /// Signature trait for manipulating enries in the `Table<T>` struct.
 pub trait Level {}
-
 
 /// It provides trait bound for generating next level page table struct.
 pub trait HierarchicalLevel: Level {
     type NextLevel: Level;
 }
 
-
 /// Signature struct for Level1 page table.
 pub struct Level1;
-
 
 /// Signature struct for Level2 page table.
 pub struct Level2;
 
-
 /// Signature struct for Level3 page table.
 pub struct Level3;
 
-
 /// Signature struct for Level4 page table.
 pub struct Level4;
-
 
 /// A page table.
 pub struct Table<T>
@@ -40,12 +32,10 @@ where
     level: PhantomData<T>,
 }
 
-
 impl Level for Level4 {}
 impl Level for Level3 {}
 impl Level for Level2 {}
 impl Level for Level1 {}
-
 
 impl HierarchicalLevel for Level4 {
     type NextLevel = Level3;
@@ -57,11 +47,8 @@ impl HierarchicalLevel for Level2 {
     type NextLevel = Level1;
 }
 
-
 const LEVEL4_PAGE_TABLE: *mut Table<Level4> = 0xffff_ffff_ffff_f000 as *mut _;
 const MAX_ENTRY_COUNT: usize = 512;
-
-
 
 impl<T> Table<T>
 where
@@ -73,7 +60,6 @@ where
         }
     }
 }
-
 
 impl<T> Table<T>
 where
@@ -88,19 +74,14 @@ where
         }
     }
 
-
     pub fn next_level_table<'a>(&'a self, index: usize) -> Option<&'a Table<T::NextLevel>> {
-        self.next_level_table_address(index)
-            .map(|address| unsafe { &*(address as *const _) })
+        self.next_level_table_address(index).map(|address| unsafe { &*(address as *const _) })
     }
-
 
     pub fn next_level_table_mut<'a>(&'a self, index: usize) -> Option<&'a mut Table<T::NextLevel>> {
-        self.next_level_table_address(index)
-            .map(|address| unsafe { &mut *(address as *mut _) })
+        self.next_level_table_address(index).map(|address| unsafe { &mut *(address as *mut _) })
     }
 }
-
 
 impl<T> Index<usize> for Table<T>
 where
@@ -113,7 +94,6 @@ where
     }
 }
 
-
 impl<T> IndexMut<usize> for Table<T>
 where
     T: Level,
@@ -123,11 +103,9 @@ where
     }
 }
 
-
 pub struct ActivePageTable {
     level4_page_table: Unique<Table<Level4>>,
 }
-
 
 impl ActivePageTable {
     pub unsafe fn new() -> ActivePageTable {

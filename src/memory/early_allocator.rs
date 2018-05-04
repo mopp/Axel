@@ -5,38 +5,29 @@ use super::address::Alignment;
 use core::mem;
 use core::slice;
 
-
 pub struct EarlyAllocator {
     addr_begin: usize,
     addr_end: usize,
 }
 
-
 impl EarlyAllocator {
     pub fn new(addr_begin: usize, addr_end: usize) -> EarlyAllocator {
         debug_assert!(addr_begin < addr_end);
 
-        EarlyAllocator {
-            addr_begin: addr_begin,
-            addr_end: addr_end,
-        }
+        EarlyAllocator { addr_begin: addr_begin, addr_end: addr_end }
     }
-
 
     pub fn capacity(&self) -> usize {
         self.addr_end - self.addr_begin
     }
 
-
     pub fn available_space(&self) -> (usize, usize) {
         (self.addr_begin, self.addr_end)
     }
 
-
     fn align_addr_begin(&mut self, alignment: usize) {
         self.addr_begin = self.addr_begin.align_up(alignment);
     }
-
 
     fn alloc(&mut self, size: usize, alignment: usize) -> *mut u8 {
         self.align_addr_begin(alignment);
@@ -46,7 +37,6 @@ impl EarlyAllocator {
         addr as *mut u8
     }
 
-
     pub fn alloc_type_mut<'a, T: Sized>(&mut self) -> &'a mut T {
         let size = mem::size_of::<T>();
         let align = mem::align_of::<T>();
@@ -54,7 +44,6 @@ impl EarlyAllocator {
 
         unsafe { mem::transmute(ptr) }
     }
-
 
     pub fn alloc_slice_mut<'a, T: Sized>(&mut self, num: usize) -> &'a mut [T] {
         let size = mem::size_of::<T>();
@@ -65,11 +54,9 @@ impl EarlyAllocator {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::EarlyAllocator;
-
 
     #[test]
     fn test_early_allocator_new() {
@@ -77,7 +64,6 @@ mod test {
 
         assert_eq!(eallocator.capacity(), 0x1000);
     }
-
 
     #[test]
     fn test_early_allocator_alloc() {

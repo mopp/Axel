@@ -3,12 +3,10 @@ use graphic::CharacterDisplay;
 use memory;
 use spin::Mutex;
 
-
 pub struct Context {
     pub default_output: Mutex<Option<CharacterDisplay<'static>>>,
     pub memory_region_manager: Mutex<memory::region::RegionManager>,
 }
-
 
 lazy_static! {
     pub static ref GLOBAL_CONTEXT: Context = {

@@ -33,11 +33,10 @@
 mod entry;
 mod table;
 use self::table::ActivePageTable;
-use memory::address::VirtualAddress;
 use memory::address::address_of;
-use memory::frame::Frame;
+use memory::address::VirtualAddress;
 use memory::buddy_system::BuddyAllocator;
-
+use memory::frame::Frame;
 
 trait PageIndex {
     fn level4_index(self) -> usize;
@@ -46,7 +45,6 @@ trait PageIndex {
     fn level1_index(self) -> usize;
     fn offset(self) -> usize;
 }
-
 
 impl PageIndex for VirtualAddress {
     fn level4_index(self) -> usize {
@@ -70,7 +68,6 @@ impl PageIndex for VirtualAddress {
     }
 }
 
-
 pub fn init(_bman: BuddyAllocator<Frame>) {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
@@ -91,7 +88,6 @@ pub fn init(_bman: BuddyAllocator<Frame>) {
 
     // TODO: create new kernel page table.
 }
-
 
 #[cfg(test)]
 mod tests {

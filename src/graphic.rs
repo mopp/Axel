@@ -5,23 +5,19 @@
 #![allow(dead_code)]
 use core;
 
-
 /// This struct represents any position of 2d-coordinate.
 #[derive(PartialEq, Eq, Debug)]
 pub struct Position(pub usize, pub usize);
 
-
 trait Area {
     fn area_from_origin(&self) -> usize;
 }
-
 
 impl Area for Position {
     fn area_from_origin(&self) -> usize {
         (self.0 * self.1)
     }
 }
-
 
 pub enum Color {
     Rgb(i8, i8, i8),
@@ -44,7 +40,6 @@ pub enum Color {
     White,
 }
 
-
 /// Display trait for any display.
 ///
 /// This trait is abstract interface for display.
@@ -58,7 +53,6 @@ pub trait Display {
     fn println(&mut self, &str);
 }
 
-
 /// Text display struct to represent text display connected to the computer.
 pub struct CharacterDisplay<'a> {
     vram_addr: usize,
@@ -68,7 +62,6 @@ pub struct CharacterDisplay<'a> {
     color_background: Color,
     color_foreground: Color,
 }
-
 
 impl<'a> Default for CharacterDisplay<'a> {
     fn default() -> CharacterDisplay<'a> {
@@ -82,7 +75,6 @@ impl<'a> Default for CharacterDisplay<'a> {
         }
     }
 }
-
 
 impl<'a> CharacterDisplay<'a> {
     pub fn new(vram_addr: usize, max_p: Position) -> CharacterDisplay<'a> {
@@ -98,12 +90,10 @@ impl<'a> CharacterDisplay<'a> {
         }
     }
 
-
     pub fn set_current_position(&mut self, pos: Position) -> &mut Self {
         self.current_position = pos;
         self
     }
-
 
     /// Return color code based on Enum.
     fn color(c: &Color) -> u8 {
@@ -128,7 +118,6 @@ impl<'a> CharacterDisplay<'a> {
         }
     }
 
-
     /// Generate one pixel (16bit)
     /// [Text UI](http://wiki.osdev.org/Text_UI)
     /// Bit 76543210 76543210
@@ -144,23 +133,19 @@ impl<'a> CharacterDisplay<'a> {
     }
 }
 
-
 impl<'a> Display for CharacterDisplay<'a> {
     fn color_background(&self) -> &Color {
         &self.color_background
     }
-
 
     fn set_color_background(&mut self, bg: Color) -> &mut Self {
         self.color_background = bg;
         self
     }
 
-
     fn color_foreground(&self) -> &Color {
         &self.color_foreground
     }
-
 
     fn set_color_foreground(&mut self, fg: Color) -> &mut Self {
         self.color_foreground = fg;
@@ -173,7 +158,6 @@ impl<'a> Display for CharacterDisplay<'a> {
             self.vram[i] = space;
         }
     }
-
 
     fn print(&mut self, string: &str) {
         for c in string.chars() {
@@ -217,13 +201,11 @@ impl<'a> Display for CharacterDisplay<'a> {
         }
     }
 
-
     fn println(&mut self, s: &str) {
         self.print(s);
         self.print("\n");
     }
 }
-
 
 impl<'a> core::fmt::Write for CharacterDisplay<'a> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
@@ -231,7 +213,6 @@ impl<'a> core::fmt::Write for CharacterDisplay<'a> {
         Ok(())
     }
 }
-
 
 // This represents bit size and position infomation from VBE.
 pub struct ColorBitInfo {
@@ -247,7 +228,6 @@ pub struct ColorBitInfo {
     pub pos_rsvd: u8,
 }
 
-
 /// Visual display struct to represent text display connected to the computer.
 pub struct GraphicalDisplay {
     vram_addr: usize,
@@ -255,7 +235,6 @@ pub struct GraphicalDisplay {
     bit_info: ColorBitInfo,
     byte_per_pixel: usize,
 }
-
 
 impl GraphicalDisplay {
     pub fn new(vram_addr: usize, max_position: Position, bit_info: ColorBitInfo) -> GraphicalDisplay {
@@ -268,7 +247,6 @@ impl GraphicalDisplay {
         }
     }
 
-
     pub fn fill_display(&self, c: &Color) {
         let Position(x, y) = self.max_position;
         let color_bit = self.color(c);
@@ -278,7 +256,6 @@ impl GraphicalDisplay {
             unsafe { *(addr as *mut u32) = color_bit };
         }
     }
-
 
     pub fn fill_area(&self, begin: Position, end: Position, c: &Color) {
         let Position(size_x, _) = self.max_position;
@@ -318,7 +295,6 @@ impl GraphicalDisplay {
         self.fill_area(origin, end, c);
     }
 
-
     /// Return color code based on Enum.
     fn color(&self, c: &Color) -> u32 {
         match *c {
@@ -354,8 +330,6 @@ impl GraphicalDisplay {
     }
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::{Area, CharacterDisplay, Color, Display, Position};
@@ -381,9 +355,7 @@ mod test {
     fn setting_bg_fg_color() {
         let mut c_disp = CharacterDisplay::new(0xB8000, Position(800, 600));
 
-        c_disp
-            .set_color_background(Color::Red)
-            .set_color_foreground(Color::LightBlue);
+        c_disp.set_color_background(Color::Red).set_color_foreground(Color::LightBlue);
         let color_code = CharacterDisplay::color(c_disp.color_background());
         assert_eq!(color_code, 0x4);
 
