@@ -12,7 +12,6 @@ use self::early_allocator::EarlyAllocator;
 use self::frame::Frame;
 use context;
 use core::mem;
-use core::ptr::Unique;
 
 #[inline(always)]
 pub fn clean_bss_section() {
@@ -36,11 +35,9 @@ fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyAllocator
     let capacity = capacity - required_size;
     let count_frames = capacity / frame::SIZE;
 
-    let frames = eallocator.alloc_slice_mut(count_frames);
-    let base_addr = eallocator.available_space().0.align_up(frame::SIZE).to_physical_addr();
+    let frames = eallocator.allocate(count_frames);
 
-    let ptr = unsafe { Unique::new_unchecked(&mut frames[0] as *mut _) };
-    BuddyAllocator::new(ptr, count_frames)
+    BuddyAllocator::new(frames, count_frames)
 }
 
 pub fn init() {

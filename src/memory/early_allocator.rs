@@ -3,7 +3,7 @@
 
 use super::address::Alignment;
 use core::mem;
-use core::slice;
+use core::ptr::Unique;
 
 pub struct EarlyAllocator {
     addr_begin: usize,
@@ -21,73 +21,47 @@ impl EarlyAllocator {
         self.addr_end - self.addr_begin
     }
 
-    pub fn available_space(&self) -> (usize, usize) {
-        (self.addr_begin, self.addr_end)
-    }
-
     fn align_addr_begin(&mut self, alignment: usize) {
         self.addr_begin = self.addr_begin.align_up(alignment);
     }
 
-    fn alloc(&mut self, size: usize, alignment: usize) -> *mut u8 {
-        self.align_addr_begin(alignment);
+    pub fn allocate<T>(&mut self, count: usize) -> Unique<T> {
+        self.align_addr_begin(mem::align_of::<T>());
         let addr = self.addr_begin;
+        let size = mem::size_of::<T>() * count;
         self.addr_begin += size;
 
-        addr as *mut u8
-    }
-
-    pub fn alloc_type_mut<'a, T: Sized>(&mut self) -> &'a mut T {
-        let size = mem::size_of::<T>();
-        let align = mem::align_of::<T>();
-        let ptr = self.alloc(size, align);
-
-        unsafe { mem::transmute(ptr) }
-    }
-
-    pub fn alloc_slice_mut<'a, T: Sized>(&mut self, num: usize) -> &'a mut [T] {
-        let size = mem::size_of::<T>();
-        let align = mem::align_of::<T>();
-        let ptr = self.alloc(size * num, align);
-
-        unsafe { slice::from_raw_parts_mut(ptr as *mut T, num) }
+        unsafe { Unique::new_unchecked(addr as *mut _) }
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::EarlyAllocator;
+    use std::mem;
 
     #[test]
-    fn test_early_allocator_new() {
+    fn test_capacity() {
         let eallocator = EarlyAllocator::new(0x0000, 0x1000);
 
         assert_eq!(eallocator.capacity(), 0x1000);
     }
 
+    struct Object {
+        hoge: usize,
+    }
+
     #[test]
-    fn test_early_allocator_alloc() {
+    fn test_allocate() {
         let mut eallocator = EarlyAllocator::new(0x0000, 0x1000);
         let mut capacity = eallocator.capacity();
 
-        eallocator.alloc(0x100, 0x2);
-        capacity -= 0x100;
+        let _ = eallocator.allocate::<Object>(10);
+        capacity -= mem::size_of::<Object>() * 10;
         assert_eq!(eallocator.capacity(), capacity);
 
-        eallocator.alloc(0x100, 0x2);
-        capacity -= 0x100;
+        let _ = eallocator.allocate::<Object>(50);
+        capacity -= mem::size_of::<Object>() * 50;
         assert_eq!(eallocator.capacity(), capacity);
-
-        let number: &mut u64 = eallocator.alloc_type_mut();
-        capacity -= 8;
-        assert_eq!(eallocator.capacity(), capacity);
-
-        let number: &mut [u64] = eallocator.alloc_slice_mut(9);
-        capacity -= 8 * 9;
-        assert_eq!(eallocator.capacity(), capacity);
-
-        let mut eallocator2 = EarlyAllocator::new(0x1234, 0x2000);
-        eallocator2.alloc(0x100, 0x100);
-        assert_eq!(eallocator2.capacity(), 0x2000 - 0x1300 - 0x100);
     }
 }
