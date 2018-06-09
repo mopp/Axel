@@ -30,6 +30,7 @@ mod list;
 mod memory;
 
 use memory::address::VirtualAddress;
+use memory::region::RegionManager;
 
 #[cfg(not(test))]
 #[start]
@@ -39,15 +40,17 @@ pub extern "C" fn main(argc: usize, argv: *const VirtualAddress) {
 
     let argv: &[VirtualAddress] = unsafe { core::slice::from_raw_parts(argv, argc) };
 
+    let mut region_manager = RegionManager::new();
+
     // Initialize stuffs depending on the architecture.
-    arch::init_arch(argv);
+    arch::init_arch(argv, &mut region_manager);
 
     memory::init();
 
     println!("Start Axel");
 
     let ref mut memory_region_manager = *context::GLOBAL_CONTEXT.memory_region_manager.lock();
-    for region in memory_region_manager.regions_iter_with(memory::region::State::Free) {
+    for region in memory_region_manager.iter() {
         println!("Base addr : 0x{:08X}", region.base_addr());
         println!("Size      : {}KB", region.size() / 1024);
     }

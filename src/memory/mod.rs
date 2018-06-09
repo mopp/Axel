@@ -43,7 +43,7 @@ fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyAllocator
 pub fn init() {
     let ref mut memory_region_manager = *context::GLOBAL_CONTEXT.memory_region_manager.lock();
     let kernel_addr_begin_physical = kernel_addr_begin_physical();
-    let mut usable_memory_regions = memory_region_manager.regions_iter_with(region::State::Free).filter(|region| kernel_addr_begin_physical <= region.base_addr());
+    let mut usable_memory_regions = memory_region_manager.iter().filter(|region| kernel_addr_begin_physical <= region.base_addr());
 
     // TODO: Support multiple region.
     let free_memory_region = usable_memory_regions.nth(0);
