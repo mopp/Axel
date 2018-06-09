@@ -3,6 +3,7 @@
 #![feature(collections)]
 #![feature(lang_items)]
 #![feature(offset_to)]
+#![feature(panic_info_message)]
 #![feature(ptr_internals)]
 #![feature(ptr_wrapping_offset_from)]
 #![feature(start)]
@@ -29,6 +30,7 @@ mod graphic;
 mod list;
 mod memory;
 
+use core::panic::PanicInfo;
 use memory::address::VirtualAddress;
 use memory::region::RegionManager;
 
@@ -61,11 +63,17 @@ pub extern "C" fn main(argc: usize, argv: *const VirtualAddress) {
 pub extern "C" fn eh_personality() {}
 
 #[cfg(not(test))]
-#[lang = "panic_fmt"]
+#[lang = "panic_impl"]
 #[no_mangle]
-pub extern "C" fn panic_fmt(msg: core::fmt::Arguments, file: &'static str, line: u32) -> ! {
-    println!("Panic - {}", msg);
-    println!("Line {} in {}", line, file);
+pub extern "C" fn panic_impl(pi: &PanicInfo) -> ! {
+    println!("Panic !");
+    if let Some(msg) = pi.message() {
+        println!("  msg: {}", msg);
+    }
+    if let Some(msg) = pi.message() {
+        println!("  msg: {}", msg);
+    }
+
     loop {}
 }
 
