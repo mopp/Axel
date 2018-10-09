@@ -13,7 +13,7 @@ path = "src/kernel.rs"
 bitflags   = "1.0.0"
 multiboot2 = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }
 rlibc      = "1.0"
-spin       = "0.4.8"
+spin       = "0.4.9"
 # Just for x86_32
 # multiboot  = { git = "https://github.com/gz/rust-multiboot.git" }
 

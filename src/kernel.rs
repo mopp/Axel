@@ -1,13 +1,10 @@
 #![cfg_attr(test, feature(allocator_api))]
 #![feature(asm)]
-#![feature(collections)]
 #![feature(lang_items)]
-#![feature(offset_to)]
 #![feature(panic_info_message)]
 #![feature(ptr_internals)]
 #![feature(ptr_wrapping_offset_from)]
 #![feature(start)]
-#![feature(unique)]
 #![no_std]
 
 #[cfg(test)]
