@@ -44,6 +44,11 @@ pub extern "C" fn main(argc: usize, argv: *const VirtualAddress) {
     // Initialize stuffs depending on the architecture.
     arch::init_arch(argv, &mut region_manager);
 
+    {
+        let m = &mut *context::GLOBAL_CONTEXT.memory_region_manager.lock();
+        *m = region_manager;
+    }
+
     memory::init();
 
     println!("Start Axel");
