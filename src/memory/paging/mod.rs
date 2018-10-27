@@ -68,7 +68,7 @@ impl PageIndex for VirtualAddress {
     }
 }
 
-pub fn init(_bman: BuddyAllocator<Frame>) {
+pub fn init(_bman: BuddyAllocator<Frame>) -> Result<(), &'static str> {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));
@@ -87,6 +87,7 @@ pub fn init(_bman: BuddyAllocator<Frame>) {
         });
 
     // TODO: create new kernel page table.
+    Ok(())
 }
 
 #[cfg(test)]

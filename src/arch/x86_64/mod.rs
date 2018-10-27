@@ -2,33 +2,16 @@ use graphic::Display;
 use graphic;
 use memory::address::VirtualAddress;
 use memory::address::ToVirtualAddr;
-use memory::region::RegionManager;
-use memory::region::Region;
-use memory::region::State;
-use multiboot2;
+use memory::{self, region::Multiboot2Adapter};
 
 
-pub fn init(argv: &[VirtualAddress], region_manager: &mut RegionManager) -> Result<(), &'static str> {
-    // Copy memory information into the global context.
+pub fn init(argv: &[VirtualAddress]) -> Result<(), &'static str> {
     let multiboot_info = unsafe { multiboot2:: load(argv[0]) };
     if let Some(memory_map_tag) = multiboot_info.memory_map_tag() {
-        for area in memory_map_tag.memory_areas() {
-            // let mut memory_region = memory::region::Region::new();
-            // memory_region.set_base_addr(memory_area.start_address());
-            // memory_region.set_size(memory_area.size());
-            // memory_region.set_state(memory::region::State::Free);
-
-            let r = Region::new(area.start_address() as usize, area.size() as usize, State::Free);
-            match region_manager.append(r) {
-                Ok(()) => {}
-                Err(reason) => {
-                    return Err(reason)
-                }
-            }
-        }
-        Ok(())
+        println!("Start Axel");
+        memory::init(&Multiboot2Adapter::new(memory_map_tag) as &_)
     } else {
-        Err("no available memory")
+        Err("No memory map")
     }
 }
 
