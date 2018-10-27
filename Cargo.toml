@@ -10,7 +10,7 @@ path = "src/kernel.rs"
 
 
 [dependencies]
-bitflags   = "1.0.0"
+bitflags   = "1.0"
 multiboot2 = { git = "https://github.com/phil-opp/multiboot2-elf64.git" }
 rlibc      = "1.0"
 spin       = "0.4.9"
@@ -19,7 +19,7 @@ spin       = "0.4.9"
 
 [dependencies.lazy_static]
 features = ["spin_no_std"]
-version = "1.0.0"
+version = "1.1"
 
 
 [profile.dev]

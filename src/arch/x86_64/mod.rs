@@ -18,7 +18,7 @@ pub fn init(argv: &[VirtualAddress], region_manager: &mut RegionManager) -> Resu
             // memory_region.set_size(memory_area.size());
             // memory_region.set_state(memory::region::State::Free);
 
-            let r = Region::new(area.start_address(), area.size(), State::Free);
+            let r = Region::new(area.start_address() as usize, area.size() as usize, State::Free);
             match region_manager.append(r) {
                 Ok(()) => {}
                 Err(reason) => {
