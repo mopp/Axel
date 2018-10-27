@@ -43,13 +43,10 @@ $(AXEL_ISO): $(AXEL_BIN) $(GRUB_CFG)
 	$(RM) ./iso/
 
 
-$(AXEL_BIN): $(AXEL_LIB) $(BOOT_OBJ) $(LINK_FILE)
+$(AXEL_BIN): cargo $(BOOT_OBJ) $(LINK_FILE)
 	$(LD) $(LD_FLAGS) -Wl,-Map=$(AXEL_MAP) -T $(LINK_FILE) -o $@ $(BOOT_OBJ) -L $(dir $(AXEL_LIB)) $(LIBS) -laxel
 	$(OBJCOPY) $@ axel.sym
 	$(STRIP) $@
-
-
-$(AXEL_LIB): cargo
 
 
 $(BOOT_OBJ): $(BOOT_DEPS)
