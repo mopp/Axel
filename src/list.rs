@@ -242,7 +242,7 @@ impl<'a, T: Node<T>> Iterator for IterMut<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::heap::{Alloc, Layout, System};
+    use std::alloc::{Alloc, Layout, System};
     use std::mem;
 
     #[derive(Debug)]

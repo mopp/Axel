@@ -188,7 +188,7 @@ impl<T: Object> BuddyAllocator<T> {
 mod tests {
     use super::*;
     use list::Node;
-    use std::heap::{Alloc, Layout, System};
+    use std::alloc::{Alloc, Layout, System};
     use std::mem;
 
     struct Frame {
