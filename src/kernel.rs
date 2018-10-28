@@ -1,9 +1,11 @@
 #![cfg_attr(test, feature(allocator_api))]
+#![feature(alloc_error_handler)]
 #![feature(asm)]
 #![feature(lang_items)]
 #![feature(panic_info_message)]
 #![feature(ptr_internals)]
 #![feature(ptr_wrapping_offset_from)]
+#![feature(allocator_api)]
 #![feature(start)]
 #![no_std]
 
@@ -14,6 +16,8 @@ extern crate std;
 extern crate bitflags;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate intrusive_collections;
 extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
@@ -27,6 +31,7 @@ mod graphic;
 mod list;
 mod memory;
 
+use core::alloc::{GlobalAlloc, Layout};
 use core::panic::PanicInfo;
 use memory::address::VirtualAddress;
 
@@ -54,8 +59,10 @@ pub extern "C" fn panic_impl(pi: &PanicInfo) -> ! {
     if let Some(msg) = pi.message() {
         println!("  msg: {}", msg);
     }
-    if let Some(msg) = pi.message() {
-        println!("  msg: {}", msg);
+    if let Some(location) = pi.location() {
+        println!("panic occurred in file '{}' at line {}", location.file(), location.line());
+    } else {
+        println!("panic occurred but can't get location information...");
     }
 
     loop {}
@@ -66,3 +73,23 @@ pub extern "C" fn abort() {
     println!("abort");
     loop {}
 }
+
+struct DummyAllocator;
+
+unsafe impl GlobalAlloc for DummyAllocator {
+    unsafe fn alloc(&self, _: Layout) -> *mut u8 {
+        unimplemented!("");
+    }
+
+    unsafe fn dealloc(&self, _: *mut u8, _: Layout) {
+        unimplemented!("");
+    }
+}
+
+#[alloc_error_handler]
+fn alloc_error(_: Layout) -> ! {
+    unimplemented!("");
+}
+
+#[global_allocator]
+static GLOBAL: DummyAllocator = DummyAllocator;

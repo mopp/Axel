@@ -2,30 +2,31 @@
 //! The size is 4096 and it corresponds page size.
 pub const SIZE: usize = 4096;
 
-use core::ptr::NonNull;
-use list::Node;
+use intrusive_collections::{LinkedListLink, UnsafeRef};
 use memory::buddy_system::Object;
 use VirtualAddress;
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum State {
     Used,
     Free,
 }
 
+#[derive(Clone, Debug)]
 pub struct Frame {
-    next: Option<NonNull<Frame>>,
-    prev: Option<NonNull<Frame>>,
+    link: LinkedListLink,
     number: usize,
     order: usize,
     state: State,
 }
 
+intrusive_adapter!(pub FrameAdapter = UnsafeRef<Frame>: Frame { link: LinkedListLink });
+
 impl Frame {
     pub fn from_addr(addr: VirtualAddress) -> Frame {
         Frame {
-            next: None,
-            prev: None,
+            // FIXME
+            link: LinkedListLink::new(),
             order: 0,
             state: State::Free,
             number: addr / SIZE,
@@ -49,25 +50,11 @@ impl Frame {
     }
 }
 
-impl Node<Frame> for Frame {
-    fn set_next(&mut self, ptr: Option<NonNull<Self>>) {
-        self.next = ptr;
-    }
-
-    fn set_prev(&mut self, ptr: Option<NonNull<Self>>) {
-        self.prev = ptr;
-    }
-
-    fn next(&self) -> Option<NonNull<Self>> {
-        self.next
-    }
-
-    fn prev(&self) -> Option<NonNull<Self>> {
-        self.prev
-    }
-}
-
 impl Object for Frame {
+    fn reset_link(&mut self) {
+        self.link = LinkedListLink::new();
+    }
+
     fn mark_used(&mut self) {
         self.state = State::Used;
     }

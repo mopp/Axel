@@ -33,10 +33,11 @@
 mod entry;
 mod table;
 use self::table::ActivePageTable;
+use intrusive_collections::Adapter;
 use memory::address::address_of;
 use memory::address::VirtualAddress;
 use memory::buddy_system::BuddyAllocator;
-use memory::frame::Frame;
+use memory::frame::{Frame, FrameAdapter};
 
 trait PageIndex {
     fn level4_index(self) -> usize;
@@ -68,7 +69,7 @@ impl PageIndex for VirtualAddress {
     }
 }
 
-pub fn init(_bman: BuddyAllocator<Frame>) -> Result<(), &'static str> {
+pub fn init(_bman: BuddyAllocator<FrameAdapter, <FrameAdapter as Adapter>::Pointer, Frame>) -> Result<(), &'static str> {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));

@@ -9,8 +9,8 @@ pub mod region;
 use self::address::*;
 use self::buddy_system::BuddyAllocator;
 use self::early_allocator::EarlyAllocator;
-use self::frame::Frame;
 use core::mem;
+use memory::frame::{Frame, FrameAdapter};
 use memory::region::Region;
 
 #[inline(always)]
@@ -22,22 +22,6 @@ pub fn clean_bss_section() {
         use rlibc;
         rlibc::memset(begin, size, 0x00);
     }
-}
-
-#[inline]
-fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyAllocator<Frame> {
-    // Calculate the required size for frame.
-    let struct_size = mem::size_of::<Frame>();
-    let capacity = eallocator.capacity();
-    let count_frames = capacity / frame::SIZE;
-    let required_size = count_frames * struct_size;
-
-    let capacity = capacity - required_size;
-    let count_frames = capacity / frame::SIZE;
-
-    let frames = eallocator.allocate(count_frames);
-
-    BuddyAllocator::new(frames, count_frames)
 }
 
 pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<Item = U, Target = T>) -> Result<(), &'static str> {
@@ -56,8 +40,21 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
     let free_region_addr_end = (free_memory_region.base_addr() + free_memory_region.size()).to_virtual_addr();
     let mut eallocator = EarlyAllocator::new(free_region_addr_begin, free_region_addr_end);
 
-    let bman = allocate_buddy_manager(&mut eallocator);
+    // Calculate the required size for frame.
+    let struct_size = mem::size_of::<Frame>();
+    let capacity = eallocator.capacity();
+    let count_frames = capacity / frame::SIZE;
+    let required_size = count_frames * struct_size;
+
+    let capacity = capacity - required_size;
+    let count_frames = capacity / frame::SIZE;
+
+    let frames = eallocator.allocate(count_frames);
+
+    let mut bman = BuddyAllocator::new(frames, count_frames, FrameAdapter::new());
     println!("Available memory: {} objects", bman.count_free_objs());
+    // let () = bman.allocate();
+    // println!("{:?}", f);
 
     paging::init(bman)
 }
