@@ -33,14 +33,14 @@
 mod entry;
 mod table;
 use self::table::ActivePageTable;
+use self::entry::PageEntryFlags;
+use intrusive_collections::Adapter;
 use memory::address::address_of;
 use memory::buddy_system::BuddyAllocator;
-use memory::frame::Frame;
-use memory::Error;
-use self::entry::PageEntryFlags;
+use memory::frame::{Frame, FrameAdapter};
+use super::Error;
 
-#[inline(always)]
-pub fn init(mut bman: BuddyAllocator<Frame>) -> Result<(), Error> {
+pub fn init(_bman: BuddyAllocator<FrameAdapter, <FrameAdapter as Adapter>::Pointer, Frame>) -> Result<(), Error> {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));
@@ -63,21 +63,21 @@ pub fn init(mut bman: BuddyAllocator<Frame>) -> Result<(), Error> {
             }
         });
 
-    let frame = bman.allocate(1).unwrap();
-    let frame = unsafe { frame.as_ref() };
-    println!("Allocate frame1:");
-    println!("  {:?}", frame as *const _);
-    println!("  {:?}", frame);
+    // let frame = bman.allocate(1).unwrap();
+    // let frame = unsafe { frame.as_ref() };
+    // println!("Allocate frame1:");
+    // println!("  {:?}", frame as *const _);
+    // println!("  {:?}", frame);
 
-    let frame = bman.allocate(1).unwrap();
-    let frame = unsafe { frame.as_ref() };
-    println!("Allocate frame2:");
-    println!("  {:?}", frame as *const _);
-    println!("  {:?}", frame);
+    // let frame = bman.allocate(1).unwrap();
+    // let frame = unsafe { frame.as_ref() };
+    // println!("Allocate frame2:");
+    // println!("  {:?}", frame as *const _);
+    // println!("  {:?}", frame);
 
     // TODO: create new kernel page table.
-    let tmp = active_page_table.get_physical_address((frame as *const _)as usize);
-    println!("{:?}", tmp);
+    // let tmp = active_page_table.get_physical_address((frame as *const _)as usize);
+    // println!("{:?}", tmp);
 
     Ok(())
 }
