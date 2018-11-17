@@ -1,3 +1,4 @@
+use super::Error;
 use super::Initialize;
 use graphic;
 use graphic::Display;
@@ -8,12 +9,12 @@ use memory::{self, region::Multiboot2Adapter};
 pub struct Initializer;
 
 impl Initialize for Initializer {
-    fn init(argv: &[VirtualAddress]) -> Result<(), &'static str> {
+    fn init(argv: &[VirtualAddress]) -> Result<(), Error> {
         let multiboot_info = unsafe { multiboot2::load(argv[0]) };
         if let Some(memory_map_tag) = multiboot_info.memory_map_tag() {
-            memory::init(&Multiboot2Adapter::new(memory_map_tag) as _)
+            memory::init(&Multiboot2Adapter::new(memory_map_tag) as _).map_err(Into::into)
         } else {
-            Err("No memory map")
+            Err(Error::NoMemoryMap)
         }
     }
 

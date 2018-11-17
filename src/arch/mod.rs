@@ -1,10 +1,27 @@
 //! This module contains all codes depending on the architecture to abstract these codes.
+use failure::Fail;
 use graphic;
 use memory::address::VirtualAddress;
+use memory::Error as MemoryError;
+
+// TODO: introduce ErrorKind.
+#[derive(Fail, Debug)]
+pub enum Error {
+    #[fail(display = "No memory map is in multiboot_info")]
+    NoMemoryMap,
+    #[fail(display = "Memory initialization faild: {}", _0)]
+    MemoryInitializationFailed(MemoryError),
+}
+
+impl From<MemoryError> for Error {
+    fn from(e: MemoryError) -> Error {
+        Error::MemoryInitializationFailed(e)
+    }
+}
 
 /// Common interfaces between architectures.
 pub trait Initialize {
-    fn init(argv: &[VirtualAddress]) -> Result<(), &'static str>;
+    fn init(argv: &[VirtualAddress]) -> Result<(), Error>;
     fn obtain_kernel_console() -> Option<graphic::CharacterDisplay<'static>>;
 }
 

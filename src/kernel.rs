@@ -17,6 +17,8 @@ extern crate lazy_static;
 extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
+#[macro_use]
+extern crate failure;
 
 #[cfg(not(test))]
 #[macro_use]
@@ -38,8 +40,8 @@ pub extern "C" fn main(argc: usize, argv: *const VirtualAddress) {
     memory::clean_bss_section();
 
     let argv: &[VirtualAddress] = unsafe { core::slice::from_raw_parts(argv, argc) };
-    if let Err(msg) = arch::Initializer::init(argv) {
-        panic!("arch::init fails: {}", msg);
+    if let Err(e) = arch::Initializer::init(argv) {
+        panic!("arch::init fails: {}", e);
     }
 }
 

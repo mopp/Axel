@@ -13,6 +13,12 @@ use self::frame::Frame;
 use core::mem;
 use memory::region::Region;
 
+#[derive(Fail, Debug)]
+pub enum Error {
+    #[fail(display = "No usable memory region")]
+    NoUsableMemory,
+}
+
 #[inline(always)]
 pub fn clean_bss_section() {
     let begin = kernel_bss_section_addr_begin() as *mut u8;
@@ -40,13 +46,13 @@ fn allocate_buddy_manager<'b>(eallocator: &mut EarlyAllocator) -> BuddyAllocator
     BuddyAllocator::new(frames, count_frames)
 }
 
-pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<Item = U, Target = T>) -> Result<(), &'static str> {
+pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<Item = U, Target = T>) -> Result<(), Error> {
     let kernel_addr_begin_physical = kernel_addr_begin_physical();
 
     let mut usable_memory_regions = regions.iter().filter(|region| kernel_addr_begin_physical <= region.base_addr());
 
     // TODO: Support multiple region.
-    let free_memory_region = usable_memory_regions.nth(0).ok_or("No usable memory regions")?;
+    let free_memory_region = usable_memory_regions.nth(0).ok_or(Error::NoUsableMemory)?;
     println!("Memory region: size: {}KB", free_memory_region.size() / 1024);
 
     // Use free memory region at the kernel tail.
