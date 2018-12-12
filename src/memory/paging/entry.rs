@@ -1,3 +1,5 @@
+use core::fmt;
+
 bitflags! {
     pub struct PageEntryFlags: usize {
         const PRESENT         = 1 << 0;
@@ -36,6 +38,18 @@ impl PageEntry {
 
     pub fn get_frame_addr(&mut self) -> usize {
         self.0 | 0xFFF
+    }
+}
+
+impl fmt::Display for PageEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::LowerHex for PageEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:016x}", self.0)
     }
 }
 
