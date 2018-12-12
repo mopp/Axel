@@ -34,41 +34,10 @@ mod entry;
 mod table;
 use self::table::ActivePageTable;
 use memory::address::address_of;
-use memory::address::VirtualAddress;
 use memory::buddy_system::BuddyAllocator;
 use memory::frame::Frame;
 use memory::Error;
 use self::entry::PageEntryFlags;
-
-trait PageIndex {
-    fn level4_index(self) -> usize;
-    fn level3_index(self) -> usize;
-    fn level2_index(self) -> usize;
-    fn level1_index(self) -> usize;
-    fn offset(self) -> usize;
-}
-
-impl PageIndex for VirtualAddress {
-    fn level4_index(self) -> usize {
-        (self >> 39) & 0o777
-    }
-
-    fn level3_index(self) -> usize {
-        (self >> 30) & 0o777
-    }
-
-    fn level2_index(self) -> usize {
-        (self >> 21) & 0o777
-    }
-
-    fn level1_index(self) -> usize {
-        (self >> 12) & 0o777
-    }
-
-    fn offset(self) -> usize {
-        self & 0xFFF
-    }
-}
 
 #[inline(always)]
 pub fn init(mut bman: BuddyAllocator<Frame>) -> Result<(), Error> {
@@ -107,6 +76,8 @@ pub fn init(mut bman: BuddyAllocator<Frame>) -> Result<(), Error> {
     println!("  {:?}", frame);
 
     // TODO: create new kernel page table.
+    let tmp = active_page_table.get_physical_address((frame as *const _)as usize);
+    println!("{:?}", tmp);
 
     Ok(())
 }
