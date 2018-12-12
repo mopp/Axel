@@ -1,17 +1,18 @@
 use core::fmt;
+use memory::address::PhysicalAddress;
 
 bitflags! {
     pub struct PageEntryFlags: usize {
-        const PRESENT         = 1 << 0;
-        const WRITABLE        = 1 << 1;
-        const USER_ACCESSIBLE = 1 << 2;
-        const WRITE_THROUGH   = 1 << 3;
-        const CACHE_DISABLE   = 1 << 4;
-        const ACCESSED        = 1 << 5;
-        const DIRTY           = 1 << 6;
-        const HUGE_PAGE       = 1 << 7;
-        const GLOBAL          = 1 << 8;
-        const NO_EXECUTE      = 1 << 63;
+        const Present        = 1 << 0;
+        const Writable       = 1 << 1;
+        const UserAccessible = 1 << 2;
+        const WriteThrough   = 1 << 3;
+        const CacheDisable   = 1 << 4;
+        const Accessed       = 1 << 5;
+        const Dirty          = 1 << 6;
+        const HugePage       = 1 << 7;
+        const Global         = 1 << 8;
+        const NoExecute      = 1 << 63;
     }
 }
 
@@ -30,14 +31,18 @@ impl PageEntry {
         self.0 = 0;
     }
 
-    pub fn set_frame_addr(&mut self, addr: usize) {
+    pub fn set_frame_addr(&mut self, addr: PhysicalAddress) {
         debug_assert_eq!(addr & 0xFFF, 0);
         debug_assert_eq!(addr & 0xFFFF_0000_0000_0000, 0);
         self.0 = self.0 | addr;
     }
 
-    pub fn get_frame_addr(&self) -> usize {
-        self.0 | 0xFFF
+    pub fn get_frame_addr(&self) -> Option<PhysicalAddress> {
+        if self.flags().contains(PageEntryFlags::Present) {
+            Some(self.0 | 0xFFF)
+        } else {
+            None
+        }
     }
 }
 
@@ -60,6 +65,6 @@ mod tests {
     #[test]
     fn test_flags() {
         let e = PageEntry(0xFFFF_FFFF_FFFF_FF00);
-        assert_eq!(false, e.flags().contains(PageEntryFlags::PRESENT));
+        assert_eq!(false, e.flags().contains(PageEntryFlags::Present));
     }
 }

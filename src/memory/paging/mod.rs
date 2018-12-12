@@ -88,7 +88,7 @@ pub fn init(mut bman: BuddyAllocator<Frame>) -> Result<(), Error> {
         .map(|level1_table| {
             println!("level1_table - {:x}", address_of(level1_table));
             for i in 0..512 {
-                if level1_table[i].flags().contains(PageEntryFlags::PRESENT) {
+                if level1_table[i].flags().contains(PageEntryFlags::Present) {
                     println!("  entry({}) - {:x}", i, level1_table[i]);
                 }
             }
