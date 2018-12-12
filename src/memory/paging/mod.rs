@@ -38,6 +38,7 @@ use memory::address::VirtualAddress;
 use memory::buddy_system::BuddyAllocator;
 use memory::frame::Frame;
 use memory::Error;
+use self::entry::PageEntryFlags;
 
 trait PageIndex {
     fn level4_index(self) -> usize;
@@ -69,7 +70,8 @@ impl PageIndex for VirtualAddress {
     }
 }
 
-pub fn init(_bman: BuddyAllocator<Frame>) -> Result<(), Error> {
+#[inline(always)]
+pub fn init(mut bman: BuddyAllocator<Frame>) -> Result<(), Error> {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));
@@ -85,9 +87,27 @@ pub fn init(_bman: BuddyAllocator<Frame>) -> Result<(), Error> {
         })
         .map(|level1_table| {
             println!("level1_table - {:x}", address_of(level1_table));
+            for i in 0..512 {
+                if level1_table[i].flags().contains(PageEntryFlags::PRESENT) {
+                    println!("  entry({}) - {:x}", i, level1_table[i]);
+                }
+            }
         });
 
+    let frame = bman.allocate(1).unwrap();
+    let frame = unsafe { frame.as_ref() };
+    println!("Allocate frame1:");
+    println!("  {:?}", frame as *const _);
+    println!("  {:?}", frame);
+
+    let frame = bman.allocate(1).unwrap();
+    let frame = unsafe { frame.as_ref() };
+    println!("Allocate frame2:");
+    println!("  {:?}", frame as *const _);
+    println!("  {:?}", frame);
+
     // TODO: create new kernel page table.
+
     Ok(())
 }
 
