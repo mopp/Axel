@@ -36,7 +36,7 @@ impl PageEntry {
         self.0 = self.0 | addr;
     }
 
-    pub fn get_frame_addr(&mut self) -> usize {
+    pub fn get_frame_addr(&self) -> usize {
         self.0 | 0xFFF
     }
 }
