@@ -7,12 +7,13 @@ use list::Node;
 use memory::buddy_system::Object;
 use VirtualAddress;
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 enum State {
     Used,
     Free,
 }
 
+#[derive(Debug)]
 pub struct Frame {
     next: Option<NonNull<Frame>>,
     prev: Option<NonNull<Frame>>,
