@@ -32,15 +32,14 @@
 
 mod entry;
 mod table;
-use self::table::ActivePageTable;
 use self::entry::PageEntryFlags;
-use intrusive_collections::Adapter;
+use self::table::ActivePageTable;
+use super::Error;
 use memory::address::address_of;
 use memory::buddy_system::BuddyAllocator;
 use memory::frame::{Frame, FrameAdapter};
-use super::Error;
 
-pub fn init(_bman: BuddyAllocator<FrameAdapter, <FrameAdapter as Adapter>::Pointer, Frame>) -> Result<(), Error> {
+pub fn init(_bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));

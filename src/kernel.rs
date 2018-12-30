@@ -29,7 +29,6 @@ mod log;
 mod arch;
 mod context;
 mod graphic;
-mod list;
 mod memory;
 
 use arch::Initialize;

@@ -2,7 +2,7 @@ use super::entry::{PageEntry, PageEntryFlags};
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
-use memory::address::{VirtualAddress, PhysicalAddress};
+use memory::address::{PhysicalAddress, VirtualAddress};
 
 trait PageIndex {
     fn level4_index(self) -> usize;
@@ -33,7 +33,6 @@ impl PageIndex for VirtualAddress {
         self & 0xFFF
     }
 }
-
 
 /// Signature trait for manipulating enries in the `Table<T>` struct.
 pub trait Level {}
@@ -158,15 +157,9 @@ impl ActivePageTable {
         // Support huge page.
         self.level4_page_table()
             .next_level_table(addr.level4_index())
-            .and_then(|t|  {
-                t.next_level_table(addr.level3_index())
-            })
-            .and_then(|t|  {
-                t.next_level_table(addr.level2_index())
-            })
-            .and_then(|t|  {
-                t[addr.level1_index()].get_frame_addr()
-            })
+            .and_then(|t| t.next_level_table(addr.level3_index()))
+            .and_then(|t| t.next_level_table(addr.level2_index()))
+            .and_then(|t| t[addr.level1_index()].get_frame_addr())
             .or_else(|| None)
     }
 }

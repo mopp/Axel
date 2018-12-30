@@ -2,11 +2,12 @@
 //! The size is 4096 and it corresponds page size.
 pub const SIZE: usize = 4096;
 
+use core::cell::Cell;
 use intrusive_collections::{LinkedListLink, UnsafeRef};
 use memory::buddy_system::Object;
 use VirtualAddress;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum State {
     Used,
     Free,
@@ -15,9 +16,9 @@ enum State {
 #[derive(Clone, Debug)]
 pub struct Frame {
     link: LinkedListLink,
-    number: usize,
-    order: usize,
-    state: State,
+    number: Cell<usize>,
+    order: Cell<usize>,
+    state: Cell<State>,
 }
 
 intrusive_adapter!(pub FrameAdapter = UnsafeRef<Frame>: Frame { link: LinkedListLink });
@@ -27,26 +28,26 @@ impl Frame {
         Frame {
             // FIXME
             link: LinkedListLink::new(),
-            order: 0,
-            state: State::Free,
-            number: addr / SIZE,
+            order: Cell::new(0),
+            state: Cell::new(State::Free),
+            number: Cell::new(addr / SIZE),
         }
     }
 
     pub fn level4_index(&self) -> usize {
-        (self.number >> 27) & 0o777
+        (self.number.get() >> 27) & 0o777
     }
 
     pub fn level3_index(&self) -> usize {
-        (self.number >> 18) & 0o777
+        (self.number.get() >> 18) & 0o777
     }
 
     pub fn level2_index(&self) -> usize {
-        (self.number >> 9) & 0o777
+        (self.number.get() >> 9) & 0o777
     }
 
     pub fn level1_index(&self) -> usize {
-        (self.number >> 0) & 0o777
+        (self.number.get() >> 0) & 0o777
     }
 }
 
@@ -55,24 +56,24 @@ impl Object for Frame {
         self.link = LinkedListLink::new();
     }
 
-    fn mark_used(&mut self) {
-        self.state = State::Used;
+    fn mark_used(&self) {
+        self.state.set(State::Used);
     }
 
-    fn mark_free(&mut self) {
-        self.state = State::Free;
+    fn mark_free(&self) {
+        self.state.set(State::Free);
     }
 
     fn is_used(&self) -> bool {
-        self.state == State::Free
+        self.state.get() == State::Used
     }
 
     fn order(&self) -> usize {
-        self.order
+        self.order.get()
     }
 
-    fn set_order(&mut self, order: usize) {
-        self.order = order;
+    fn set_order(&self, order: usize) {
+        self.order.set(order);
     }
 }
 
