@@ -170,3 +170,20 @@ impl ActivePageTable {
             .or_else(|| None)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use memory::address::VirtualAddress;
+
+    #[test]
+    fn test_index_functions() {
+        let addr: VirtualAddress = 0o123_456_712_345_1234;
+
+        assert_eq!(addr.offset(), 0o1234);
+        assert_eq!(addr.level1_index(), 0o345);
+        assert_eq!(addr.level2_index(), 0o712);
+        assert_eq!(addr.level3_index(), 0o456);
+        assert_eq!(addr.level4_index(), 0o123);
+    }
+}
