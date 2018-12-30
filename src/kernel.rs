@@ -1,4 +1,3 @@
-#![cfg_attr(test, feature(allocator_api))]
 #![feature(alloc_error_handler)]
 #![feature(asm)]
 #![feature(lang_items)]
@@ -89,10 +88,12 @@ unsafe impl GlobalAlloc for DummyAllocator {
     }
 }
 
+#[cfg(not(test))]
 #[alloc_error_handler]
 fn alloc_error(_: Layout) -> ! {
     unimplemented!("");
 }
 
+#[cfg(not(test))]
 #[global_allocator]
 static GLOBAL: DummyAllocator = DummyAllocator;
