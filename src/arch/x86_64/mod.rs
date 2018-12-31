@@ -1,10 +1,10 @@
 use super::Error;
 use super::Initialize;
-use graphic;
-use graphic::Display;
-use memory::address::ToVirtualAddr;
-use memory::address::VirtualAddress;
-use memory::{self, region::Multiboot2Adapter};
+use crate::graphic;
+use crate::graphic::Display;
+use crate::memory::address::ToVirtualAddr;
+use crate::memory::address::VirtualAddress;
+use crate::memory::{self, region::Multiboot2Adapter};
 
 pub struct Initializer;
 

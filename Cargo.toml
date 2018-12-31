@@ -2,6 +2,7 @@
 name    = "axel"
 version = "0.2.0"
 authors = ["mopp <hello@mopp.jp>"]
+edition = "2018"
 
 
 [lib]

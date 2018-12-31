@@ -2,7 +2,7 @@
 macro_rules! print {
     ($($args:tt)*) => {
         {
-            use context;
+            use crate::context;
             let ref mut default_output = *context::GLOBAL_CONTEXT.default_output.lock();
             if let Some(ref mut default_output) = *default_output {
                 use core::fmt::Write;

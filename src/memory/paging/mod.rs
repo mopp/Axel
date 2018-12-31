@@ -34,10 +34,10 @@ mod entry;
 mod table;
 use self::entry::PageEntryFlags;
 use self::table::ActivePageTable;
+use super::address::address_of;
+use super::buddy_system::BuddyAllocator;
+use super::frame::{Frame, FrameAdapter};
 use super::Error;
-use memory::address::address_of;
-use memory::buddy_system::BuddyAllocator;
-use memory::frame::{Frame, FrameAdapter};
 
 pub fn init(_bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let active_page_table = unsafe { ActivePageTable::new() };

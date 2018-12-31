@@ -1,5 +1,5 @@
 use core::fmt;
-use memory::address::PhysicalAddress;
+use crate::memory::address::PhysicalAddress;
 
 bitflags! {
     pub struct PageEntryFlags: usize {

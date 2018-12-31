@@ -1,8 +1,8 @@
 //! This module contains all codes depending on the architecture to abstract these codes.
 use failure::Fail;
-use graphic;
-use memory::address::VirtualAddress;
-use memory::Error as MemoryError;
+use crate::graphic;
+use crate::memory::address::VirtualAddress;
+use crate::memory::Error as MemoryError;
 
 // TODO: introduce ErrorKind.
 #[derive(Fail, Debug)]

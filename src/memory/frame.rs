@@ -2,10 +2,10 @@
 //! The size is 4096 and it corresponds page size.
 pub const SIZE: usize = 4096;
 
+use super::buddy_system::Object;
+use super::VirtualAddress;
 use core::cell::Cell;
 use intrusive_collections::{LinkedListLink, UnsafeRef};
-use memory::buddy_system::Object;
-use VirtualAddress;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum State {

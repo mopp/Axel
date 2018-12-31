@@ -45,12 +45,12 @@ pub enum Color {
 /// This trait is abstract interface for display.
 pub trait Display {
     fn color_background(&self) -> &Color;
-    fn set_color_background(&mut self, Color) -> &mut Self;
+    fn set_color_background(&mut self, _: Color) -> &mut Self;
     fn color_foreground(&self) -> &Color;
-    fn set_color_foreground(&mut self, Color) -> &mut Self;
+    fn set_color_foreground(&mut self, _: Color) -> &mut Self;
     fn clear_screen(&mut self);
-    fn print(&mut self, &str);
-    fn println(&mut self, &str);
+    fn print(&mut self, _: &str);
+    fn println(&mut self, _: &str);
 }
 
 /// Text display struct to represent text display connected to the computer.

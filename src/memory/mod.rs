@@ -8,9 +8,9 @@ pub mod region;
 use self::address::*;
 use self::buddy_system::BuddyAllocator;
 use self::early_allocator::EarlyAllocator;
+use self::frame::{Frame, FrameAdapter};
+use self::region::Region;
 use core::mem;
-use memory::frame::{Frame, FrameAdapter};
-use memory::region::Region;
 
 #[derive(Fail, Debug)]
 pub enum Error {

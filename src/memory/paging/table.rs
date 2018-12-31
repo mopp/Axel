@@ -1,8 +1,8 @@
 use super::entry::{PageEntry, PageEntryFlags};
+use crate::memory::address::{PhysicalAddress, VirtualAddress};
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
-use memory::address::{PhysicalAddress, VirtualAddress};
 
 trait PageIndex {
     fn level4_index(self) -> usize;

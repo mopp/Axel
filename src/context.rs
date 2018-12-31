@@ -1,6 +1,6 @@
-use arch;
-use arch::Initialize;
-use graphic::CharacterDisplay;
+use self::super::arch;
+use self::super::arch::Initialize;
+use self::super::graphic::CharacterDisplay;
 use spin::Mutex;
 
 pub struct Context {

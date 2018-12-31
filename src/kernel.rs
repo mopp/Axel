@@ -31,10 +31,10 @@ mod context;
 mod graphic;
 mod memory;
 
-use arch::Initialize;
+use self::arch::Initialize;
+use self::memory::address::VirtualAddress;
 use core::alloc::{GlobalAlloc, Layout};
 use core::panic::PanicInfo;
-use memory::address::VirtualAddress;
 
 #[cfg(not(test))]
 #[start]
