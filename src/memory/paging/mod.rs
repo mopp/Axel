@@ -38,8 +38,10 @@ use super::address::address_of;
 use super::buddy_system::BuddyAllocator;
 use super::frame::{Frame, FrameAdapter};
 use super::Error;
+use intrusive_collections::UnsafeRef;
+use intrusive_collections::IntrusivePointer;
 
-pub fn init(_bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
+pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));
@@ -62,21 +64,23 @@ pub fn init(_bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
             }
         });
 
-    // let frame = bman.allocate(1).unwrap();
-    // let frame = unsafe { frame.as_ref() };
-    // println!("Allocate frame1:");
-    // println!("  {:?}", frame as *const _);
-    // println!("  {:?}", frame);
+    let frame: UnsafeRef<Frame> = bman.allocate(1).unwrap();
+    println!("Allocate frame1:");
+    println!("  {:?}", frame.clone().into_raw());
+    println!("  {:?}", frame);
 
-    // let frame = bman.allocate(1).unwrap();
-    // let frame = unsafe { frame.as_ref() };
-    // println!("Allocate frame2:");
-    // println!("  {:?}", frame as *const _);
-    // println!("  {:?}", frame);
+    let frame = bman.allocate(1).unwrap();
+    println!("Allocate frame2:");
+    println!("  {:?}", frame.clone().into_raw());
+    println!("  {:?}", frame);
 
     // TODO: create new kernel page table.
-    // let tmp = active_page_table.get_physical_address((frame as *const _)as usize);
-    // println!("{:?}", tmp);
+    let ptr = frame.clone().into_raw() as usize;
+    let tmp = active_page_table.get_physical_address(ptr);
+    println!("{:x} -> {:?}", ptr, tmp);
+    let ptr = (&frame as *const _) as usize;
+    let tmp = active_page_table.get_physical_address(ptr);
+    println!("{:x} -> {:?}", ptr, tmp);
 
     Ok(())
 }

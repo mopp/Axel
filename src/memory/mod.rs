@@ -11,6 +11,7 @@ use self::early_allocator::EarlyAllocator;
 use self::frame::{Frame, FrameAdapter};
 use self::region::Region;
 use core::mem;
+use core::ptr::Unique;
 
 #[derive(Fail, Debug)]
 pub enum Error {
@@ -54,7 +55,13 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
     let capacity = capacity - required_size;
     let count_frames = capacity / frame::SIZE;
 
-    let frames = eallocator.allocate(count_frames);
+    let frames: Unique<Frame> = eallocator.allocate(count_frames);
+
+    unsafe {
+        for (i, f) in core::slice::from_raw_parts_mut(frames.as_ptr(), count_frames).into_iter().enumerate() {
+            f.set_number(i)
+        }
+    };
 
     let mut bman = BuddyAllocator::new(frames, count_frames, FrameAdapter::new());
     println!("Available memory: {} objects", bman.count_free_objs());

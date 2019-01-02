@@ -16,7 +16,7 @@ enum State {
 #[derive(Clone, Debug)]
 pub struct Frame {
     link: LinkedListLink,
-    number: Cell<usize>,
+    number: usize,
     order: Cell<usize>,
     state: Cell<State>,
 }
@@ -30,24 +30,28 @@ impl Frame {
             link: LinkedListLink::new(),
             order: Cell::new(0),
             state: Cell::new(State::Free),
-            number: Cell::new(addr / SIZE),
+            number: addr / SIZE,
         }
     }
 
+    pub fn set_number(&mut self, i: usize) {
+        self.number = i;
+    }
+
     pub fn level4_index(&self) -> usize {
-        (self.number.get() >> 27) & 0o777
+        (self.number >> 27) & 0o777
     }
 
     pub fn level3_index(&self) -> usize {
-        (self.number.get() >> 18) & 0o777
+        (self.number >> 18) & 0o777
     }
 
     pub fn level2_index(&self) -> usize {
-        (self.number.get() >> 9) & 0o777
+        (self.number >> 9) & 0o777
     }
 
     pub fn level1_index(&self) -> usize {
-        (self.number.get() >> 0) & 0o777
+        (self.number >> 0) & 0o777
     }
 }
 
