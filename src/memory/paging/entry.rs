@@ -39,7 +39,7 @@ impl PageEntry {
 
     pub fn get_frame_addr(&self) -> Option<PhysicalAddress> {
         if self.flags().contains(PageEntryFlags::Present) {
-            Some(self.0 | 0xFFF)
+            Some(self.0 & !0xFFF)
         } else {
             None
         }

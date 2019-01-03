@@ -154,13 +154,32 @@ impl ActivePageTable {
     }
 
     pub fn get_physical_address(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
-        // Support huge page.
-        self.level4_page_table()
-            .next_level_table(addr.level4_index())
+        debug_assert!(addr <= 0x0000_8000_0000_0000 || 0xffff_8000_0000_0000 <= addr, "0x{:x} is invalid address", addr);
+
+        let level3_table = self.level4_page_table().next_level_table(addr.level4_index());
+
+        level3_table
             .and_then(|t| t.next_level_table(addr.level3_index()))
             .and_then(|t| t.next_level_table(addr.level2_index()))
             .and_then(|t| t[addr.level1_index()].get_frame_addr())
-            .or_else(|| None)
+            .or_else(|| {
+                level3_table.and_then(|t3| {
+                    let entry = &t3[addr.level3_index()];
+                    // Return address here if the page size is 1GB.
+                    if entry.flags().contains(PageEntryFlags::HugePage) {
+                        return entry.get_frame_addr();
+                    }
+
+                    if let Some(t2) = t3.next_level_table(addr.level3_index()) {
+                        let entry = &t2[addr.level2_index()];
+                        if entry.flags().contains(PageEntryFlags::HugePage) {
+                            return entry.get_frame_addr();
+                        }
+                    }
+
+                    None
+                })
+            })
     }
 }
 

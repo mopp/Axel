@@ -77,10 +77,11 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
     // TODO: create new kernel page table.
     let ptr = frame.clone().into_raw() as usize;
     let tmp = active_page_table.get_physical_address(ptr);
-    println!("{:x} -> {:?}", ptr, tmp);
+    println!("{:x} -> 0x{:x}", ptr, tmp.unwrap());
+
     let ptr = (&frame as *const _) as usize;
     let tmp = active_page_table.get_physical_address(ptr);
-    println!("{:x} -> {:?}", ptr, tmp);
+    println!("{:x} -> 0x{:x}", ptr, tmp.unwrap());
 
     Ok(())
 }
