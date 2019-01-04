@@ -32,6 +32,9 @@
 
 mod entry;
 mod table;
+mod page;
+
+pub use self::page::Page;
 use self::entry::PageEntryFlags;
 use self::table::ActivePageTable;
 use super::address::address_of;
