@@ -33,8 +33,11 @@
 mod entry;
 mod table;
 mod page;
+mod page_index;
 
 pub use self::page::Page;
+pub use self::page_index::PageIndex;
+
 use self::entry::PageEntryFlags;
 use self::table::ActivePageTable;
 use super::address::address_of;
