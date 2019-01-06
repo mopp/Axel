@@ -1,9 +1,16 @@
 use super::entry::{PageEntry, PageEntryFlags};
-use super::PageIndex;
+use super::{Page, PageIndex};
 use crate::memory::address::{PhysicalAddress, VirtualAddress};
+use crate::memory::frame::Frame;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
+
+#[derive(Fail, Debug)]
+pub enum Error {
+    #[fail(display = "No page table")]
+    NoPageTable,
+}
 
 /// Signature trait for manipulating enries in the `Table<T>` struct.
 pub trait Level {}
@@ -151,5 +158,23 @@ impl ActivePageTable {
                     None
                 })
             })
+    }
+
+    pub fn map(&mut self, page: Page, _: Frame) -> Result<(), Error> {
+        let page_addr = page.address();
+
+        self.level4_page_table_mut()
+            .next_level_table_mut(page_addr.level4_index())
+            .and_then(|t| t.next_level_table(page_addr.level3_index()))
+            .and_then(|t| t.next_level_table(page_addr.level2_index()))
+            .and_then(|t| {
+                let entry = &t[page_addr.level1_index()];
+
+                // TODO
+                println!("{:?}", entry);
+
+                Some(())
+            })
+            .ok_or(Error::NoPageTable)
     }
 }

@@ -48,7 +48,7 @@ use intrusive_collections::UnsafeRef;
 use intrusive_collections::IntrusivePointer;
 
 pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
-    let active_page_table = unsafe { ActivePageTable::new() };
+    let mut active_page_table = unsafe { ActivePageTable::new() };
     let level4_table = active_page_table.level4_page_table();
     println!("level4_table - {:x}", address_of(level4_table));
     level4_table
@@ -88,6 +88,11 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
     let ptr = (&frame as *const _) as usize;
     let tmp = active_page_table.get_physical_address(ptr);
     println!("{:x} -> 0x{:x}", ptr, tmp.unwrap());
+
+    let addr = 42 * 512 * 512 * 4096; // 42th P3 entry
+    let page = Page::from_address(addr);
+    let r = active_page_table.map(page, (*frame).clone());
+    println!("{:?}", r);
 
     Ok(())
 }
