@@ -1,5 +1,4 @@
 //! `Page` define a virtual memory region.
-use super::PageIndex;
 use crate::memory::address::VirtualAddress;
 
 pub const SIZE: usize = 4096;
@@ -11,5 +10,11 @@ pub struct Page {
 impl Page {
     pub fn address(&self) -> VirtualAddress {
         self.number * SIZE
+    }
+
+    pub fn from_address(addr: VirtualAddress) -> Page {
+        Page {
+            number: addr / SIZE
+        }
     }
 }
