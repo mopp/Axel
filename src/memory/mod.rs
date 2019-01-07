@@ -2,13 +2,15 @@ pub mod address;
 mod buddy_system;
 mod early_allocator;
 mod frame;
+mod frame_allocator;
 mod paging;
 pub mod region;
 
 use self::address::*;
 use self::buddy_system::BuddyAllocator;
 use self::early_allocator::EarlyAllocator;
-use self::frame::{Frame, FrameAdapter};
+pub use self::frame::{Frame, FrameAdapter};
+pub use self::frame_allocator::FrameAllocator;
 use self::region::Region;
 use core::mem;
 use core::ptr::Unique;

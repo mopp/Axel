@@ -31,9 +31,9 @@
 //!     [Page Tables](http://os.phil-opp.com/modifying-page-tables.html)
 
 mod entry;
-mod table;
 mod page;
 mod page_index;
+mod table;
 
 pub use self::page::Page;
 pub use self::page_index::PageIndex;
@@ -42,10 +42,10 @@ use self::entry::PageEntryFlags;
 use self::table::ActivePageTable;
 use super::address::address_of;
 use super::buddy_system::BuddyAllocator;
-use super::frame::{Frame, FrameAdapter};
 use super::Error;
-use intrusive_collections::UnsafeRef;
+use super::{Frame, FrameAdapter};
 use intrusive_collections::IntrusivePointer;
+use intrusive_collections::UnsafeRef;
 
 pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let mut active_page_table = unsafe { ActivePageTable::new() };

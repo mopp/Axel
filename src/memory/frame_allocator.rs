@@ -1,6 +1,6 @@
-use super::frame::Frame;
+use crate::memory::Frame;
 
 pub trait FrameAllocator {
-    fn alloc() -> Frame;
-    fn free(Frame);
+    fn alloc_one(&mut self) -> Option<Frame>;
+    fn free(&mut self, f: Frame);
 }

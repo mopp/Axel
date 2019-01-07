@@ -1,4 +1,5 @@
 use super::Object;
+use crate::memory::{Frame, FrameAllocator};
 use core::mem;
 use core::ptr;
 use core::ptr::Unique;
@@ -163,6 +164,17 @@ impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<T>, Value = T
 
     pub fn count_free_objs(&self) -> usize {
         self.free_counts.iter().enumerate().fold(0, |acc, (order, count)| acc + count * (1 << order))
+    }
+}
+
+impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<Frame>, Value = Frame>> FrameAllocator for BuddyAllocator<A, Frame> {
+    fn alloc_one(&mut self) -> Option<Frame> {
+        self.allocate(1)
+            .map(|frame| (*frame).clone())
+    }
+
+    fn free(&mut self, f: Frame) {
+        unimplemented!("");
     }
 }
 
