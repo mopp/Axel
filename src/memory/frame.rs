@@ -38,6 +38,10 @@ impl Frame {
         self.number = i;
     }
 
+    pub fn number(&self) -> usize {
+        self.number
+    }
+
     pub fn level4_index(&self) -> usize {
         (self.number >> 27) & 0o777
     }

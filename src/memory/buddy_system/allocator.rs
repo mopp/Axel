@@ -174,7 +174,10 @@ impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<Frame>, Value
     }
 
     fn free(&mut self, f: Frame) {
-        unimplemented!("");
+        unsafe {
+            let addr = self.obj_ptr.as_ptr().offset(f.number() as isize);
+            self.free(UnsafeRef::from_raw(addr));
+        }
     }
 }
 
