@@ -59,6 +59,10 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
 
     let frames: Unique<Frame> = eallocator.allocate(count_frames);
 
+    eallocator.align_addr_begin(frame::SIZE);
+    let count_frames = capacity / frame::SIZE;
+    // let base_addr = eallocator.addr_begin.align_up(frame::SIZE);
+
     unsafe {
         for (i, f) in core::slice::from_raw_parts_mut(frames.as_ptr(), count_frames).into_iter().enumerate() {
             f.set_number(i)

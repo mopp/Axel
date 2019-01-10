@@ -6,7 +6,7 @@ use core::mem;
 use core::ptr::Unique;
 
 pub struct EarlyAllocator {
-    addr_begin: usize,
+    pub addr_begin: usize,
     addr_end: usize,
 }
 
@@ -21,7 +21,7 @@ impl EarlyAllocator {
         self.addr_end - self.addr_begin
     }
 
-    fn align_addr_begin(&mut self, alignment: usize) {
+    pub fn align_addr_begin(&mut self, alignment: usize) {
         self.addr_begin = self.addr_begin.align_up(alignment);
     }
 
