@@ -61,17 +61,18 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
 
     eallocator.align_addr_begin(frame::SIZE);
     let count_frames = capacity / frame::SIZE;
-    // let base_addr = eallocator.addr_begin.align_up(frame::SIZE);
+    let base_addr = eallocator.addr_begin.align_up(frame::SIZE).to_physical_addr();
+    println!("managed free region: 0x{:x} - 0x{:x}, {}KB", base_addr, base_addr + count_frames * frame::SIZE, count_frames * frame::SIZE / 1024);
 
     unsafe {
+        let base = base_addr / frame::SIZE;
         for (i, f) in core::slice::from_raw_parts_mut(frames.as_ptr(), count_frames).into_iter().enumerate() {
-            f.set_number(i)
+            f.set_number(base + i)
         }
     };
 
     let mut bman = BuddyAllocator::new(frames, count_frames, FrameAdapter::new());
-    println!("Available memory: {} objects", bman.count_free_objs());
-    println!("Memory region size: {} KB", free_memory_region.size() / 1024);
+    println!("{} buddy objects", bman.count_free_objs());
 
     if let Some(obj) = bman.allocate(0) {
         println!("Allocate {:?}", obj);
