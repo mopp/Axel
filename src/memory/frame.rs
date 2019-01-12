@@ -24,9 +24,8 @@ pub struct Frame {
 intrusive_adapter!(pub FrameAdapter = UnsafeRef<Frame>: Frame { link: LinkedListLink });
 
 impl Frame {
-    pub fn from_addr(addr: VirtualAddress) -> Frame {
+    pub fn from_address(addr: VirtualAddress) -> Frame {
         Frame {
-            // FIXME
             link: LinkedListLink::new(),
             order: Cell::new(0),
             state: Cell::new(State::Free),
