@@ -56,6 +56,10 @@ impl Frame {
     pub fn level1_index(&self) -> usize {
         (self.number >> 0) & 0o777
     }
+
+    pub fn address(&self) -> usize {
+        self.number * SIZE
+    }
 }
 
 impl Object for Frame {
