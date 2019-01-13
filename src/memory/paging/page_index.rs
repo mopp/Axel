@@ -34,7 +34,7 @@ impl PageIndex for VirtualAddress {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use memory::address::VirtualAddress;
+    use crate::memory::address::VirtualAddress;
 
     #[test]
     fn test_index_functions() {

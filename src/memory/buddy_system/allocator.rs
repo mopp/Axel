@@ -184,7 +184,7 @@ impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<Frame>, Value
 #[cfg(test)]
 mod tests {
     use super::*;
-    use memory::frame::{Frame, FrameAdapter};
+    use crate::memory::frame::{Frame, FrameAdapter};
     use std::alloc::{Alloc, Layout, System};
     use std::mem;
 
