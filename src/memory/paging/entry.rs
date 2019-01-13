@@ -26,6 +26,10 @@ impl PageEntry {
         PageEntryFlags::from_bits_truncate(self.0)
     }
 
+    pub fn set_flags(&mut self, flags: PageEntryFlags) {
+        self.0 = self.0 | (self.flags() | flags).bits();
+    }
+
     /// Clear the all flags (set the all flags zero).
     pub fn clear_all(&mut self) {
         self.0 = 0;
