@@ -2,6 +2,7 @@ use super::entry::{PageEntry, PageEntryFlags};
 use super::{Page, PageIndex};
 use crate::memory::address::{PhysicalAddress, VirtualAddress};
 use crate::memory::frame::Frame;
+use crate::memory::FrameAllocator;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
@@ -90,6 +91,33 @@ where
     pub fn next_level_table_mut<'a>(&'a self, index: usize) -> Option<&'a mut Table<T::NextLevel>> {
         self.next_level_table_address(index).map(|address| unsafe { &mut *(address as *mut _) })
     }
+
+    pub fn next_level_table_create_mut(&mut self, index: usize, allocator: &mut FrameAllocator) -> Option<&mut Table<T::NextLevel>> {
+        // TODO; refactor
+        if self.next_level_table_mut(index).is_some() {
+            return self.next_level_table_mut(index);
+        }
+
+        if let Some(frame) = allocator.alloc_one() {
+            let entry = &mut self[index];
+            entry.set_frame_addr(frame.address());
+            entry.set_flags(PageEntryFlags::Present);
+            println!("frame: {:x}", frame.address());
+            println!("entry: 0x{:x}", entry);
+            println!("entry index: {:?}", index);
+            println!("entry addr: 0x{:p}", entry as *const _);
+            if let Some(table) = self.next_level_table_mut(index) {
+                table.clear_all_entries();
+                Some(table)
+            } else {
+                debug_assert!(false, "error");
+                None
+            }
+        } else {
+            // No memory.
+            None
+        }
+    }
 }
 
 impl<T> Index<usize> for Table<T>
@@ -160,13 +188,16 @@ impl ActivePageTable {
             })
     }
 
-    pub fn map(&mut self, page: Page, _: Frame) -> Result<(), Error> {
+    pub fn map(&mut self, page: Page, frame: Frame, allocator: &mut FrameAllocator) -> Result<(), Error> {
         let page_addr = page.address();
+        let frame_addr = frame.address();
+
+        println!("map page: {} (0x{:x}) to frame: {} (0x{:x})", page.number(), page_addr, frame.number(), frame_addr);
 
         self.level4_page_table_mut()
-            .next_level_table_mut(page_addr.level4_index())
-            .and_then(|t| t.next_level_table(page_addr.level3_index()))
-            .and_then(|t| t.next_level_table(page_addr.level2_index()))
+            .next_level_table_create_mut(page_addr.level4_index(), allocator)
+            .and_then(|t| t.next_level_table_create_mut(page_addr.level3_index(), allocator))
+            .and_then(|t| t.next_level_table_create_mut(page_addr.level2_index(), allocator))
             .and_then(|t| {
                 let entry = &t[page_addr.level1_index()];
 

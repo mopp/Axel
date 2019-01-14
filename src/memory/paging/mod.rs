@@ -89,9 +89,9 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
     let tmp = active_page_table.get_physical_address(ptr);
     println!("{:x} -> 0x{:x}", ptr, tmp.unwrap());
 
-    let addr = 42 * 512 * 512 * 4096; // 42th P3 entry
+    let addr = 0x200000;
     let page = Page::from_address(addr);
-    let r = active_page_table.map(page, (*frame).clone());
+    let r = active_page_table.map(page, (*frame).clone(), &mut bman);
     println!("{:?}", r);
 
     Ok(())
