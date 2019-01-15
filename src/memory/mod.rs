@@ -71,13 +71,8 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
         }
     };
 
-    let mut bman = BuddyAllocator::new(frames, count_frames, FrameAdapter::new());
+    let bman = BuddyAllocator::new(frames, count_frames, FrameAdapter::new());
     println!("{} buddy objects", bman.count_free_objs());
-
-    if let Some(obj) = bman.allocate(0) {
-        println!("Allocate {:?}", obj);
-        bman.free(obj);
-    }
 
     paging::init(bman)
 }

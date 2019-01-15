@@ -43,6 +43,7 @@ pub extern "C" fn main(argc: usize, argv: *const VirtualAddress) {
     memory::clean_bss_section();
 
     let argv: &[VirtualAddress] = unsafe { core::slice::from_raw_parts(argv, argc) };
+    println!("Start Axel");
     if let Err(e) = arch::Initializer::init(argv) {
         panic!("arch::init fails: {}", e);
     }

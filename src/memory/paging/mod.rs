@@ -38,67 +38,29 @@ mod table;
 pub use self::page::Page;
 pub use self::page_index::PageIndex;
 
-use self::entry::PageEntryFlags;
 use self::table::ActivePageTable;
-use super::address::address_of;
 use super::buddy_system::BuddyAllocator;
 use super::Error;
-use super::{Frame, FrameAdapter};
-use intrusive_collections::IntrusivePointer;
-use intrusive_collections::UnsafeRef;
+use super::{Frame, FrameAdapter, FrameAllocator};
 
 pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let mut active_page_table = unsafe { ActivePageTable::new() };
-    let level4_table = active_page_table.level4_page_table();
-    println!("level4_table - {:x}", address_of(level4_table));
-    level4_table
-        .next_level_table(511)
-        .and_then(|level3_table| {
-            println!("level3_table - {:x}", address_of(level3_table));
-            level3_table.next_level_table(511)
-        })
-        .and_then(|level2_table| {
-            println!("level2_table - {:x}", address_of(level2_table));
-            level2_table.next_level_table(511)
-        })
-        .map(|level1_table| {
-            println!("level1_table - {:x}", address_of(level1_table));
-            for i in 0..512 {
-                if level1_table[i].flags().contains(PageEntryFlags::Present) {
-                    println!("  entry({}) - {:x}", i, level1_table[i]);
-                }
+
+    // Runtime test.
+    if let Some(frame) = bman.alloc_one() {
+        let addr = 0x200000;
+        let page = Page::from_address(addr);
+
+        if let Ok(_) = active_page_table.map(page, frame, &mut bman) {
+            // It will not cause page fault.
+            let objs: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, core::mem::size_of::<u8>() * 4096) };
+            for i in 0..4096 {
+                objs[i] = 1;
             }
-        });
-
-    let frame: UnsafeRef<Frame> = bman.allocate(1).unwrap();
-    println!("Allocate frame1:");
-    println!("  {:?}", frame.clone().into_raw());
-    println!("  {:?}", frame);
-
-    let frame = bman.allocate(1).unwrap();
-    println!("Allocate frame2:");
-    println!("  {:?}", frame.clone().into_raw());
-    println!("  {:?}", frame);
+        }
+    }
 
     // TODO: create new kernel page table.
-    let ptr = frame.clone().into_raw() as usize;
-    let tmp = active_page_table.get_physical_address(ptr);
-    println!("{:x} -> 0x{:x}", ptr, tmp.unwrap());
-
-    let ptr = (&frame as *const _) as usize;
-    let tmp = active_page_table.get_physical_address(ptr);
-    println!("{:x} -> 0x{:x}", ptr, tmp.unwrap());
-
-    let addr = 0x200000;
-    let page = Page::from_address(addr);
-    let r = active_page_table.map(page, (*frame).clone(), &mut bman);
-    println!("{:?}", r);
-
-    // It will not cause page fault.
-    let objs: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, core::mem::size_of::<u8>() * 4096) };
-    for i in 0..4096 {
-        objs[i] = 1;
-    }
 
     Ok(())
 }
