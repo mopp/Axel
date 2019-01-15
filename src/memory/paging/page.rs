@@ -17,8 +17,6 @@ impl Page {
     }
 
     pub fn from_address(addr: VirtualAddress) -> Page {
-        Page {
-            number: addr / SIZE
-        }
+        Page { number: addr / SIZE }
     }
 }

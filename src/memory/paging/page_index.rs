@@ -30,7 +30,6 @@ impl PageIndex for VirtualAddress {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
