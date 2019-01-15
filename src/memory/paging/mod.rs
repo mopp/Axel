@@ -94,5 +94,11 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
     let r = active_page_table.map(page, (*frame).clone(), &mut bman);
     println!("{:?}", r);
 
+    // It will not cause page fault.
+    let objs: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, core::mem::size_of::<u8>() * 4096) };
+    for i in 0..4096 {
+        objs[i] = 1;
+    }
+
     Ok(())
 }

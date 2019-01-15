@@ -39,6 +39,7 @@ impl PageEntry {
         debug_assert_eq!(addr & 0xFFF, 0);
         debug_assert_eq!(addr & 0xFFFF_0000_0000_0000, 0);
         self.0 = self.0 | addr;
+        self.set_flags(PageEntryFlags::Present);
     }
 
     pub fn get_frame_addr(&self) -> Option<PhysicalAddress> {

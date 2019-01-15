@@ -11,6 +11,8 @@ use core::ptr::Unique;
 pub enum Error {
     #[fail(display = "No page table")]
     NoPageTable,
+    #[fail(display = "Already mapped page")]
+    AlreadyMapped,
 }
 
 /// Signature trait for manipulating enries in the `Table<T>` struct.
@@ -99,13 +101,7 @@ where
         }
 
         if let Some(frame) = allocator.alloc_one() {
-            let entry = &mut self[index];
-            entry.set_frame_addr(frame.address());
-            entry.set_flags(PageEntryFlags::Present);
-            println!("frame: {:x}", frame.address());
-            println!("entry: 0x{:x}", entry);
-            println!("entry index: {:?}", index);
-            println!("entry addr: 0x{:p}", entry as *const _);
+            self[index].set_frame_addr(frame.address());
             if let Some(table) = self.next_level_table_mut(index) {
                 table.clear_all_entries();
                 Some(table)
@@ -194,18 +190,22 @@ impl ActivePageTable {
 
         println!("map page: {} (0x{:x}) to frame: {} (0x{:x})", page.number(), page_addr, frame.number(), frame_addr);
 
-        self.level4_page_table_mut()
+        let table = self
+            .level4_page_table_mut()
             .next_level_table_create_mut(page_addr.level4_index(), allocator)
             .and_then(|t| t.next_level_table_create_mut(page_addr.level3_index(), allocator))
-            .and_then(|t| t.next_level_table_create_mut(page_addr.level2_index(), allocator))
-            .and_then(|t| {
-                let entry = &t[page_addr.level1_index()];
+            .and_then(|t| t.next_level_table_create_mut(page_addr.level2_index(), allocator));
 
-                // TODO
-                println!("{:?}", entry);
-
-                Some(())
-            })
-            .ok_or(Error::NoPageTable)
+        if let Some(table) = table {
+            let entry = &mut table[page_addr.level1_index()];
+            if entry.flags().contains(PageEntryFlags::Present) == false {
+                entry.set_frame_addr(frame_addr);
+                Ok(())
+            } else {
+                Err(Error::AlreadyMapped)
+            }
+        } else {
+            Err(Error::NoPageTable)
+        }
     }
 }
