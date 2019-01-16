@@ -38,7 +38,7 @@ mod table;
 pub use self::page::Page;
 pub use self::page_index::PageIndex;
 
-use self::table::ActivePageTable;
+use self::table::{ActivePageTable, InActivePageTable};
 use super::buddy_system::BuddyAllocator;
 use super::Error;
 use super::{Frame, FrameAdapter, FrameAllocator};
@@ -61,6 +61,9 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
     }
 
     // TODO: create new kernel page table.
+    if let Some(inactive_page_table) = InActivePageTable::new(&mut bman) {
+        active_page_table.with(inactive_page_table, |active_page_table| (()));
+    }
 
     Ok(())
 }

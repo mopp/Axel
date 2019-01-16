@@ -17,7 +17,7 @@ bitflags! {
 }
 
 /// A page entry.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PageEntry(usize);
 
 impl PageEntry {

@@ -22,6 +22,7 @@ extern crate rlibc;
 extern crate spin;
 #[macro_use]
 extern crate failure;
+extern crate x86_64;
 
 #[cfg(not(test))]
 #[macro_use]

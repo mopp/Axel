@@ -6,6 +6,8 @@ use crate::memory::FrameAllocator;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
+use x86_64::instructions::tlb;
+use x86_64::registers;
 
 #[derive(Fail, Debug)]
 pub enum Error {
@@ -207,5 +209,36 @@ impl ActivePageTable {
         } else {
             Err(Error::NoPageTable)
         }
+    }
+
+    pub fn with(&mut self, inactive_page_table: InActivePageTable, f: (impl Fn(&mut ActivePageTable))) -> Result<(), Error> {
+        // Keep the current active page table entry to restore.
+        let original = self.level4_page_table_mut()[511].clone();
+        let addr = registers::control::Cr3::read().0.start_address().as_u64() as usize;
+        let original_table_frame = Frame::from_address(addr);
+
+        // Override the recursive mapping.
+        let entry = &mut self.level4_page_table_mut()[511];
+        entry.set_frame_addr(inactive_page_table.level4_page_table.address());
+        entry.set_flags(PageEntryFlags::Writable);
+        tlb::flush_all();
+
+        f(self);
+
+        self.level4_page_table_mut()[511] = original;
+
+        Ok(())
+    }
+}
+
+pub struct InActivePageTable {
+    level4_page_table: Frame,
+}
+
+impl InActivePageTable {
+    pub fn new(allocator: &mut FrameAllocator) -> Option<InActivePageTable> {
+        allocator.alloc_one().map(|frame| {
+            InActivePageTable { level4_page_table: frame }
+        })
     }
 }
