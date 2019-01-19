@@ -116,6 +116,17 @@ where
             None
         }
     }
+
+    pub fn find_free_entry_index(&self) -> Option<usize> {
+        // TODO: implement Iter.
+        for i in 0..512 {
+            if self[i].flags().contains(PageEntryFlags::Present) == false {
+                return Some(i)
+            }
+        }
+
+        None
+    }
 }
 
 impl<T> Index<usize> for Table<T>
