@@ -15,6 +15,8 @@ pub enum Error {
     NoPageTable,
     #[fail(display = "Already mapped page")]
     AlreadyMapped,
+    #[fail(display = "There is no page table entry")]
+    NoEntry,
 }
 
 /// Signature trait for manipulating enries in the `Table<T>` struct.
@@ -73,6 +75,17 @@ where
             entry.clear_all();
         }
     }
+
+    pub fn find_free_entry_index(&self) -> Option<usize> {
+        // TODO: implement Iter.
+        for i in 0..512 {
+            if self[i].flags().contains(PageEntryFlags::Present) == false {
+                return Some(i)
+            }
+        }
+
+        None
+    }
 }
 
 impl<T> Table<T>
@@ -115,17 +128,6 @@ where
             // No memory.
             None
         }
-    }
-
-    pub fn find_free_entry_index(&self) -> Option<usize> {
-        // TODO: implement Iter.
-        for i in 0..512 {
-            if self[i].flags().contains(PageEntryFlags::Present) == false {
-                return Some(i)
-            }
-        }
-
-        None
     }
 }
 
@@ -222,11 +224,58 @@ impl ActivePageTable {
         }
     }
 
-    pub fn with(&mut self, inactive_page_table: InActivePageTable, f: (impl Fn(&mut ActivePageTable))) -> Result<(), Error> {
-        // Keep the current active page table entry to restore.
-        let original = self.level4_page_table_mut()[511].clone();
+    pub fn find_empty_page(&mut self, allocator: &mut FrameAllocator) -> Option<Page> {
+        let table = self.level4_page_table_mut();
+
+        let mut i4: usize = 0;
+        let mut i3: usize = 0;
+        let mut i2: usize = 0;
+        table
+            .find_free_entry_index()
+            .and_then(|i| {
+                i4 = i;
+                table.next_level_table_create_mut(i, allocator)
+            })
+            .and_then(|table| {
+                if let Some(i) = table.find_free_entry_index() {
+                    i3 = i;
+                    table.next_level_table_create_mut(i, allocator)
+                } else {
+                    None
+                }
+            })
+            .and_then(|table| {
+                if let Some(i) = table.find_free_entry_index() {
+                    i2 = i;
+                    table.next_level_table_create_mut(i, allocator)
+                } else {
+                    None
+                }
+            })
+            .and_then(|table| {
+                if let Some(i1) = table.find_free_entry_index() {
+                    let i = i4 * 512 * 512 * 512 + i3 * 512 * 512 + i2 * 512 + i1;
+                    println!("i4: {}, i3: {}, i2: {}, i1: {}", i4, i3, i2, i1);
+                    Some(Page::from_number(i))
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub fn with(&mut self, inactive_page_table: InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable))) -> Result<(), Error> {
+        // Keep the current active page table entry to restore it.
         let addr = registers::control::Cr3::read().0.start_address().as_u64() as usize;
         let original_table_frame = Frame::from_address(addr);
+
+        let p = self.find_empty_page(allocator).ok_or(Error::NoEntry)?;
+        self.map(p.clone(), original_table_frame, allocator)?;
+        let original_table = unsafe { &mut *(p.address() as *mut Table<Level1>) };
+
+        let original = self.level4_page_table_mut()[511].clone();
+
+        println!("original: 0x{:x}", original);
+        println!("original: 0x{:x}", original_table[511]);
 
         // Override the recursive mapping.
         let entry = &mut self.level4_page_table_mut()[511];
@@ -236,7 +285,10 @@ impl ActivePageTable {
 
         f(self);
 
-        self.level4_page_table_mut()[511] = original;
+        let entry = &mut original_table[511];
+        entry.set_frame_addr(addr);
+        entry.set_flags(PageEntryFlags::Writable);
+        tlb::flush_all();
 
         Ok(())
     }
