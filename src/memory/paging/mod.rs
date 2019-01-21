@@ -61,7 +61,7 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
     }
 
     // TODO: create new kernel page table.
-    if let Some(inactive_page_table) = InActivePageTable::new(&mut bman) {
+    if let Some(inactive_page_table) = InActivePageTable::new(&mut active_page_table, &mut bman) {
         let r = active_page_table.with(inactive_page_table, &mut bman, |table| {
             println!("closure: {:p}", table.level4_page_table());
             ()

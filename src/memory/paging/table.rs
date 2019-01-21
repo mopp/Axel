@@ -299,8 +299,18 @@ pub struct InActivePageTable {
 }
 
 impl InActivePageTable {
-    pub fn new(allocator: &mut FrameAllocator) -> Option<InActivePageTable> {
+    pub fn new(active_page_table: &mut ActivePageTable, allocator: &mut FrameAllocator) -> Option<InActivePageTable> {
         allocator.alloc_one().map(|frame| {
+            let p = active_page_table.find_empty_page(allocator).unwrap();
+            active_page_table.map(p.clone(), frame.clone(), allocator).unwrap();
+            let table = unsafe { &mut *(p.address() as *mut Table<Level1>) };
+            table.clear_all_entries();
+
+            // set recursive page mapping.
+            let entry = &mut table[511];
+            entry.set_frame_addr(frame.address());
+            entry.set_flags(PageEntryFlags::Writable);
+
             InActivePageTable { level4_page_table: frame }
         })
     }
