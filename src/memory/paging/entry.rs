@@ -38,8 +38,9 @@ impl PageEntry {
     pub fn set_frame_addr(&mut self, addr: PhysicalAddress) {
         debug_assert_eq!(addr & 0xFFF, 0);
         debug_assert_eq!(addr & 0xFFFF_0000_0000_0000, 0);
-        self.0 = self.0 | addr;
-        self.set_flags(PageEntryFlags::Present);
+        let flags = self.flags();
+        self.0 = addr;
+        self.set_flags(flags | PageEntryFlags::Present);
     }
 
     pub fn get_frame_addr(&self) -> Option<PhysicalAddress> {
