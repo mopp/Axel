@@ -80,7 +80,7 @@ where
         // TODO: implement Iter.
         for i in 0..512 {
             if self[i].flags().contains(PageEntryFlags::Present) == false {
-                return Some(i)
+                return Some(i);
             }
         }
 
@@ -255,7 +255,6 @@ impl ActivePageTable {
             .and_then(|table| {
                 if let Some(i1) = table.find_free_entry_index() {
                     let i = i4 * 512 * 512 * 512 + i3 * 512 * 512 + i2 * 512 + i1;
-                    println!("i4: {}, i3: {}, i2: {}, i1: {}", i4, i3, i2, i1);
                     Some(Page::from_number(i))
                 } else {
                     None
@@ -263,19 +262,13 @@ impl ActivePageTable {
             })
     }
 
-    pub fn with(&mut self, inactive_page_table: InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable))) -> Result<(), Error> {
+    pub fn with(&mut self, inactive_page_table: InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut FrameAllocator))) -> Result<(), Error> {
         // Keep the current active page table entry to restore it.
         let addr = registers::control::Cr3::read().0.start_address().as_u64() as usize;
         let original_table_frame = Frame::from_address(addr);
-
-        let p = self.find_empty_page(allocator).ok_or(Error::NoEntry)?;
-        self.map(p.clone(), original_table_frame, allocator)?;
-        let original_table = unsafe { &mut *(p.address() as *mut Table<Level1>) };
-
-        let original = self.level4_page_table_mut()[511].clone();
-
-        println!("original: 0x{:x}", original);
-        println!("original: 0x{:x}", original_table[511]);
+        let page = self.find_empty_page(allocator).ok_or(Error::NoEntry)?;
+        self.map(page.clone(), original_table_frame, allocator)?;
+        let original_table = unsafe { &mut *(page.address() as *mut Table<Level1>) };
 
         // Override the recursive mapping.
         let entry = &mut self.level4_page_table_mut()[511];
@@ -283,11 +276,18 @@ impl ActivePageTable {
         entry.set_flags(PageEntryFlags::Writable);
         tlb::flush_all();
 
-        f(self);
+        f(self, allocator);
 
+        // Restore the active page table entry.
         let entry = &mut original_table[511];
         entry.set_frame_addr(addr);
         entry.set_flags(PageEntryFlags::Writable);
+
+        // Restore the active page table entry.
+        let entry = &mut self.level4_page_table_mut()[511];
+        entry.set_frame_addr(addr);
+        entry.set_flags(PageEntryFlags::Writable);
+
         tlb::flush_all();
 
         Ok(())
