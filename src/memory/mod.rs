@@ -11,6 +11,7 @@ use self::buddy_system::BuddyAllocator;
 use self::early_allocator::EarlyAllocator;
 pub use self::frame::{Frame, FrameAdapter};
 pub use self::frame_allocator::FrameAllocator;
+use self::paging::table::Error as PageTableError;
 use self::region::Region;
 use core::mem;
 use core::ptr::Unique;
@@ -19,6 +20,18 @@ use core::ptr::Unique;
 pub enum Error {
     #[fail(display = "No usable memory region")]
     NoUsableMemory,
+    #[fail(display = "Page table error: {}", inner)]
+    PageTable {
+      inner: PageTableError,
+    }
+}
+
+impl From<PageTableError> for Error {
+    fn from(inner: PageTableError) -> Error {
+        Error::PageTable {
+            inner
+        }
+    }
 }
 
 #[inline(always)]
