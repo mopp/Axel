@@ -24,4 +24,8 @@ impl Page {
     pub fn from_number(n: usize) -> Page {
         Page { number: n }
     }
+
+    pub unsafe fn to_slice_mut<T>(&mut self) -> &mut [T]{
+        core::slice::from_raw_parts_mut(self.address() as *mut T, 4096 / core::mem::size_of::<T>())
+    }
 }
