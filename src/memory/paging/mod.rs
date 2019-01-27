@@ -33,7 +33,7 @@
 mod entry;
 mod page;
 mod page_index;
-mod table;
+pub mod table;
 
 pub use self::page::Page;
 pub use self::page_index::PageIndex;
@@ -46,26 +46,32 @@ use super::{Frame, FrameAdapter, FrameAllocator};
 pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let mut active_page_table = unsafe { ActivePageTable::new() };
 
-    // Runtime test.
-    if let Some(frame) = bman.alloc_one() {
-        let addr = 0x200000;
-        let page = Page::from_address(addr);
+    runtime_test(&mut active_page_table, &mut bman)?;
 
-        if let Ok(_) = active_page_table.map(page, frame, &mut bman) {
-            // It will not cause page fault.
-            let objs: &mut [u8] = unsafe { core::slice::from_raw_parts_mut(addr as *mut u8, core::mem::size_of::<u8>() * 4096) };
-            for i in 0..4096 {
-                objs[i] = 1;
-            }
+    // TODO: create new kernel page table.
+    let inactive_page_table = InActivePageTable::new(&mut active_page_table, &mut bman).ok_or(Error::NoUsableMemory)?;
+    active_page_table.with(inactive_page_table, &mut bman, |_, _| ())?;
+
+    Ok(())
+}
+
+#[inline(always)]
+pub fn runtime_test(active_page_table: &mut ActivePageTable, allocator: &mut FrameAllocator) -> Result<(), Error> {
+    // Runtime test.
+    let frame = allocator.alloc_one().ok_or(Error::NoUsableMemory)?;
+
+    // FIXME: use more proper address.
+    let mut page = Page::from_address(0x200000);
+    active_page_table.map(page.clone(), frame, allocator)?;
+
+    // It will not cause page fault.
+    unsafe {
+        for i in page.to_slice_mut() {
+            *i = 1;
         }
     }
 
-    // TODO: create new kernel page table.
-    if let Some(inactive_page_table) = InActivePageTable::new(&mut active_page_table, &mut bman) {
-        let r = active_page_table.with(inactive_page_table, &mut bman, |_, _| {
-            ()
-        });
-    }
+    // FIXME: unmap it.
 
     Ok(())
 }
