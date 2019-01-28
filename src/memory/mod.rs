@@ -21,16 +21,12 @@ pub enum Error {
     #[fail(display = "No usable memory region")]
     NoUsableMemory,
     #[fail(display = "Page table error: {}", inner)]
-    PageTable {
-      inner: PageTableError,
-    }
+    PageTable { inner: PageTableError },
 }
 
 impl From<PageTableError> for Error {
     fn from(inner: PageTableError) -> Error {
-        Error::PageTable {
-            inner
-        }
+        Error::PageTable { inner }
     }
 }
 
@@ -55,28 +51,19 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
     let free_memory_region = usable_memory_regions.nth(0).ok_or(Error::NoUsableMemory)?;
 
     // Use free memory region at the kernel tail.
-    let kernel_addr_end_physical = kernel_addr_end_physical();
-    let free_memory_region = free_memory_region;
-    let free_region_addr_begin = kernel_addr_end_physical.to_virtual_addr();
+    let free_region_addr_begin = kernel_addr_end_virtual();
     let free_region_addr_end = (free_memory_region.base_addr() + free_memory_region.size()).to_virtual_addr();
-    let mut eallocator = EarlyAllocator::new(free_region_addr_begin, free_region_addr_end);
+    let mut allocator = EarlyAllocator::new(free_region_addr_begin, free_region_addr_end);
 
-    // Calculate the required size for frame.
-    let struct_size = mem::size_of::<Frame>();
-    let capacity = eallocator.capacity();
-    let count_frames = capacity / frame::SIZE;
-    let required_size = count_frames * struct_size;
+    let (frames, count_frames) = allocate_frames(&mut allocator);
 
-    let capacity = capacity - required_size;
-    let count_frames = capacity / frame::SIZE;
+    // Add the size of `frames` to the kernel size.
+    let base_addr = allocator.to_addr_begin().to_physical_addr();
+    update_kernel_addr_end_physical(base_addr);
 
-    let frames: Unique<Frame> = eallocator.allocate(count_frames);
+    println!("free region: 0x{:x} - 0x{:x}, {}KB", base_addr, base_addr + count_frames * frame::SIZE, count_frames * frame::SIZE / 1024);
 
-    eallocator.align_addr_begin(frame::SIZE);
-    let count_frames = capacity / frame::SIZE;
-    let base_addr = eallocator.addr_begin.align_up(frame::SIZE).to_physical_addr();
-    println!("managed free region: 0x{:x} - 0x{:x}, {}KB", base_addr, base_addr + count_frames * frame::SIZE, count_frames * frame::SIZE / 1024);
-
+    // Initialize frames.
     unsafe {
         let base = base_addr / frame::SIZE;
         for (i, f) in core::slice::from_raw_parts_mut(frames.as_ptr(), count_frames).into_iter().enumerate() {
@@ -88,4 +75,24 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
     println!("{} buddy objects", bman.count_free_objs());
 
     paging::init(bman)
+}
+
+#[inline(always)]
+fn allocate_frames(allocator: &mut EarlyAllocator) -> (Unique<Frame>, usize) {
+    allocator.align_addr_begin(frame::SIZE);
+
+    let struct_size = mem::size_of::<Frame>();
+    let capacity = allocator.capacity();
+    let count_frames = capacity / frame::SIZE;
+    let required_size = count_frames * struct_size;
+
+    let capacity = capacity - required_size;
+    let count_frames = capacity / frame::SIZE;
+
+    let frames: Unique<Frame> = allocator.allocate(count_frames);
+
+    allocator.align_addr_begin(frame::SIZE);
+    debug_assert!(count_frames <= (allocator.capacity() / frame::SIZE));
+
+    (frames, count_frames)
 }

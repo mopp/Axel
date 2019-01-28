@@ -14,7 +14,7 @@ impl EarlyAllocator {
     pub fn new(addr_begin: usize, addr_end: usize) -> EarlyAllocator {
         debug_assert!(addr_begin < addr_end);
 
-        EarlyAllocator { addr_begin: addr_begin, addr_end: addr_end }
+        EarlyAllocator { addr_begin, addr_end }
     }
 
     pub fn capacity(&self) -> usize {
@@ -32,6 +32,10 @@ impl EarlyAllocator {
         self.addr_begin += size;
 
         unsafe { Unique::new_unchecked(addr as *mut _) }
+    }
+
+    pub fn to_addr_begin(self) -> usize {
+        self.addr_begin
     }
 }
 
