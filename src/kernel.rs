@@ -31,6 +31,7 @@ mod arch;
 mod context;
 mod graphic;
 mod memory;
+mod bytes;
 
 use self::arch::Initialize;
 use self::memory::address::VirtualAddress;
