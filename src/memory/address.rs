@@ -35,6 +35,11 @@ pub fn kernel_addr_end_physical() -> PhysicalAddress {
 }
 
 #[inline(always)]
+pub fn kernel_addr_end_virtual() -> VirtualAddress {
+    kernel_addr_end_physical().to_virtual_addr()
+}
+
+#[inline(always)]
 pub fn update_kernel_addr_end_physical(new_addr: PhysicalAddress) {
     *(*CURRENT_KERNEL_ADDR_PHYSICAL_END).lock() = new_addr
 }
