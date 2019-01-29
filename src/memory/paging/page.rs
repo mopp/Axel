@@ -9,9 +9,9 @@ pub struct Page {
 }
 
 impl Page {
-    pub fn number(&self) -> usize {
-        self.number
-    }
+    // pub fn number(&self) -> usize {
+    //     self.number
+    // }
 
     pub fn address(&self) -> VirtualAddress {
         self.number * SIZE

@@ -41,21 +41,21 @@ impl Frame {
         self.number
     }
 
-    pub fn level4_index(&self) -> usize {
-        (self.number >> 27) & 0o777
-    }
+    // pub fn level4_index(&self) -> usize {
+    //     (self.number >> 27) & 0o777
+    // }
 
-    pub fn level3_index(&self) -> usize {
-        (self.number >> 18) & 0o777
-    }
+    // pub fn level3_index(&self) -> usize {
+    //     (self.number >> 18) & 0o777
+    // }
 
-    pub fn level2_index(&self) -> usize {
-        (self.number >> 9) & 0o777
-    }
+    // pub fn level2_index(&self) -> usize {
+    //     (self.number >> 9) & 0o777
+    // }
 
-    pub fn level1_index(&self) -> usize {
-        (self.number >> 0) & 0o777
-    }
+    // pub fn level1_index(&self) -> usize {
+    //     (self.number >> 0) & 0o777
+    // }
 
     pub fn address(&self) -> usize {
         self.number * SIZE
