@@ -310,6 +310,16 @@ prelude_to_canonical_higher_harf:
 section .text_canonical_higher_harf
 ; {{{
 
+; 0x00007E00 - 0x0007FFFF is free region.
+; See x86 memory map.
+KERNEL_STACK_FRAME_COUNT equ 4
+KERNEL_STACK_ADDR_TOP    equ 0x00070000
+KERNEL_STACK_ADDR_BOTTOM equ KERNEL_STACK_ADDR_TOP + (4096 * KERNEL_STACK_FRAME_COUNT) - 1
+
+%if 0x0007FFFF < KERNEL_STACK_ADDR_BOTTOM
+%error "Kernel stack is out of range"
+%endif
+
 ; @brief
 ;   Configure some information should be passed to the main function.
 ;   Then, call the main function.
@@ -323,16 +333,24 @@ canonical_higher_harf:
     mov rax, KERNEL_ADDR_VIRTUAL_OFFSET
 
     ; Set the kernel stask.
-    mov rcx, 0x0007FFFF
+    ; The harf will be used as a guard page.
+    mov rcx, KERNEL_STACK_ADDR_BOTTOM
     add rcx, rax
     mov rsp, rcx
+
+    ; Set the number of pages for kernel stack.
+    push KERNEL_STACK_FRAME_COUNT
+
+    ; Set kernel stack address top
+    mov rcx, KERNEL_STACK_ADDR_TOP
+    push rcx
 
     ; rbx is pointer to multiboot info struct.
     add rbx, rax
     push rbx
 
     ; Set the arguments of the main function.
-    mov rdi, 1
+    mov rdi, 2
     mov rsi, rsp
 
     extern main
