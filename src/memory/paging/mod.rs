@@ -39,6 +39,8 @@ pub use self::page::Page;
 pub use self::page_index::PageIndex;
 
 use self::table::{ActivePageTable, InActivePageTable};
+use super::address;
+use super::address::*;
 use super::buddy_system::BuddyAllocator;
 use super::Error;
 use super::{Frame, FrameAdapter, FrameAllocator};
@@ -48,9 +50,21 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
 
     runtime_test(&mut active_page_table, &mut bman)?;
 
-    // TODO: create new kernel page table.
+    // Create new kernel page table.
     let inactive_page_table = InActivePageTable::new(&mut active_page_table, &mut bman).ok_or(Error::NoUsableMemory)?;
-    active_page_table.with(inactive_page_table, &mut bman, |_, _| ())?;
+    active_page_table.with(inactive_page_table, &mut bman, |table, allocator| {
+        let kernel_begin = address::kernel_addr_begin_virtual();
+        let kernel_end = address::kernel_addr_end_physical().to_virtual_addr();
+        debug_assert!(kernel_begin < kernel_end);
+        debug_assert_eq!(0, kernel_begin & 0xfff);
+        debug_assert_eq!(0, kernel_end & 0xfff);
+
+        let v_range = (kernel_begin, kernel_end);
+        let p_range = (address::kernel_addr_begin_physical(), address::kernel_addr_end_physical());
+        table.map_fitting(v_range, p_range, allocator)
+    })?;
+
+    // TODO: Switch the active page table to new one.
 
     Ok(())
 }

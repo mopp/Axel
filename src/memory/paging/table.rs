@@ -203,8 +203,6 @@ impl ActivePageTable {
         let page_addr = page.address();
         let frame_addr = frame.address();
 
-        println!("map page: {} (0x{:x}) to frame: {} (0x{:x})", page.number(), page_addr, frame.number(), frame_addr);
-
         let table = self
             .level4_page_table_mut()
             .next_level_table_create_mut(page_addr.level4_index(), allocator)
@@ -222,6 +220,38 @@ impl ActivePageTable {
         } else {
             Err(Error::NoPageTable)
         }
+    }
+
+    // TODO: consider suitable name.
+    pub fn map_fitting(&mut self, v_range: (VirtualAddress, VirtualAddress), p_range: (PhysicalAddress, PhysicalAddress), allocator: &mut FrameAllocator) -> Result<(), Error> {
+        let (v_begin, v_end) = v_range;
+        let (p_begin, p_end) = p_range;
+        debug_assert_eq!(v_end - v_begin, p_end - p_begin);
+
+        let size = v_end - v_begin;
+        let count_2mb = size / (2 * 1024 * 1024);
+        let count_4kb = (size - count_2mb * 2 * 1024 * 1024) / 4096;
+
+        // FIXME: Revert mappings if mapping fails in these process.
+        let mut offset = 0;
+
+        if 0 < count_2mb {
+            unimplemented!("TODO: Implement mapping for 2MB pages")
+        }
+
+        if 0 < count_4kb {
+            // FIXME: Re-implement them more effectively.
+            for _ in 0..count_4kb {
+                let page = Page::from_address(v_begin + offset);
+                let frame = Frame::from_address(p_begin + offset);
+
+                self.map(page, frame, allocator)?;
+
+                offset += 4096;
+            }
+        }
+
+        Ok(())
     }
 
     pub fn find_empty_page(&mut self, allocator: &mut FrameAllocator) -> Option<Page> {
@@ -262,7 +292,7 @@ impl ActivePageTable {
             })
     }
 
-    pub fn with(&mut self, inactive_page_table: InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut FrameAllocator))) -> Result<(), Error> {
+    pub fn with(&mut self, inactive_page_table: InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut FrameAllocator) -> Result<(), Error>)) -> Result<(), Error> {
         // Keep the current active page table entry to restore it.
         let addr = registers::control::Cr3::read().0.start_address().as_u64() as usize;
         let original_table_frame = Frame::from_address(addr);
@@ -276,7 +306,7 @@ impl ActivePageTable {
         entry.set_flags(PageEntryFlags::Writable);
         tlb::flush_all();
 
-        f(self, allocator);
+        let result = f(self, allocator);
 
         // Restore the active page table entry.
         let entry = &mut original_table[511];
@@ -290,7 +320,7 @@ impl ActivePageTable {
 
         tlb::flush_all();
 
-        Ok(())
+        result
     }
 }
 
