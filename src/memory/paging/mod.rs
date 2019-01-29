@@ -44,27 +44,44 @@ use super::address::*;
 use super::buddy_system::BuddyAllocator;
 use super::Error;
 use super::{Frame, FrameAdapter, FrameAllocator};
+use crate::bytes::Bytes;
 
 pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let mut active_page_table = unsafe { ActivePageTable::new() };
 
     runtime_test(&mut active_page_table, &mut bman)?;
 
-    // Create new kernel page table.
-    let inactive_page_table = InActivePageTable::new(&mut active_page_table, &mut bman).ok_or(Error::NoUsableMemory)?;
-    active_page_table.with(inactive_page_table, &mut bman, |table, allocator| {
-        let kernel_begin = address::kernel_addr_begin_virtual();
-        let kernel_end = address::kernel_addr_end_physical().to_virtual_addr();
-        debug_assert!(kernel_begin < kernel_end);
-        debug_assert_eq!(0, kernel_begin & 0xfff);
-        debug_assert_eq!(0, kernel_end & 0xfff);
+    let kernel_begin = address::kernel_addr_begin_virtual();
+    let kernel_end = address::kernel_addr_end_physical().to_virtual_addr();
+    println!("Kernel virtual address: 0x{:x} - 0x{:x}, {}KB", kernel_begin, kernel_end, (kernel_end - kernel_begin).kb());
+    debug_assert!(kernel_begin < kernel_end);
+    debug_assert_eq!(0, kernel_begin & 0xfff);
+    debug_assert_eq!(0, kernel_end & 0xfff);
 
+    // Create new kernel page table.
+    let mut inactive_page_table = InActivePageTable::new(&mut active_page_table, &mut bman).ok_or(Error::NoUsableMemory)?;
+    active_page_table.with(&mut inactive_page_table, &mut bman, |table, allocator| {
         let v_range = (kernel_begin, kernel_end);
         let p_range = (address::kernel_addr_begin_physical(), address::kernel_addr_end_physical());
+
+        // FIXME:
+        // For kernel stack.
+        let addr = 0x00070000;
+        for i in 0..4 {
+            let addr = addr + i * 4096;
+            table.map(Page::from_address(addr.to_virtual_addr()), Frame::from_address(addr), allocator)?;
+        }
+
+        // For graphic memory.
+        let addr = 0x000B8000;
+        table.map(Page::from_address(addr.to_virtual_addr()), Frame::from_address(addr), allocator)?;
+
         table.map_fitting(v_range, p_range, allocator)
     })?;
 
-    // TODO: Switch the active page table to new one.
+    // Switch the active page table to new one.
+    let _old_table = active_page_table.switch(inactive_page_table);
+    // TODO: Free the old table.
 
     Ok(())
 }

@@ -8,6 +8,7 @@ use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
 use x86_64::instructions::tlb;
 use x86_64::registers;
+use x86_64::structures::paging::PhysFrame;
 
 #[derive(Fail, Debug)]
 pub enum Error {
@@ -292,7 +293,7 @@ impl ActivePageTable {
             })
     }
 
-    pub fn with(&mut self, inactive_page_table: InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut FrameAllocator) -> Result<(), Error>)) -> Result<(), Error> {
+    pub fn with(&mut self, inactive_page_table: &mut InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut FrameAllocator) -> Result<(), Error>)) -> Result<(), Error> {
         // Keep the current active page table entry to restore it.
         let addr = registers::control::Cr3::read().0.start_address().as_u64() as usize;
         let original_table_frame = Frame::from_address(addr);
@@ -321,6 +322,22 @@ impl ActivePageTable {
         tlb::flush_all();
 
         result
+    }
+
+    pub fn switch(&mut self, new_table: InActivePageTable) -> InActivePageTable {
+        let old_table = InActivePageTable {
+            level4_page_table: Frame::from_address(registers::control::Cr3::read().0.start_address().as_u64() as usize),
+        };
+
+        let addr = x86_64::PhysAddr::new(new_table.level4_page_table.address() as u64);
+        let frame = PhysFrame::containing_address(addr);
+        let flags = registers::control::Cr3Flags::empty();
+
+        unsafe {
+            registers::control::Cr3::write(frame, flags);
+        }
+
+        old_table
     }
 }
 
