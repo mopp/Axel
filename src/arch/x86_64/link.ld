@@ -39,47 +39,48 @@ SECTIONS
     /*
      * The kernel LMA and VMA is different each other from here.
      *  LMA = KERNEL_ADDR_PHYSICAL_BEGIN
-     *  VMA = KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN
+     *  VMA = KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_OFFSET
      * The kernel will be load at this physical address by a bootloader.
      * After that, the kernel will be mapped to the higher address.
      * You can confirm these information using the command `objdump -w -x`.
      *
-     * KERNEL_ADDR_VIRTUAL_BEGIN is determined based on 3.3.7.1 Canonical Addressing in the intel manual.
+     * KERNEL_ADDR_VIRTUAL_OFFSET is determined based on 3.3.7.1 Canonical Addressing in the intel manual.
      * For more information, please refer the intel manual or below link.
      *  [Canonical form addresses](https://en.wikipedia.org/wiki/X86-64#Virtual_address_space_details)
      */
-    KERNEL_ADDR_VIRTUAL_BEGIN  = 0xFFFF800000000000;
-    . += KERNEL_ADDR_VIRTUAL_BEGIN;
+    KERNEL_ADDR_VIRTUAL_OFFSET = 0xFFFF800000000000;
+    KERNEL_ADDR_VIRTUAL_BEGIN = KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_OFFSET;
+    . += KERNEL_ADDR_VIRTUAL_OFFSET;
 
     /*
      * Each section will be aligned on 4096.
      * This alignment means the page size.
      */
-    .text : AT(ADDR(.text) - KERNEL_ADDR_VIRTUAL_BEGIN)
+    .text : AT(ADDR(.text) - KERNEL_ADDR_VIRTUAL_OFFSET)
     {
         *(.text_canonical_higher_harf)
         *(.text*)
     }
 
-    .data : AT(ADDR(.data) - KERNEL_ADDR_VIRTUAL_BEGIN)
+    .data : AT(ADDR(.data) - KERNEL_ADDR_VIRTUAL_OFFSET)
     {
         *(.data*)
     }
 
-    .bss : AT(ADDR(.bss) - KERNEL_ADDR_VIRTUAL_BEGIN)
+    .bss : AT(ADDR(.bss) - KERNEL_ADDR_VIRTUAL_OFFSET)
     {
         KERNEL_ADDR_BSS_BEGIN = .;
         *(.bss*)
         KERNEL_ADDR_BSS_END = .;
     }
 
-    .rodata : AT(ADDR(.rodata) - KERNEL_ADDR_VIRTUAL_BEGIN)
+    .rodata : AT(ADDR(.rodata) - KERNEL_ADDR_VIRTUAL_OFFSET)
     {
         *(.rodata*)
     }
 
     KERNEL_SIZE_BSS          = KERNEL_ADDR_BSS_END - KERNEL_ADDR_BSS_BEGIN;
-    KERNEL_SIZE_TOTAL        = . - (KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_BEGIN);
+    KERNEL_SIZE_TOTAL        = . - (KERNEL_ADDR_PHYSICAL_BEGIN + KERNEL_ADDR_VIRTUAL_OFFSET);
     KERNEL_ADDR_VIRTUAL_END  = .;
-    KERNEL_ADDR_PHYSICAL_END = . - KERNEL_ADDR_VIRTUAL_BEGIN;
+    KERNEL_ADDR_PHYSICAL_END = . - KERNEL_ADDR_VIRTUAL_OFFSET;
 }

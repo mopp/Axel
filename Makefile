@@ -49,7 +49,7 @@ $(AXEL_BIN): cargo $(BOOT_OBJ) $(LINK_FILE)
 	$(STRIP) $@
 
 
-$(BOOT_OBJ): $(BOOT_DEPS)
+$(BOOT_OBJ): $(BOOT_DEPS) $(LINK_FILE)
 	$(MAKE) -C $(ARCH_DIR)
 
 

@@ -48,10 +48,10 @@ multiboot2_end:
 section .text_boot_32bit
 ; {{{
 
-; This constant refers the virtual kernel address.
+; This constant refers the virtual kernel address offset.
 ; When I tried to read this values using the linker script, an error `relocation truncated to fit: R_X86_64_32 against ~~~` was ommited.
 ; Therefore, I had to write the value directly here :(
-KERNEL_ADDR_VIRTUAL_BEGIN equ 0xFFFF800000000000
+KERNEL_ADDR_VIRTUAL_OFFSET equ 0xFFFF800000000000
 
 ; @brief
 ;   Axel starting function.
@@ -258,7 +258,7 @@ enter_compatibility_mode:
 enter_64bit_mode:
 ; {{{
     ; Load 64-bit Global Descriptor Table Register (GDTR)
-    mov eax, gdtr64 - KERNEL_ADDR_VIRTUAL_BEGIN
+    mov eax, gdtr64 - KERNEL_ADDR_VIRTUAL_OFFSET
     lgdt [eax]
 
     ; Change the code segment register.
@@ -306,7 +306,7 @@ prelude_to_canonical_higher_harf:
 
 
 
-; This section is mapped to the kernel virtual address (KERNEL_ADDR_VIRTUAL_BEGIN).
+; This section is mapped to the kernel virtual address.
 section .text_canonical_higher_harf
 ; {{{
 
@@ -320,7 +320,7 @@ canonical_higher_harf:
     mov dword [0x1000], 0
     invlpg [0]
 
-    mov rax, KERNEL_ADDR_VIRTUAL_BEGIN
+    mov rax, KERNEL_ADDR_VIRTUAL_OFFSET
 
     ; Set the kernel stask.
     mov rcx, 0x0007FFFF

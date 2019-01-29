@@ -12,6 +12,7 @@ extern "C" {
     static KERNEL_ADDR_PHYSICAL_END: usize;
     static KERNEL_ADDR_VIRTUAL_BEGIN: usize;
     static KERNEL_ADDR_BSS_BEGIN: usize;
+    static KERNEL_ADDR_VIRTUAL_OFFSET: usize;
     static KERNEL_SIZE_BSS: usize;
 }
 
@@ -69,13 +70,13 @@ pub trait ToVirtualAddr {
 
 impl ToPhysicalAddr for VirtualAddress {
     fn to_physical_addr(self) -> PhysicalAddress {
-        self - kernel_addr_begin_virtual()
+        self - address_of(unsafe { &KERNEL_ADDR_VIRTUAL_OFFSET })
     }
 }
 
 impl ToVirtualAddr for PhysicalAddress {
     fn to_virtual_addr(self) -> VirtualAddress {
-        self + kernel_addr_begin_virtual()
+        self + address_of(unsafe { &KERNEL_ADDR_VIRTUAL_OFFSET })
     }
 }
 
