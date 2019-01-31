@@ -72,7 +72,7 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
         }
     };
 
-    let bman = BuddyAllocator::new(frames, count_frames, FrameAdapter::new());
+    let bman = BuddyAllocator::new(base_addr, frames, count_frames, FrameAdapter::new());
     println!("{} buddy objects", bman.count_free_objs());
 
     paging::init(remap_requests, bman)

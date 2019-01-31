@@ -8,6 +8,7 @@ use intrusive_collections::{Adapter, IntrusivePointer, LinkedList, LinkedListLin
 const MAX_ORDER: usize = 15;
 
 pub struct BuddyAllocator<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<T>, Value = T>, T: Object> {
+    base_addr: usize,
     obj_ptr: Unique<T>,
     obj_count: usize,
     free_lists: [LinkedList<A>; MAX_ORDER],
@@ -15,7 +16,7 @@ pub struct BuddyAllocator<A: Clone + Adapter<Link = LinkedListLink, Pointer = Un
 }
 
 impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<T>, Value = T>, T: Object> BuddyAllocator<A, T> {
-    pub fn new(obj_ptr: Unique<T>, count: usize, adapter: A) -> BuddyAllocator<A, T> {
+    pub fn new(base_addr: usize, obj_ptr: Unique<T>, count: usize, adapter: A) -> BuddyAllocator<A, T> {
         let mut free_lists = unsafe {
             let mut lists: [LinkedList<A>; MAX_ORDER] = mem::uninitialized();
 
@@ -51,6 +52,7 @@ impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<T>, Value = T
         }
 
         BuddyAllocator {
+            base_addr,
             obj_ptr: obj_ptr,
             obj_count: count,
             free_lists: free_lists,
@@ -174,7 +176,8 @@ impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<Frame>, Value
 
     fn free(&mut self, f: Frame) {
         unsafe {
-            let addr = self.obj_ptr.as_ptr().offset(f.number() as isize);
+            use crate::memory::frame;
+            let addr = self.obj_ptr.as_ptr().offset((f.number() - self.base_addr / frame::SIZE) as isize);
             self.free(UnsafeRef::from_raw(addr));
         }
     }
