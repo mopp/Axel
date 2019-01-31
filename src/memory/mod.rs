@@ -12,6 +12,7 @@ use self::early_allocator::EarlyAllocator;
 pub use self::frame::{Frame, FrameAdapter};
 pub use self::frame_allocator::FrameAllocator;
 use self::paging::table::Error as PageTableError;
+pub use self::paging::IdenticalReMapRequest;
 use self::region::Region;
 use core::mem;
 use core::ptr::Unique;
@@ -42,7 +43,7 @@ pub fn clean_bss_section() {
 }
 
 #[inline(always)]
-pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<Item = U, Target = T>) -> Result<(), Error> {
+pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<Item = U, Target = T>, remap_requests: &[IdenticalReMapRequest]) -> Result<(), Error> {
     let kernel_addr_begin_physical = kernel_addr_begin_physical();
 
     let mut usable_memory_regions = regions.iter().filter(|region| kernel_addr_begin_physical <= region.base_addr());
@@ -74,7 +75,7 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
     let bman = BuddyAllocator::new(frames, count_frames, FrameAdapter::new());
     println!("{} buddy objects", bman.count_free_objs());
 
-    paging::init(bman)
+    paging::init(remap_requests, bman)
 }
 
 #[inline(always)]

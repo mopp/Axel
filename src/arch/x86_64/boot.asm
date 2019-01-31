@@ -350,7 +350,7 @@ canonical_higher_harf:
     push rbx
 
     ; Set the arguments of the main function.
-    mov rdi, 2
+    mov rdi, 3
     mov rsi, rsp
 
     extern main

@@ -42,11 +42,20 @@ use self::table::{ActivePageTable, InActivePageTable};
 use super::address;
 use super::address::*;
 use super::buddy_system::BuddyAllocator;
+use super::frame;
 use super::Error;
 use super::{Frame, FrameAdapter, FrameAllocator};
 use crate::bytes::Bytes;
 
-pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
+pub struct IdenticalReMapRequest(PhysicalAddress, usize);
+
+impl IdenticalReMapRequest {
+    pub fn new(addr: PhysicalAddress, count: usize) -> IdenticalReMapRequest {
+        IdenticalReMapRequest(addr, count)
+    }
+}
+
+pub fn init(remap_requests: &[IdenticalReMapRequest], mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
     let mut active_page_table = unsafe { ActivePageTable::new() };
 
     runtime_test(&mut active_page_table, &mut bman)?;
@@ -64,17 +73,17 @@ pub fn init(mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> 
         let v_range = (kernel_begin, kernel_end);
         let p_range = (address::kernel_addr_begin_physical(), address::kernel_addr_end_physical());
 
-        // FIXME:
-        // For kernel stack.
-        let addr = 0x00070000;
-        for i in 0..4 {
-            let addr = addr + i * 4096;
-            table.map(Page::from_address(addr.to_virtual_addr()), Frame::from_address(addr), allocator)?;
-        }
+        for IdenticalReMapRequest(addr, count) in remap_requests {
+            debug_assert!(*addr < kernel_begin || kernel_end <= *addr);
+            debug_assert!((addr + frame::SIZE * count) < kernel_begin || kernel_end <= (addr + frame::SIZE * count));
 
-        // For graphic memory.
-        let addr = 0x000B8000;
-        table.map(Page::from_address(addr.to_virtual_addr()), Frame::from_address(addr), allocator)?;
+            for i in 0..*count {
+                let addr = addr + i * frame::SIZE;
+                let page = Page::from_address(addr.to_virtual_addr());
+                let frame = Frame::from_address(addr);
+                table.map(page, frame, allocator)?;
+            }
+        }
 
         table.map_fitting(v_range, p_range, allocator)
     })?;

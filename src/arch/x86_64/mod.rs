@@ -10,12 +10,16 @@ pub struct Initializer;
 
 impl Initialize for Initializer {
     fn init(argv: &[VirtualAddress]) -> Result<(), Error> {
+        let rs = [
+            // Kernel stack info (see boot.asm).
+            memory::IdenticalReMapRequest::new(argv[1], argv[2]),
+            // FIXME: do not hard-code vram address.
+            memory::IdenticalReMapRequest::new(0x000B8000, 1),
+        ];
+
         let multiboot_info = unsafe { multiboot2::load(argv[0]) };
-        if let Some(memory_map_tag) = multiboot_info.memory_map_tag() {
-            memory::init(&Multiboot2Adapter::new(memory_map_tag) as _).map_err(Into::into)
-        } else {
-            Err(Error::NoMemoryMap)
-        }
+        let memory_map_tag = multiboot_info.memory_map_tag().ok_or(Error::NoMemoryMap)?;
+        memory::init(&Multiboot2Adapter::new(memory_map_tag) as _, &rs).map_err(Into::into)
     }
 
     fn obtain_kernel_console() -> Option<graphic::CharacterDisplay<'static>> {
