@@ -43,13 +43,13 @@ impl PageEntry {
         self.set_flags(flags | PageEntryFlags::Present);
     }
 
-    // pub fn get_frame_addr(&self) -> Option<PhysicalAddress> {
-    //     if self.flags().contains(PageEntryFlags::Present) {
-    //         Some(self.0 & !0xFFF)
-    //     } else {
-    //         None
-    //     }
-    // }
+    pub fn get_frame_addr(&self) -> Option<PhysicalAddress> {
+        if self.flags().contains(PageEntryFlags::Present) {
+            Some(self.0 & !0xFFF)
+        } else {
+            None
+        }
+    }
 }
 
 impl fmt::Display for PageEntry {

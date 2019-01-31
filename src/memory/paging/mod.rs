@@ -111,7 +111,5 @@ pub fn runtime_test(active_page_table: &mut ActivePageTable, allocator: &mut Fra
         }
     }
 
-    // FIXME: unmap it.
-
-    Ok(())
+    active_page_table.unmap(page, allocator).map_err(Into::into)
 }

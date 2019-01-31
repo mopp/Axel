@@ -255,6 +255,25 @@ impl ActivePageTable {
         Ok(())
     }
 
+    pub fn unmap(&mut self, page: Page, allocator: &mut FrameAllocator) -> Result<(), Error> {
+        let addr = page.address();
+
+        // FIXME: Support huge page.
+        let table = self
+            .level4_page_table_mut()
+            .next_level_table_mut(addr.level4_index())
+            .and_then(|t| t.next_level_table_mut(addr.level3_index()))
+            .and_then(|t| t.next_level_table_mut(addr.level2_index()))
+            .ok_or(Error::NoEntry)?;
+
+        let entry = &mut table[addr.level1_index()];
+        let addr = entry.get_frame_addr().ok_or(Error::NoEntry)?;
+        allocator.free(Frame::from_address(addr));
+
+        entry.clear_all();
+        Ok(())
+    }
+
     pub fn find_empty_page(&mut self, allocator: &mut FrameAllocator) -> Option<Page> {
         let table = self.level4_page_table_mut();
 
