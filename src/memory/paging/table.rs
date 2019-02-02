@@ -80,7 +80,7 @@ where
     pub fn find_free_entry_index(&self) -> Option<usize> {
         // TODO: implement Iter.
         for i in 0..512 {
-            if self[i].flags().contains(PageEntryFlags::Present) == false {
+            if self[i].flags().contains(PageEntryFlags::PRESENT) == false {
                 return Some(i);
             }
         }
@@ -95,7 +95,7 @@ where
 {
     fn next_level_table_address(&self, index: usize) -> Option<usize> {
         let entry_flags = self[index].flags();
-        if (entry_flags.contains(PageEntryFlags::Present) == true) && (entry_flags.contains(PageEntryFlags::HugePage) == false) {
+        if (entry_flags.contains(PageEntryFlags::PRESENT) == true) && (entry_flags.contains(PageEntryFlags::HUGE_PAGE) == false) {
             Some((((self as *const _) as usize) << 9) | (index << 12))
         } else {
             None
@@ -212,7 +212,7 @@ impl ActivePageTable {
 
         if let Some(table) = table {
             let entry = &mut table[page_addr.level1_index()];
-            if entry.flags().contains(PageEntryFlags::Present) == false {
+            if entry.flags().contains(PageEntryFlags::PRESENT) == false {
                 entry.set_frame_addr(frame_addr);
                 Ok(())
             } else {
@@ -323,7 +323,7 @@ impl ActivePageTable {
         // Override the recursive mapping.
         let entry = &mut self.level4_page_table_mut()[511];
         entry.set_frame_addr(inactive_page_table.level4_page_table.address());
-        entry.set_flags(PageEntryFlags::Writable);
+        entry.set_flags(PageEntryFlags::WRITABLE);
         tlb::flush_all();
 
         let result = f(self, allocator);
@@ -331,12 +331,12 @@ impl ActivePageTable {
         // Restore the active page table entry.
         let entry = &mut original_table[511];
         entry.set_frame_addr(addr);
-        entry.set_flags(PageEntryFlags::Writable);
+        entry.set_flags(PageEntryFlags::WRITABLE);
 
         // Restore the active page table entry.
         let entry = &mut self.level4_page_table_mut()[511];
         entry.set_frame_addr(addr);
-        entry.set_flags(PageEntryFlags::Writable);
+        entry.set_flags(PageEntryFlags::WRITABLE);
 
         tlb::flush_all();
 
@@ -375,7 +375,7 @@ impl InActivePageTable {
             // set recursive page mapping.
             let entry = &mut table[511];
             entry.set_frame_addr(frame.address());
-            entry.set_flags(PageEntryFlags::Writable);
+            entry.set_flags(PageEntryFlags::WRITABLE);
 
             InActivePageTable { level4_page_table: frame }
         })
