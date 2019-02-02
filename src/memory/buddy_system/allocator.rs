@@ -201,7 +201,7 @@ mod tests {
 
     fn make_frame_allocator(count: usize) -> (*mut Frame, BuddyAllocator<FrameAdapter, Frame>) {
         let nodes = allocate_nodes(count);
-        let allocator = BuddyAllocator::new(unsafe { Unique::new_unchecked(nodes) }, count, FrameAdapter::new());
+        let allocator = BuddyAllocator::new(0, unsafe { Unique::new_unchecked(nodes) }, count, FrameAdapter::new());
         (nodes, allocator)
     }
 
