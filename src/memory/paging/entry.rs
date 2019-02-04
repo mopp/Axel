@@ -71,6 +71,6 @@ mod tests {
     #[test]
     fn test_flags() {
         let e = PageEntry(0xFFFF_FFFF_FFFF_FF00);
-        assert_eq!(false, e.flags().contains(PageEntryFlags::Present));
+        assert_eq!(false, e.flags().contains(PageEntryFlags::PRESENT));
     }
 }
