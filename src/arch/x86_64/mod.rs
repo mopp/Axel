@@ -6,7 +6,7 @@ use crate::memory::address::ToVirtualAddr;
 use crate::memory::address::VirtualAddress;
 use crate::memory::{self, region::Multiboot2Adapter};
 
-mod idt;
+mod interrupt;
 
 pub struct Initializer;
 
@@ -18,13 +18,13 @@ impl Initialize for Initializer {
             // FIXME: do not hard-code vram address.
             memory::IdenticalReMapRequest::new(0x000B8000, 1),
             // IDT
-            memory::IdenticalReMapRequest::new(idt::TABLE_ADDRESS, 1),
+            memory::IdenticalReMapRequest::new(interrupt::TABLE_ADDRESS, 1),
         ];
 
         let multiboot_info = unsafe { multiboot2::load(argv[0]) };
         let memory_map_tag = multiboot_info.memory_map_tag().ok_or(Error::NoMemoryMap)?;
         memory::init(&Multiboot2Adapter::new(memory_map_tag) as _, &rs).map_err(Into::<Error>::into)?;
-        idt::init();
+        interrupt::init();
 
         Ok(())
     }
