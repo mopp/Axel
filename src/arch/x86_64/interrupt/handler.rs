@@ -1,4 +1,5 @@
 use bitfield::bitfield;
+use core::fmt;
 
 bitfield! {
     #[repr(C)]
@@ -20,13 +21,22 @@ pub struct InterruptFrame {
     ss: usize,
 }
 
+impl fmt::Debug for InterruptFrame {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "InterruptFrame {{ cs:ip = 0x{:x}:0x{:x}, ss:sp = 0x{:x}:0x{:x}, flags = 0x{:x}}}", self.cs, self.ip, self.ss, self.sp, self.flags)
+    }
+}
+
 pub type Handler = extern "x86-interrupt" fn(&InterruptFrame);
 pub type HandlerWithErrorCode = extern "x86-interrupt" fn(&InterruptFrame, ErrorCode);
 
 pub extern "x86-interrupt" fn default_handler(interrupt_frame: &InterruptFrame) {
     println!("Got interrupt");
+    println!("  {:?}", interrupt_frame);
 }
 
 pub extern "x86-interrupt" fn default_handler_with_error_code(interrupt_frame: &InterruptFrame, error: ErrorCode) {
     println!("Got interrupt");
+    println!("  {:?}", interrupt_frame);
+    println!("  {:x}", error.0);
 }
