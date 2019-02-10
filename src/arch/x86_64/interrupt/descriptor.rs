@@ -1,5 +1,6 @@
-use super::handler::Handler;
+use super::handler::{Handler, HandlerWithErrorCode};
 use bitfield::bitfield;
+use core::marker::PhantomData;
 use static_assertions::assert_eq_size;
 
 bitfield! {
@@ -14,37 +15,59 @@ bitfield! {
     present, set_present: 15;
 }
 
+type DescriptorType = u16;
+const TRAP_GATE: DescriptorType = 0b1111;
+
 /// An entry for interrupt descriptor table.
 #[derive(Debug)]
 #[repr(C)]
-pub struct Descriptor {
+pub struct Descriptor<T> {
     offset_low: u16,
     segment_selector: u16,
     flags: Flags,
     offset_middle: u16,
     offset_high: u32,
     reserved: u32,
+    phantom: PhantomData<T>,
 }
-assert_eq_size!([u8; 16], Descriptor);
+assert_eq_size!([u8; 16], Descriptor<Handler>);
 
-impl Descriptor {
-    pub fn new(handler: Handler) -> Descriptor {
-        let addr = (handler as *const Handler) as usize;
-        let (offset_low, offset_middle, offset_high) = Descriptor::parse_addr(addr);
+impl<T> Descriptor<T> {
+    fn new(handler_address: usize) -> Descriptor<T> {
+        let (offset_low, offset_middle, offset_high) = Descriptor::<T>::parse_addr(handler_address);
+        let mut flags = Flags(0);
+        flags.set_present(true);
+        flags.set_descriptor_type(TRAP_GATE);
 
+        use x86_64::instructions::segmentation;
         Descriptor {
             offset_low,
-            segment_selector: 1 << 3,
-            flags: Flags(0b1_00_0_1110_000_0_0_000),
+            segment_selector: segmentation::cs().0,
+            flags,
             offset_middle,
             offset_high,
             reserved: 0,
+            phantom: PhantomData,
         }
     }
 
     #[inline(always)]
     fn parse_addr(addr: usize) -> (u16, u16, u32) {
         ((addr & 0xFFFF) as u16, ((addr >> 16) & 0xFFFF) as u16, ((addr >> 32) & 0xFFFFFFFF) as u32)
+    }
+}
+
+impl Descriptor<Handler> {
+    #[inline(always)]
+    pub fn with_handler(handler: Handler) -> Descriptor<Handler> {
+        Descriptor::new((handler as *const Handler) as _)
+    }
+}
+
+impl Descriptor<HandlerWithErrorCode> {
+    #[inline(always)]
+    pub fn with_handler_with_error_code(handler: HandlerWithErrorCode) -> Descriptor<HandlerWithErrorCode> {
+        Descriptor::new((handler as *const HandlerWithErrorCode) as _)
     }
 }
 

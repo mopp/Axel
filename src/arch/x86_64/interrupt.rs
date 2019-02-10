@@ -4,8 +4,6 @@ use crate::memory::address::*;
 mod descriptor;
 mod handler;
 mod table;
-use descriptor::Descriptor;
-use handler::sample_handler;
 use table::InterruptDescriptorTable;
 
 // 0x00007E00 - 0x0007FFFF is free region.
@@ -16,12 +14,7 @@ pub const TABLE_ADDRESS: PhysicalAddress = 0x6F000;
 pub fn init() {
     println!("Initialize IDT");
     let table: &mut InterruptDescriptorTable = unsafe { core::mem::transmute(TABLE_ADDRESS.to_virtual_addr()) };
-    table.clear_all();
-
-    for i in table.descriptors.iter_mut() {
-        *i = Descriptor::new(sample_handler);
-    }
-
+    table.init();
     table.load();
 
     unsafe {

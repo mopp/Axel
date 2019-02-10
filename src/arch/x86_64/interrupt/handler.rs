@@ -1,9 +1,8 @@
 use bitfield::bitfield;
-use static_assertions::assert_eq_size;
 
 bitfield! {
     #[repr(C)]
-    pub struct ErrorCode(u32);
+    pub struct ErrorCode(u64);
     impl Debug;
     external_event, _: 0;
     descriptor_location, _: 1;
@@ -12,9 +11,22 @@ bitfield! {
     reserved, _: 31, 14;
 }
 
-pub type Handler = extern "x86-interrupt" fn(error: ErrorCode);
-assert_eq_size!(usize, Handler);
+#[repr(C)]
+pub struct InterruptFrame {
+    ip: usize,
+    cs: usize,
+    flags: usize,
+    sp: usize,
+    ss: usize,
+}
 
-pub extern "x86-interrupt" fn sample_handler(_: ErrorCode) {
+pub type Handler = extern "x86-interrupt" fn(&InterruptFrame);
+pub type HandlerWithErrorCode = extern "x86-interrupt" fn(&InterruptFrame, ErrorCode);
+
+pub extern "x86-interrupt" fn default_handler(interrupt_frame: &InterruptFrame) {
+    println!("Got interrupt");
+}
+
+pub extern "x86-interrupt" fn default_handler_with_error_code(interrupt_frame: &InterruptFrame, error: ErrorCode) {
     println!("Got interrupt");
 }
