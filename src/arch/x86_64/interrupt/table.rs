@@ -2,13 +2,13 @@ use super::descriptor::Descriptor;
 use static_assertions::assert_eq_size;
 
 #[repr(C, packed)]
-struct InterruptDescriptorTable {
+struct InterruptDescriptorTableRegister {
     limit: u16,
     base: usize,
 }
-assert_eq_size!([u8; 10], InterruptDescriptorTable);
+assert_eq_size!([u8; 10], InterruptDescriptorTableRegister);
 
-impl InterruptDescriptorTable {
+impl InterruptDescriptorTableRegister {
     #[inline(always)]
     fn load(&self) {
         unsafe {
@@ -23,12 +23,12 @@ impl InterruptDescriptorTable {
 }
 
 #[repr(C)]
-pub struct Table {
+pub struct InterruptDescriptorTable {
     pub descriptors: [Descriptor; 256],
 }
-assert_eq_size!([u8; 16 * 256], Table);
+assert_eq_size!([u8; 16 * 256], InterruptDescriptorTable);
 
-impl Table {
+impl InterruptDescriptorTable {
     #[inline(always)]
     pub fn clear_all(&mut self) {
         let addr = (self as *mut _) as usize;
@@ -41,7 +41,7 @@ impl Table {
 
     #[inline(always)]
     pub fn load(&self) {
-        let idtr = InterruptDescriptorTable {
+        let idtr = InterruptDescriptorTableRegister {
             limit: core::mem::size_of::<Self>() as u16 - 1,
             base: (self as *const _) as usize,
         };
