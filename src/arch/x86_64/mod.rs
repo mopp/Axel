@@ -2,11 +2,12 @@ use super::Error;
 use super::Initialize;
 use crate::graphic;
 use crate::graphic::Display;
-use crate::memory::address::ToVirtualAddr;
-use crate::memory::address::VirtualAddress;
+use crate::memory::address::*;
 use crate::memory::{self, region::Multiboot2Adapter};
 
 mod interrupt;
+
+const VRAM_ADDR: PhysicalAddress = 0xB8000;
 
 pub struct Initializer;
 
@@ -16,7 +17,7 @@ impl Initialize for Initializer {
             // Kernel stack info (see boot.asm).
             memory::IdenticalReMapRequest::new(argv[1], argv[2]),
             // FIXME: do not hard-code vram address.
-            memory::IdenticalReMapRequest::new(0x000B8000, 1),
+            memory::IdenticalReMapRequest::new(VRAM_ADDR, 1),
             // IDT
             memory::IdenticalReMapRequest::new(interrupt::TABLE_ADDRESS, 1),
         ];
@@ -31,7 +32,7 @@ impl Initialize for Initializer {
 
     fn obtain_kernel_console() -> Option<graphic::CharacterDisplay<'static>> {
         lazy_static! {
-            static ref TEXT_MODE_VRAM_ADDR: usize = 0xB8000.to_virtual_addr();
+            static ref TEXT_MODE_VRAM_ADDR: usize = VRAM_ADDR.to_virtual_addr();
             static ref TEXT_MODE_WIDTH: usize = 80;
             static ref TEXT_MODE_HEIGHT: usize = 25;
         }
