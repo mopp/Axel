@@ -74,8 +74,8 @@ pub fn init(remap_requests: &[IdenticalReMapRequest], mut bman: BuddyAllocator<F
         let p_range = (address::kernel_addr_begin_physical(), address::kernel_addr_end_physical());
 
         for IdenticalReMapRequest(addr, count) in remap_requests {
-            debug_assert!(*addr < kernel_begin || kernel_end <= *addr);
-            debug_assert!((addr + frame::SIZE * count) < kernel_begin || kernel_end <= (addr + frame::SIZE * count));
+            // debug_assert!(*addr < kernel_begin || kernel_end <= *addr);
+            // debug_assert!((addr + frame::SIZE * count) < kernel_begin || kernel_end <= (addr + frame::SIZE * count));
 
             for i in 0..*count {
                 let addr = addr + i * frame::SIZE;

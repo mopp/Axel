@@ -1,4 +1,6 @@
 #![feature(alloc_error_handler)]
+#![feature(abi_x86_interrupt)]
+#![feature(underscore_const_names)]
 #![feature(asm)]
 #![feature(lang_items)]
 #![feature(panic_info_message)]
@@ -22,16 +24,18 @@ extern crate rlibc;
 extern crate spin;
 #[macro_use]
 extern crate failure;
+extern crate bitfield;
+extern crate static_assertions;
 extern crate x86_64;
 
 #[cfg(not(test))]
 #[macro_use]
 mod log;
 mod arch;
+mod bytes;
 mod context;
 mod graphic;
 mod memory;
-mod bytes;
 
 use self::arch::Initialize;
 use self::memory::address::VirtualAddress;

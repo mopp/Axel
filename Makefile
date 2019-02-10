@@ -77,7 +77,7 @@ run_cdrom: $(AXEL_ISO)
 
 .PHONY: run_cdrom_debug
 run_cdrom_debug: $(AXEL_ISO)
-	$(QEMU) $(QEMU_FLAGS) -s -S -cdrom $<
+	$(QEMU) $(QEMU_FLAGS) -s -S -singlestep -cdrom $<
 
 
 .PHONY: gdb
