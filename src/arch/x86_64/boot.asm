@@ -330,6 +330,11 @@ canonical_higher_harf:
     mov dword [0x1000], 0
     invlpg [0]
 
+    ; Reload GDTR
+    ; The prevous GDTR is not 64 bit address.
+    mov rax, gdtr64
+    lgdt [rax]
+
     mov rax, KERNEL_ADDR_VIRTUAL_OFFSET
 
     ; Set the kernel stask.
