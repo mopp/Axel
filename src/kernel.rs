@@ -32,6 +32,7 @@ mod bytes;
 mod context;
 mod graphic;
 mod memory;
+mod process;
 
 use self::arch::Initialize;
 use self::memory::address::VirtualAddress;
