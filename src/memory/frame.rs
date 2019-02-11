@@ -5,7 +5,7 @@ pub const SIZE: usize = 4096;
 use super::buddy_system::Object;
 use super::VirtualAddress;
 use core::cell::Cell;
-use intrusive_collections::{LinkedListLink, UnsafeRef};
+use intrusive_collections::{intrusive_adapter, LinkedListLink, UnsafeRef};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum State {

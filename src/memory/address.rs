@@ -1,5 +1,6 @@
 //! Module for functions/traits of address utils.
 
+use lazy_static::lazy_static;
 use spin::Mutex;
 
 pub type PhysicalAddress = usize;

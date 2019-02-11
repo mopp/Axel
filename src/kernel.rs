@@ -13,18 +13,14 @@
 #[cfg(test)]
 #[macro_use]
 extern crate std;
-#[macro_use]
+extern crate bitfield;
 extern crate bitflags;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
+extern crate failure;
 extern crate intrusive_collections;
+extern crate lazy_static;
 extern crate multiboot2;
 extern crate rlibc;
 extern crate spin;
-#[macro_use]
-extern crate failure;
-extern crate bitfield;
 extern crate static_assertions;
 extern crate x86_64;
 

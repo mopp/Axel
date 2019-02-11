@@ -16,6 +16,7 @@ pub use self::paging::IdenticalReMapRequest;
 use self::region::Region;
 use core::mem;
 use core::ptr::Unique;
+use failure::Fail;
 
 #[derive(Fail, Debug)]
 pub enum Error {

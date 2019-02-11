@@ -4,6 +4,7 @@ use crate::graphic;
 use crate::graphic::Display;
 use crate::memory::address::*;
 use crate::memory::{self, region::Multiboot2Adapter};
+use lazy_static::lazy_static;
 
 mod interrupt;
 

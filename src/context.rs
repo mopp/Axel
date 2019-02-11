@@ -1,6 +1,7 @@
 use self::super::arch;
 use self::super::arch::Initialize;
 use self::super::graphic::CharacterDisplay;
+use lazy_static::lazy_static;
 use spin::Mutex;
 
 pub struct Context {

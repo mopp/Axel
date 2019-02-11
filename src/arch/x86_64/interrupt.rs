@@ -17,6 +17,7 @@ pub fn init() {
     table.init();
     table.load();
 
+    // Runtime test.
     unsafe {
         asm!("int 0xFA" : : : : "intel");
     }

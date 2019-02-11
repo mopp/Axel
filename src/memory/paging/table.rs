@@ -6,6 +6,7 @@ use crate::memory::FrameAllocator;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
+use failure::Fail;
 use x86_64::instructions::tlb;
 use x86_64::registers;
 use x86_64::structures::paging::PhysFrame;
