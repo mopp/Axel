@@ -85,6 +85,6 @@ mod tests {
 
     #[test]
     fn descriptor_test() {
-        assert_eq!((0x1111, 0x2222, 0x4444_3333), Descriptor::parse_addr(0x4444_3333_2222_1111))
+        assert_eq!((0x1111, 0x2222, 0x4444_3333), Descriptor::<Handler>::parse_addr(0x4444_3333_2222_1111))
     }
 }
