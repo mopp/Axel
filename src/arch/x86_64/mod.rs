@@ -7,6 +7,7 @@ use crate::memory::{self, region::Multiboot2Adapter};
 use lazy_static::lazy_static;
 
 mod interrupt;
+mod pit;
 
 const VRAM_ADDR: PhysicalAddress = 0xB8000;
 
@@ -27,6 +28,7 @@ impl Initialize for Initializer {
         let memory_map_tag = multiboot_info.memory_map_tag().ok_or(Error::NoMemoryMap)?;
         memory::init(&Multiboot2Adapter::new(memory_map_tag) as _, &rs).map_err(Into::<Error>::into)?;
         interrupt::init();
+        pit::init();
 
         Ok(())
     }
