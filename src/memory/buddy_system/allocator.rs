@@ -171,7 +171,7 @@ impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<T>, Value = T
 
 impl<A: Clone + Adapter<Link = LinkedListLink, Pointer = UnsafeRef<Frame>, Value = Frame>> FrameAllocator for BuddyAllocator<A, Frame> {
     fn alloc_one(&mut self) -> Option<Frame> {
-        self.allocate(1).map(|frame| (*frame).clone())
+        self.allocate(0).map(|frame| (*frame).clone())
     }
 
     fn free(&mut self, f: Frame) {
