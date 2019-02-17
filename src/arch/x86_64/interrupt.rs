@@ -3,6 +3,7 @@ use crate::memory::address::*;
 
 mod descriptor;
 mod handler;
+mod pic;
 mod table;
 use table::InterruptDescriptorTable;
 
@@ -22,4 +23,6 @@ pub fn init() {
         asm!("int 0xFA" : : : : "intel");
     }
     println!("Return from interrupt");
+
+    pic::init();
 }
