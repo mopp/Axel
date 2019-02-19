@@ -3,7 +3,7 @@ use crate::memory::address::*;
 
 mod descriptor;
 mod handler;
-mod pic;
+pub mod pic;
 mod table;
 use table::InterruptDescriptorTable;
 

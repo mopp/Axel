@@ -16,9 +16,6 @@ const ICW4_8086_MODE: u8 = 0x01;
 
 pub fn init() {
     unsafe {
-        let mask_master = MASTER_DATA_PORT.lock().read();
-        let mask_slave = SLAVE_DATA_PORT.lock().read();
-
         // Initialize PICs.
         // 1. Send initialize command
         MASTER_COMMAND_PORT.lock().write(ICW1_INIT | ICW1_ICW4_REQUIRED);
@@ -45,12 +42,11 @@ pub fn init() {
         SLAVE_DATA_PORT.lock().write(ICW4_8086_MODE);
         io_wait();
 
-        MASTER_DATA_PORT.lock().write(mask_master);
-        SLAVE_DATA_PORT.lock().write(mask_slave);
+        // Disable all interrupts.
+        MASTER_DATA_PORT.lock().write(0b1111_1111);
+        SLAVE_DATA_PORT.lock().write(0b1111_1111);
     }
 }
-
-pub fn set_interrupt_handlers() {}
 
 /// If the IRQ came from the slave PIC, it is necessary to issue end of interrupt to both PICs.
 fn send_end_of_interrupt(irq: u8) {
@@ -59,6 +55,11 @@ fn send_end_of_interrupt(irq: u8) {
     }
 
     unsafe { MASTER_COMMAND_PORT.lock().write(END_OF_INTERRUPT) };
+}
+
+pub unsafe fn enable_timer_interrupt() {
+    // FIXME
+    MASTER_DATA_PORT.lock().write(0b1111_1110);
 }
 
 /// TODO: write document.
