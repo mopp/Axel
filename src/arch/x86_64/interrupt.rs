@@ -3,7 +3,8 @@ use crate::memory::address::*;
 
 mod descriptor;
 mod handler;
-pub mod pic;
+mod pic;
+mod pit;
 mod table;
 use table::InterruptDescriptorTable;
 
@@ -25,4 +26,5 @@ pub fn init() {
     println!("Return from interrupt");
 
     pic::init();
+    pit::init();
 }

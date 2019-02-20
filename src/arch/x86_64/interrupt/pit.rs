@@ -2,7 +2,7 @@ use bitfield::bitfield;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::instructions::port::Port;
-use super::interrupt;
+use super::pic;
 
 lazy_static! {
     static ref CHANNEL0: Mutex<Port<u8>> = Mutex::new(Port::new(0x40));
@@ -41,13 +41,12 @@ pub fn init() {
         CHANNEL0.lock().write(l);
         CHANNEL0.lock().write(h);
 
-        interrupt::pic::enable_timer_interrupt();
+        pic::enable_timer_interrupt();
 
         // Enable interrupt.
         asm!("sti");
     };
 }
-
 
 fn make_asymptotic_counter_value(timer_frequency_hz: u32) -> (u8, u8) {
     // PIT clock is 1193181666... Hz
