@@ -50,6 +50,7 @@ pub extern "C" fn main(argc: usize, argv: *const VirtualAddress) {
     if let Err(e) = arch::Initializer::init(argv) {
         panic!("arch::init fails: {}", e);
     }
+    println!("Startup complete");
 }
 
 #[cfg(not(test))]

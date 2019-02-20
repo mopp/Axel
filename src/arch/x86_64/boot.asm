@@ -361,7 +361,9 @@ canonical_higher_harf:
     extern main
     call main
 
+.loop:
     hlt
+jmp .loop
 ; }}}
 ; }}}
 
