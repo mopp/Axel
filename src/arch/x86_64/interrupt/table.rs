@@ -1,5 +1,6 @@
 use super::descriptor::Descriptor;
 use super::handler::{default_handler, default_handler_with_error_code, Handler, HandlerWithErrorCode};
+use super::pic;
 use static_assertions::assert_eq_size;
 
 #[repr(C, packed)]
@@ -51,6 +52,7 @@ pub struct InterruptDescriptorTable {
 }
 assert_eq_size!([u8; 16 * 256], InterruptDescriptorTable);
 
+// FIXME: How do we protect override the already configured descriptors ?.
 impl InterruptDescriptorTable {
     #[inline(always)]
     pub fn init(&mut self) {
@@ -81,6 +83,13 @@ impl InterruptDescriptorTable {
         for i in self.user_defined_interrupts.iter_mut() {
             *i = Descriptor::with_handler(default_handler)
         }
+
+        pic::set_handlers(self);
+    }
+
+    pub fn set_handler(&mut self, irq_number: u8, f: Handler) {
+        debug_assert!(0x20 <= irq_number);
+        self.user_defined_interrupts[(irq_number - 0x20) as usize] = Descriptor::with_handler(f);
     }
 
     #[inline(always)]

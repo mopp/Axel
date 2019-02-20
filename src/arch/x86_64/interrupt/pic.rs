@@ -1,3 +1,5 @@
+use super::handler::InterruptFrame;
+use super::table::InterruptDescriptorTable;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::instructions::port::Port;
@@ -8,6 +10,10 @@ lazy_static! {
     static ref SLAVE_COMMAND_PORT: Mutex<Port<u8>> = Mutex::new(Port::new(0xA0));
     static ref SLAVE_DATA_PORT: Mutex<Port<u8>> = Mutex::new(Port::new(0xA1));
 }
+
+const IRQ_OFFSET_MASTER: u8 = 0x20;
+const IRQ_OFFSET_SLAVE: u8 = IRQ_OFFSET_MASTER + 8;
+const IRQ_NUMBER_TIMER: u8 = IRQ_OFFSET_MASTER;
 
 const END_OF_INTERRUPT: u8 = 0x20;
 const ICW1_INIT: u8 = 0x10;
@@ -24,10 +30,9 @@ pub fn init() {
         io_wait();
 
         // 2. Send vector offset
-        // FIXME: use variable.
-        MASTER_DATA_PORT.lock().write(0x20);
+        MASTER_DATA_PORT.lock().write(IRQ_OFFSET_MASTER);
         io_wait();
-        SLAVE_DATA_PORT.lock().write(0x20 + 8);
+        SLAVE_DATA_PORT.lock().write(IRQ_OFFSET_SLAVE);
         io_wait();
 
         // 3. Send how it is wired to master/slaves
@@ -48,9 +53,13 @@ pub fn init() {
     }
 }
 
+pub fn set_handlers(idt: &mut InterruptDescriptorTable) {
+    idt.set_handler(IRQ_NUMBER_TIMER, timer_handler);
+}
+
 /// If the IRQ came from the slave PIC, it is necessary to issue end of interrupt to both PICs.
 fn send_end_of_interrupt(irq: u8) {
-    if 8 <= irq {
+    if IRQ_OFFSET_SLAVE <= irq {
         unsafe { SLAVE_COMMAND_PORT.lock().write(END_OF_INTERRUPT) };
     }
 
@@ -60,6 +69,10 @@ fn send_end_of_interrupt(irq: u8) {
 pub unsafe fn enable_timer_interrupt() {
     // FIXME
     MASTER_DATA_PORT.lock().write(0b1111_1110);
+}
+
+pub extern "x86-interrupt" fn timer_handler(_: &InterruptFrame) {
+    send_end_of_interrupt(IRQ_NUMBER_TIMER);
 }
 
 /// TODO: write document.
