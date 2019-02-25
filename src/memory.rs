@@ -12,6 +12,7 @@ use self::early_allocator::EarlyAllocator;
 pub use self::frame::{Frame, FrameAdapter};
 pub use self::frame_allocator::FrameAllocator;
 use self::paging::table::Error as PageTableError;
+pub use self::paging::table::{ActivePageTable, InActivePageTable};
 pub use self::paging::IdenticalReMapRequest;
 use self::region::Region;
 use core::mem;
