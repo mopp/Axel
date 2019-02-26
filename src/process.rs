@@ -39,3 +39,30 @@ impl ProcessManager {
 lazy_static! {
     static ref PROCESS_MANAGER: Mutex<ProcessManager> = Mutex::new(ProcessManager::new());
 }
+
+pub fn switch_process() {
+    // let mut current_ip = 0;
+    // let mut current_sp = 0;
+    // let mut next_ip = 0;
+    // let mut next_sp = 0;
+    // unsafe {
+    //     asm!("
+    //         pushf
+    //
+    //         mov [$0], $2
+    //         mov [$1], rsp
+    //         "
+    //               : "=r"(&mut current_ip) "=r"(&mut current_sp)
+    //               : "r"(landing_point as usize)
+    //               : "memory"
+    //               : "intel", "volatile");
+    // }
+    //
+    // println!("{}", current_ip);
+    // println!("{}", current_sp);
+}
+
+// #[no_mangle]
+// pub extern "C" fn landing_point() {
+//     unsafe { asm!("popf") }
+// }

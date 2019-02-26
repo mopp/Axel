@@ -72,6 +72,8 @@ pub unsafe fn enable_timer_interrupt() {
 }
 
 pub extern "x86-interrupt" fn timer_handler(_: &InterruptFrame) {
+    // FIXME: use listener pattern.
+    crate::process::switch_process();
     send_end_of_interrupt(IRQ_NUMBER_TIMER);
 }
 
