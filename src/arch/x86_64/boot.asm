@@ -262,11 +262,11 @@ enter_64bit_mode:
     lgdt [eax]
 
     ; Change the code segment register.
-    jmp gdt64.descriptor_code:.change_segment_register
+    jmp gdt64.descriptor_kernel_code:.change_segment_register
 
 .change_segment_register:
     ; Set the segment registers.
-    mov ax, gdt64.descriptor_data
+    mov ax, gdt64.descriptor_kernel_data
     mov ds, ax
     mov es, ax
     mov fs, ax
@@ -374,18 +374,33 @@ section .rodata
 
 ; Global descriptor table in 64-bit mode.
 ; Note that the CPU does not perform segment limit checks at runtime in 64-bit mode.
+; `$ - gdt64` makes each label refers to segment selector value.
 align 8
 gdt64:
 ; {{{
     .descriptor_null: equ $ - gdt64
     dd 0x00000000
     dd 0x00000000
-    .descriptor_code: equ $ - gdt64
+    .descriptor_kernel_code: equ $ - gdt64
+    ; Set 64-bit flag, present flag.
+    ; Execute and read.
+    ; DPL is 0.
     dd 0x00000000
     dd 0x00209A00
-    .descriptor_data: equ $ - gdt64
+    .descriptor_kernel_data: equ $ - gdt64
+    ; Set 64-bit flag, present flag.
+    ; Read and write.
+    ; DPL is 0.
     dd 0x00000000
     dd 0x00009200
+    .descriptor_user_code: equ $ - gdt64
+    ; DPL is 3.
+    dd 0x00000000
+    dd 0x0020FA00
+    .descriptor_user_data: equ $ - gdt64
+    ; DPL is 3.
+    dd 0x00000000
+    dd 0x0000F200
 ; }}}
 
 ; Global descriptor table register in 64-bit mode.
