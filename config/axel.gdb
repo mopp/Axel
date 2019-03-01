@@ -7,7 +7,7 @@ set history size 10000
 set history filename .gdb_history
 
 tui enable
-layout asm
+layout src
 layout regs
 tabset 4
 refresh
