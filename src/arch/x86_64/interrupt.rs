@@ -11,7 +11,7 @@ use table::InterruptDescriptorTable;
 // 0x00007E00 - 0x0007FFFF is free region.
 // See x86 memory map.
 // TODO: Put out this table address.
-pub const TABLE_ADDRESS: PhysicalAddress = 0x6F000;
+pub const TABLE_ADDRESS: PhysicalAddress = 0x6E000;
 
 pub fn init() {
     println!("Initialize IDT");

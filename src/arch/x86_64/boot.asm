@@ -312,9 +312,11 @@ section .text_canonical_higher_harf
 
 ; 0x00007E00 - 0x0007FFFF is free region.
 ; See x86 memory map.
+FRAME_SIZE_BYTES         equ 4096
 KERNEL_STACK_FRAME_COUNT equ 4
 KERNEL_STACK_ADDR_TOP    equ 0x00070000
-KERNEL_STACK_ADDR_BOTTOM equ KERNEL_STACK_ADDR_TOP + (4096 * KERNEL_STACK_FRAME_COUNT) - 1
+KERNEL_STACK_ADDR_BOTTOM equ KERNEL_STACK_ADDR_TOP + (FRAME_SIZE_BYTES * KERNEL_STACK_FRAME_COUNT) - 1
+TASK_STATE_SEGMENT_ADDR  equ KERNEL_STACK_ADDR_TOP - FRAME_SIZE_BYTES
 
 %if 0x0007FFFF < KERNEL_STACK_ADDR_BOTTOM
 %error "Kernel stack is out of range"
@@ -335,6 +337,10 @@ canonical_higher_harf:
     mov rax, gdtr64
     lgdt [rax]
 
+    ; Load task register.
+    mov ax, gdt64.descriptor_tss
+    ltr ax
+
     mov rax, KERNEL_ADDR_VIRTUAL_OFFSET
 
     ; Set the kernel stask.
@@ -343,11 +349,10 @@ canonical_higher_harf:
     add rcx, rax
     mov rsp, rcx
 
-    ; Set the number of pages for kernel stack.
-    push KERNEL_STACK_FRAME_COUNT
-
-    ; Set kernel stack address top
-    mov rcx, KERNEL_STACK_ADDR_TOP
+    ; FIXME:
+    ; Set the number of frames and address.
+    push KERNEL_STACK_FRAME_COUNT + 1
+    mov rcx, TASK_STATE_SEGMENT_ADDR
     push rcx
 
     ; rbx is pointer to multiboot info struct.
@@ -386,21 +391,29 @@ gdt64:
     ; Execute and read.
     ; DPL is 0.
     dd 0x00000000
-    dd 0x00209A00
+    dd 0x00A09B00
     .descriptor_kernel_data: equ $ - gdt64
     ; Set 64-bit flag, present flag.
     ; Read and write.
     ; DPL is 0.
     dd 0x00000000
-    dd 0x00009200
+    dd 0x00C09300
     .descriptor_user_code: equ $ - gdt64
     ; DPL is 3.
     dd 0x00000000
-    dd 0x0020FA00
+    dd 0x00A0FB00
     .descriptor_user_data: equ $ - gdt64
     ; DPL is 3.
     dd 0x00000000
-    dd 0x0000F200
+    dd 0x00C0F300
+    .descriptor_tss: equ $ - gdt64
+    dw 0x0064
+    dw TASK_STATE_SEGMENT_ADDR & 0xFFFF
+    db (TASK_STATE_SEGMENT_ADDR >> 16) & 0xFF
+    db 10001001b
+    dw (TASK_STATE_SEGMENT_ADDR >> 24) & 0xFFFF
+    dd KERNEL_ADDR_VIRTUAL_OFFSET >> 32
+    dd 0x00000000
 ; }}}
 
 ; Global descriptor table register in 64-bit mode.
