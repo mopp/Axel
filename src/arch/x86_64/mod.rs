@@ -7,6 +7,7 @@ use crate::memory::{self, region::Multiboot2Adapter};
 use lazy_static::lazy_static;
 
 mod interrupt;
+mod tss;
 
 const VRAM_ADDR: PhysicalAddress = 0xB8000;
 
