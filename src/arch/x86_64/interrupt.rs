@@ -6,6 +6,7 @@ mod handler;
 mod pic;
 mod pit;
 mod table;
+pub use handler::InterruptFrame;
 use table::InterruptDescriptorTable;
 
 // 0x00007E00 - 0x0007FFFF is free region.

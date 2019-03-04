@@ -1,3 +1,4 @@
+use crate::arch::Thread;
 use crate::memory::{ActivePageTable, FrameAllocator, InActivePageTable};
 use core::mem;
 use core::ptr;
@@ -6,6 +7,7 @@ use spin::Mutex;
 
 struct Process {
     page_table: InActivePageTable,
+    thread: Thread,
 }
 
 impl Process {
@@ -13,6 +15,7 @@ impl Process {
         // FIXME: remove 1st argument (ActivePageTable).
         Process {
             page_table: InActivePageTable::new(unsafe { &mut ActivePageTable::new() }, allocator).unwrap(),
+            thread: Thread::new(),
         }
     }
 }
@@ -40,29 +43,10 @@ lazy_static! {
     static ref PROCESS_MANAGER: Mutex<ProcessManager> = Mutex::new(ProcessManager::new());
 }
 
-pub fn switch_process() {
-    // let mut current_ip = 0;
-    // let mut current_sp = 0;
-    // let mut next_ip = 0;
-    // let mut next_sp = 0;
-    // unsafe {
-    //     asm!("
-    //         pushf
-    //
-    //         mov [$0], $2
-    //         mov [$1], rsp
-    //         "
-    //               : "=r"(&mut current_ip) "=r"(&mut current_sp)
-    //               : "r"(landing_point as usize)
-    //               : "memory"
-    //               : "intel", "volatile");
-    // }
-    //
-    // println!("{}", current_ip);
-    // println!("{}", current_sp);
+pub fn select_threads<F>(mut switch_context: F)
+where
+    F: FnMut(),
+{
+    // TODO: pass current process and next process.
+    switch_context();
 }
-
-// #[no_mangle]
-// pub extern "C" fn landing_point() {
-//     unsafe { asm!("popf") }
-// }

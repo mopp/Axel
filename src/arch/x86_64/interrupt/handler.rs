@@ -15,10 +15,10 @@ bitfield! {
 #[repr(C)]
 pub struct InterruptFrame {
     ip: usize,
-    cs: usize,
+    pub cs: usize,
     flags: usize,
     sp: usize,
-    ss: usize,
+    pub ss: usize,
 }
 
 impl fmt::Debug for InterruptFrame {
@@ -27,15 +27,15 @@ impl fmt::Debug for InterruptFrame {
     }
 }
 
-pub type Handler = extern "x86-interrupt" fn(&InterruptFrame);
-pub type HandlerWithErrorCode = extern "x86-interrupt" fn(&InterruptFrame, ErrorCode);
+pub type Handler = extern "x86-interrupt" fn(&mut InterruptFrame);
+pub type HandlerWithErrorCode = extern "x86-interrupt" fn(&mut InterruptFrame, ErrorCode);
 
-pub extern "x86-interrupt" fn default_handler(interrupt_frame: &InterruptFrame) {
+pub extern "x86-interrupt" fn default_handler(interrupt_frame: &mut InterruptFrame) {
     println!("Got interrupt");
     println!("  {:?}", interrupt_frame);
 }
 
-pub extern "x86-interrupt" fn default_handler_with_error_code(interrupt_frame: &InterruptFrame, error: ErrorCode) {
+pub extern "x86-interrupt" fn default_handler_with_error_code(interrupt_frame: &mut InterruptFrame, error: ErrorCode) {
     println!("Got interrupt");
     println!("  {:?}", interrupt_frame);
     println!("  {:x}", error.0);

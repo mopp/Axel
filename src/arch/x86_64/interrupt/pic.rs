@@ -1,3 +1,4 @@
+use super::super::thread;
 use super::handler::InterruptFrame;
 use super::table::InterruptDescriptorTable;
 use lazy_static::lazy_static;
@@ -71,9 +72,10 @@ pub unsafe fn enable_timer_interrupt() {
     MASTER_DATA_PORT.lock().write(0b1111_1110);
 }
 
-pub extern "x86-interrupt" fn timer_handler(_: &InterruptFrame) {
+pub extern "x86-interrupt" fn timer_handler(frame: &mut InterruptFrame) {
     // FIXME: use listener pattern.
-    crate::process::switch_process();
+    thread::switch_context(frame);
+
     send_end_of_interrupt(IRQ_NUMBER_TIMER);
 }
 

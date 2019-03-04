@@ -29,6 +29,7 @@ macro_rules! with_arch {
     ($arch: ident) => {
         mod $arch;
         pub use self::$arch::Initializer;
+        pub use self::$arch::Thread;
     };
 }
 

@@ -8,6 +8,9 @@ use lazy_static::lazy_static;
 
 mod interrupt;
 mod tss;
+mod thread;
+
+pub use thread::Thread;
 
 const VRAM_ADDR: PhysicalAddress = 0xB8000;
 
