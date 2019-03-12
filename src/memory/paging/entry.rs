@@ -37,16 +37,16 @@ impl PageEntry {
     }
 
     pub fn set_frame_addr(&mut self, addr: PhysicalAddress) {
-        debug_assert_eq!(addr & 0xFFF, 0);
-        debug_assert_eq!(addr & 0xFFFF_0000_0000_0000, 0);
+        debug_assert_eq!(addr.into() & 0xFFF, 0);
+        debug_assert_eq!(addr.into() & 0xFFFF_0000_0000_0000, 0);
         let flags = self.flags();
-        self.0 = addr;
+        self.0 = addr.into();
         self.set_flags(flags | PageEntryFlags::PRESENT);
     }
 
     pub fn get_frame_addr(&self) -> Option<PhysicalAddress> {
         if self.flags().contains(PageEntryFlags::PRESENT) {
-            Some(self.0 & !0xFFF)
+            Some(PhysicalAddress::new(self.0 & !0xFFF))
         } else {
             None
         }

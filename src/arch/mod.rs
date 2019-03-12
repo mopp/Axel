@@ -1,6 +1,5 @@
 //! This module contains all codes depending on the architecture to abstract these codes.
 use crate::graphic;
-use crate::memory::address::VirtualAddress;
 use crate::memory::Error as MemoryError;
 use failure::Fail;
 
@@ -21,7 +20,7 @@ impl From<MemoryError> for Error {
 
 /// Common interfaces between architectures.
 pub trait Initialize {
-    fn init(argv: &[VirtualAddress]) -> Result<(), Error>;
+    fn init(argv: &[usize]) -> Result<(), Error>;
     fn obtain_kernel_console() -> Option<graphic::CharacterDisplay<'static>>;
 }
 

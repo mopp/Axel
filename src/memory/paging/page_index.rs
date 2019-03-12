@@ -10,23 +10,23 @@ pub trait PageIndex {
 
 impl PageIndex for VirtualAddress {
     fn level4_index(self) -> usize {
-        (self >> 39) & 0o777
+        (self.into() >> 39) & 0o777
     }
 
     fn level3_index(self) -> usize {
-        (self >> 30) & 0o777
+        (self.into() >> 30) & 0o777
     }
 
     fn level2_index(self) -> usize {
-        (self >> 21) & 0o777
+        (self.into() >> 21) & 0o777
     }
 
     fn level1_index(self) -> usize {
-        (self >> 12) & 0o777
+        (self.into() >> 12) & 0o777
     }
 
     fn offset(self) -> usize {
-        self & 0xFFF
+        self.into() & 0xFFF
     }
 }
 

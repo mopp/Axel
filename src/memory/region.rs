@@ -80,6 +80,6 @@ impl Adapter for Multiboot2Adapter {
 
 impl Into<Region> for &'static MemoryArea {
     fn into(self) -> Region {
-        Region::new(self.start_address() as usize, self.size() as usize, State::Free)
+        Region::new(PhysicalAddress::new(self.start_address() as usize), self.size() as usize, State::Free)
     }
 }

@@ -3,7 +3,7 @@
 pub const SIZE: usize = 4096;
 
 use super::buddy_system::Object;
-use super::VirtualAddress;
+use super::PhysicalAddress;
 use core::cell::Cell;
 use intrusive_collections::{intrusive_adapter, LinkedListLink, UnsafeRef};
 
@@ -24,12 +24,12 @@ pub struct Frame {
 intrusive_adapter!(pub FrameAdapter = UnsafeRef<Frame>: Frame { link: LinkedListLink });
 
 impl Frame {
-    pub fn from_address(addr: VirtualAddress) -> Frame {
+    pub fn from_address(addr: PhysicalAddress) -> Frame {
         Frame {
             link: LinkedListLink::new(),
             order: Cell::new(0),
             state: Cell::new(State::Free),
-            number: addr / SIZE,
+            number: addr.into() / SIZE,
         }
     }
 
@@ -57,8 +57,8 @@ impl Frame {
     //     (self.number >> 0) & 0o777
     // }
 
-    pub fn address(&self) -> usize {
-        self.number * SIZE
+    pub fn address(&self) -> PhysicalAddress {
+        PhysicalAddress::new(self.number * SIZE)
     }
 }
 

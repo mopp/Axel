@@ -1,4 +1,4 @@
-use crate::memory::address::*;
+use crate::memory::*;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -22,7 +22,7 @@ pub struct TaskStateSegment {
 
 impl TaskStateSegment {
     pub fn kernel_mode_stack(&self) -> VirtualAddress {
-        self.rsp0
+        VirtualAddress::new(self.rsp0)
     }
 
     pub fn set_kernel_mode_stack(&mut self, addr: usize) {

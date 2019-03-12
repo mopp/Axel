@@ -1,8 +1,8 @@
 use super::entry::{PageEntry, PageEntryFlags};
 use super::{Page, PageIndex};
-use crate::memory::address::{PhysicalAddress, VirtualAddress};
 use crate::memory::frame::Frame;
 use crate::memory::FrameAllocator;
+use crate::memory::{PhysicalAddress, VirtualAddress};
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
@@ -228,11 +228,11 @@ impl ActivePageTable {
     pub fn map_fitting(&mut self, v_range: (VirtualAddress, VirtualAddress), p_range: (PhysicalAddress, PhysicalAddress), allocator: &mut FrameAllocator) -> Result<(), Error> {
         let (v_begin, v_end) = v_range;
         let (p_begin, p_end) = p_range;
-        debug_assert_eq!(v_end - v_begin, p_end - p_begin);
+        debug_assert_eq!(v_end.into() - v_begin.into(), p_end.into() - p_begin.into());
 
-        let size = v_end - v_begin;
-        let count_2mb = size / (2 * 1024 * 1024);
-        let count_4kb = (size - count_2mb * 2 * 1024 * 1024) / 4096;
+        let size: usize = v_end.into() - v_begin.into();
+        let count_2mb = size.into() / (2 * 1024 * 1024);
+        let count_4kb = (size.into() - count_2mb * 2 * 1024 * 1024) / 4096;
 
         // FIXME: Revert mappings if mapping fails in these process.
         let mut offset = 0;
@@ -244,8 +244,8 @@ impl ActivePageTable {
         if 0 < count_4kb {
             // FIXME: Re-implement them more effectively.
             for _ in 0..count_4kb {
-                let page = Page::from_address(v_begin + offset);
-                let frame = Frame::from_address(p_begin + offset);
+                let page = Page::from_address(v_begin.into() + offset);
+                let frame = Frame::from_address(p_begin.into() + offset);
 
                 self.map(page, frame, allocator)?;
 
@@ -315,11 +315,14 @@ impl ActivePageTable {
 
     pub fn with(&mut self, inactive_page_table: &mut InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut FrameAllocator) -> Result<(), Error>)) -> Result<(), Error> {
         // Keep the current active page table entry to restore it.
-        let addr = registers::control::Cr3::read().0.start_address().as_u64() as usize;
+        let addr = PhysicalAddress::new(registers::control::Cr3::read().0.start_address().as_u64() as usize);
         let original_table_frame = Frame::from_address(addr);
         let page = self.find_empty_page(allocator).ok_or(Error::NoEntry)?;
         self.map(page.clone(), original_table_frame, allocator)?;
-        let original_table = unsafe { &mut *(page.address() as *mut Table<Level1>) };
+        let original_table = unsafe {
+            let addr: usize = page.address().into();
+            &mut *(addr as *mut Table<Level1>)
+        };
 
         // Override the recursive mapping.
         let entry = &mut self.level4_page_table_mut()[511];
@@ -346,10 +349,10 @@ impl ActivePageTable {
 
     pub fn switch(&mut self, new_table: InActivePageTable) -> InActivePageTable {
         let old_table = InActivePageTable {
-            level4_page_table: Frame::from_address(registers::control::Cr3::read().0.start_address().as_u64() as usize),
+            level4_page_table: Frame::from_address(PhysicalAddress::new(registers::control::Cr3::read().0.start_address().as_u64() as usize)),
         };
 
-        let addr = x86_64::PhysAddr::new(new_table.level4_page_table.address() as u64);
+        let addr = x86_64::PhysAddr::new(new_table.level4_page_table.address().into());
         let frame = PhysFrame::containing_address(addr);
         let flags = registers::control::Cr3Flags::empty();
 
@@ -370,7 +373,10 @@ impl InActivePageTable {
         allocator.alloc_one().map(|frame| {
             let p = active_page_table.find_empty_page(allocator).unwrap();
             active_page_table.map(p.clone(), frame.clone(), allocator).unwrap();
-            let table = unsafe { &mut *(p.address() as *mut Table<Level1>) };
+            let table = unsafe {
+                let addr: usize = p.address().into();
+                &mut *(addr as *mut Table<Level1>)
+            };
             table.clear_all_entries();
 
             // set recursive page mapping.

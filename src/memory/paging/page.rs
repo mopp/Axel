@@ -1,5 +1,5 @@
 //! `Page` define a virtual memory region.
-use crate::memory::address::VirtualAddress;
+use crate::memory::VirtualAddress;
 
 pub const SIZE: usize = 4096;
 
@@ -14,11 +14,11 @@ impl Page {
     // }
 
     pub fn address(&self) -> VirtualAddress {
-        self.number * SIZE
+        VirtualAddress::new(self.number * SIZE)
     }
 
     pub fn from_address(addr: VirtualAddress) -> Page {
-        Page { number: addr / SIZE }
+        Page { number: addr.into() / SIZE }
     }
 
     pub fn from_number(n: usize) -> Page {
@@ -26,6 +26,7 @@ impl Page {
     }
 
     pub unsafe fn to_slice_mut<T>(&mut self) -> &mut [T] {
-        core::slice::from_raw_parts_mut(self.address() as *mut T, 4096 / core::mem::size_of::<T>())
+        let addr: usize = self.address().into();
+        core::slice::from_raw_parts_mut(addr as *mut T, 4096 / core::mem::size_of::<T>())
     }
 }

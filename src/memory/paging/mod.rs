@@ -61,11 +61,14 @@ pub fn init(remap_requests: &[IdenticalReMapRequest], mut bman: BuddyAllocator<F
     runtime_test(&mut active_page_table, &mut bman)?;
 
     let kernel_begin = address::kernel_addr_begin_virtual();
-    let kernel_end = address::kernel_addr_end_physical().to_virtual_addr();
-    println!("Kernel virtual address: 0x{:x} - 0x{:x}, {}KB", kernel_begin, kernel_end, (kernel_end - kernel_begin).kb());
-    debug_assert!(kernel_begin < kernel_end);
-    debug_assert_eq!(0, kernel_begin & 0xfff);
-    debug_assert_eq!(0, kernel_end & 0xfff);
+    let kernel_end = address::kernel_addr_end_physical().to_virtual();
+    let b: usize = kernel_begin.into();
+    let e: usize = kernel_end.into();
+    let size: usize = (e - b).kb();
+    println!("Kernel virtual address: 0x{:x} - 0x{:x}, {}KB", kernel_begin, kernel_end, size);
+    debug_assert!(kernel_begin.into() < kernel_end.into());
+    debug_assert_eq!(0, kernel_begin.into() & 0xfff);
+    debug_assert_eq!(0, kernel_end.into() & 0xfff);
 
     // Create new kernel page table.
     let mut inactive_page_table = InActivePageTable::new(&mut active_page_table, &mut bman).ok_or(Error::NoUsableMemory)?;
@@ -78,8 +81,8 @@ pub fn init(remap_requests: &[IdenticalReMapRequest], mut bman: BuddyAllocator<F
             // debug_assert!((addr + frame::SIZE * count) < kernel_begin || kernel_end <= (addr + frame::SIZE * count));
 
             for i in 0..*count {
-                let addr = addr + i * frame::SIZE;
-                let page = Page::from_address(addr.to_virtual_addr());
+                let addr = PhysicalAddress::new(addr.into() + i * frame::SIZE);
+                let page = Page::from_address(addr.to_virtual());
                 let frame = Frame::from_address(addr);
                 table.map(page, frame, allocator)?;
             }
@@ -101,7 +104,7 @@ pub fn runtime_test(active_page_table: &mut ActivePageTable, allocator: &mut Fra
     let frame = allocator.alloc_one().ok_or(Error::NoUsableMemory)?;
 
     // FIXME: use more proper address.
-    let mut page = Page::from_address(0x200000);
+    let mut page = Page::from_address(VirtualAddress::new(0x200000));
     active_page_table.map(page.clone(), frame, allocator)?;
 
     // It will not cause page fault.
