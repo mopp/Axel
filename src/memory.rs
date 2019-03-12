@@ -4,20 +4,20 @@ mod early_allocator;
 mod frame;
 mod frame_allocator;
 mod paging;
-pub mod region;
+mod region;
 
-use self::address::*;
-use self::buddy_system::BuddyAllocator;
-use self::early_allocator::EarlyAllocator;
-pub use self::frame::{Frame, FrameAdapter};
-pub use self::frame_allocator::FrameAllocator;
-use self::paging::table::Error as PageTableError;
-pub use self::paging::table::{ActivePageTable, InActivePageTable};
-pub use self::paging::IdenticalReMapRequest;
-use self::region::Region;
+use address::*;
+use buddy_system::BuddyAllocator;
 use core::mem;
 use core::ptr::Unique;
+use early_allocator::EarlyAllocator;
 use failure::Fail;
+pub use frame::{Frame, FrameAdapter};
+pub use frame_allocator::FrameAllocator;
+use paging::table::Error as PageTableError;
+pub use paging::table::{ActivePageTable, InActivePageTable};
+pub use paging::IdenticalReMapRequest;
+pub use region::{Multiboot2Adapter, Region};
 
 #[derive(Fail, Debug)]
 pub enum Error {

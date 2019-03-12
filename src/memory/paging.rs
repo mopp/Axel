@@ -35,10 +35,6 @@ mod page;
 mod page_index;
 pub mod table;
 
-pub use self::page::Page;
-pub use self::page_index::PageIndex;
-
-use self::table::{ActivePageTable, InActivePageTable};
 use super::address;
 use super::address::*;
 use super::buddy_system::BuddyAllocator;
@@ -46,6 +42,9 @@ use super::frame;
 use super::Error;
 use super::{Frame, FrameAdapter, FrameAllocator};
 use crate::bytes::Bytes;
+pub use page::Page;
+pub use page_index::PageIndex;
+use table::{ActivePageTable, InActivePageTable};
 
 pub struct IdenticalReMapRequest(PhysicalAddress, usize);
 

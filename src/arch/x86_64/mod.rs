@@ -3,12 +3,12 @@ use super::Initialize;
 use crate::graphic;
 use crate::graphic::Display;
 use crate::memory::address::*;
-use crate::memory::{self, region::Multiboot2Adapter};
+use crate::memory::{self, Multiboot2Adapter};
 use lazy_static::lazy_static;
 
 mod interrupt;
-mod tss;
 mod thread;
+mod tss;
 
 pub use thread::Thread;
 
