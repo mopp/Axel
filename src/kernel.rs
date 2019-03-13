@@ -1,4 +1,5 @@
 #![feature(alloc_error_handler)]
+#![feature(alloc)]
 #![feature(abi_x86_interrupt)]
 #![feature(underscore_const_names)]
 #![feature(asm)]
@@ -13,6 +14,7 @@
 #[cfg(test)]
 #[macro_use]
 extern crate std;
+extern crate alloc;
 extern crate bitfield;
 extern crate bitflags;
 extern crate failure;
@@ -34,10 +36,13 @@ mod graphic;
 mod memory;
 mod process;
 
-use self::arch::Initialize;
-use self::memory::address::VirtualAddress;
-use core::alloc::{GlobalAlloc, Layout};
+use arch::Initialize;
 use core::panic::PanicInfo;
+use memory::address::VirtualAddress;
+use memory::GlobalAllocator;
+
+#[global_allocator]
+static ALLOCATOR: memory::GlobalAllocator = GlobalAllocator::new();
 
 #[cfg(not(test))]
 #[start]
@@ -79,25 +84,3 @@ pub extern "C" fn abort() {
     println!("abort");
     loop {}
 }
-
-struct DummyAllocator;
-
-unsafe impl GlobalAlloc for DummyAllocator {
-    unsafe fn alloc(&self, _: Layout) -> *mut u8 {
-        unimplemented!("");
-    }
-
-    unsafe fn dealloc(&self, _: *mut u8, _: Layout) {
-        unimplemented!("");
-    }
-}
-
-#[cfg(not(test))]
-#[alloc_error_handler]
-fn alloc_error(_: Layout) -> ! {
-    unimplemented!("");
-}
-
-#[cfg(not(test))]
-#[global_allocator]
-static GLOBAL: DummyAllocator = DummyAllocator;
