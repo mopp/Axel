@@ -7,6 +7,7 @@ use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 use core::ptr::Unique;
 use failure::Fail;
+use spin::Mutex;
 use x86_64::instructions::tlb;
 use x86_64::registers;
 use x86_64::structures::paging::PhysFrame;
@@ -153,17 +154,15 @@ where
     }
 }
 
+pub static ACTIVE_PAGE_TABLE: Mutex<ActivePageTable> = Mutex::new(ActivePageTable {
+    level4_page_table: unsafe { Unique::new_unchecked(LEVEL4_PAGE_TABLE) },
+});
+
 pub struct ActivePageTable {
     level4_page_table: Unique<Table<Level4>>,
 }
 
 impl ActivePageTable {
-    pub unsafe fn new() -> ActivePageTable {
-        ActivePageTable {
-            level4_page_table: Unique::new_unchecked(LEVEL4_PAGE_TABLE),
-        }
-    }
-
     // pub fn level4_page_table(&self) -> &Table<Level4> {
     //     unsafe { self.level4_page_table.as_ref() }
     // }
