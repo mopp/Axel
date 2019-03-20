@@ -41,6 +41,10 @@ impl Frame {
         self.number
     }
 
+    pub fn order(&self) -> usize {
+        self.order.get()
+    }
+
     // pub fn level4_index(&self) -> usize {
     //     (self.number >> 27) & 0o777
     // }
@@ -80,7 +84,7 @@ impl Object for Frame {
     }
 
     fn order(&self) -> usize {
-        self.order.get()
+        self.order()
     }
 
     fn set_order(&self, order: usize) {

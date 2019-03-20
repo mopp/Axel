@@ -56,7 +56,6 @@ where
 {
     // FIXME:
     let manager = &mut (*(*PROCESS_MANAGER).lock());
-    unsafe { asm!("hlt") };
     let (m, n) = manager.processes.split_at_mut(1);
     if let Some(ref mut current) = m[0] {
         if let Some(ref mut next) = n[0] {

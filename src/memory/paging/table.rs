@@ -1,7 +1,8 @@
 use super::entry::{PageEntry, PageEntryFlags};
+use super::page;
 use super::{Page, PageIndex};
 use crate::memory::address::{PhysicalAddress, VirtualAddress};
-use crate::memory::frame::Frame;
+use crate::memory::frame::{self, Frame};
 use crate::memory::FrameAllocator;
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
@@ -80,10 +81,29 @@ where
     }
 
     pub fn find_free_entry_index(&self) -> Option<usize> {
+        self.find_free_entry_index_with(1)
+    }
+
+    /// Find begin index of N free pages.
+    pub fn find_free_entry_index_with(&self, count: usize) -> Option<usize> {
+        let mut index = None;
+        let mut c = count;
+
         // TODO: implement Iter.
-        for i in 0..512 {
+        // Start from 1 to avoid using null.
+        for i in 1..512 {
             if self[i].flags().contains(PageEntryFlags::PRESENT) == false {
-                return Some(i);
+                if index.is_none() {
+                    index = Some(i)
+                }
+
+                c -= 1;
+
+                if c == 0 {
+                    return index;
+                }
+            } else {
+                c = count
             }
         }
 
@@ -122,6 +142,11 @@ where
             self[index].set_frame_addr(frame.address());
             if let Some(table) = self.next_level_table_mut(index) {
                 table.clear_all_entries();
+
+                let entry = &mut table[511];
+                entry.set_frame_addr(frame.address());
+                entry.set_flags(PageEntryFlags::WRITABLE);
+
                 Some(table)
             } else {
                 debug_assert!(false, "error");
@@ -200,6 +225,7 @@ impl ActivePageTable {
     //         })
     // }
 
+    /// FIXME: support N:N mapping.
     pub fn map(&mut self, page: Page, frame: Frame, allocator: &mut FrameAllocator) -> Result<(), Error> {
         let page_addr = page.address();
         let frame_addr = frame.address();
@@ -255,6 +281,24 @@ impl ActivePageTable {
         Ok(())
     }
 
+    pub fn auto_continuous_map(&mut self, frame: &Frame, allocator: &mut FrameAllocator) -> Option<(VirtualAddress, VirtualAddress)> {
+        let frame_count = 1 << frame.order();
+        let size = frame_count * frame::SIZE;
+        let page = self.find_empty_pages(frame_count, allocator)?;
+
+        for i in 0..frame_count {
+            let frame = Frame::from_address(frame.address() + i * frame::SIZE);
+            let page = Page::from_address(page.address() + i * page::SIZE);
+
+            if self.map(page, frame, allocator).is_err() {
+                panic!("FIXME")
+            }
+        }
+
+        let addr = page.address();
+        Some((addr, addr + size))
+    }
+
     pub fn unmap(&mut self, page: Page, allocator: &mut FrameAllocator) -> Result<(), Error> {
         let addr = page.address();
 
@@ -275,6 +319,11 @@ impl ActivePageTable {
     }
 
     pub fn find_empty_page(&mut self, allocator: &mut FrameAllocator) -> Option<Page> {
+        self.find_empty_pages(1, allocator)
+    }
+
+    // FIXME: support large page.
+    pub fn find_empty_pages(&mut self, count: usize, allocator: &mut FrameAllocator) -> Option<Page> {
         let table = self.level4_page_table_mut();
 
         let mut i4: usize = 0;
@@ -303,7 +352,7 @@ impl ActivePageTable {
                 }
             })
             .and_then(|table| {
-                if let Some(i1) = table.find_free_entry_index() {
+                if let Some(i1) = table.find_free_entry_index_with(count) {
                     let i = i4 * 512 * 512 * 512 + i3 * 512 * 512 + i2 * 512 + i1;
                     Some(Page::from_number(i))
                 } else {

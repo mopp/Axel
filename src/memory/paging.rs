@@ -44,7 +44,7 @@ use super::{Frame, FrameAdapter, FrameAllocator};
 use crate::bytes::Bytes;
 pub use page::Page;
 pub use page_index::PageIndex;
-use table::{ActivePageTable, InActivePageTable};
+pub use table::{ActivePageTable, InActivePageTable, ACTIVE_PAGE_TABLE};
 
 pub struct IdenticalReMapRequest(PhysicalAddress, usize);
 
@@ -54,10 +54,10 @@ impl IdenticalReMapRequest {
     }
 }
 
-pub fn init(remap_requests: &[IdenticalReMapRequest], mut bman: BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
-    let mut active_page_table = unsafe { ActivePageTable::new() };
+pub fn init(remap_requests: &[IdenticalReMapRequest], bman: &mut BuddyAllocator<FrameAdapter, Frame>) -> Result<(), Error> {
+    let mut active_page_table = ACTIVE_PAGE_TABLE.lock();
 
-    runtime_test(&mut active_page_table, &mut bman)?;
+    runtime_test(&mut active_page_table, bman)?;
 
     let kernel_begin = address::kernel_addr_begin_virtual();
     let kernel_end = address::kernel_addr_end_physical().to_virtual_addr();
@@ -67,8 +67,8 @@ pub fn init(remap_requests: &[IdenticalReMapRequest], mut bman: BuddyAllocator<F
     debug_assert_eq!(0, kernel_end & 0xfff);
 
     // Create new kernel page table.
-    let mut inactive_page_table = InActivePageTable::new(&mut active_page_table, &mut bman).ok_or(Error::NoUsableMemory)?;
-    active_page_table.with(&mut inactive_page_table, &mut bman, |table, allocator| {
+    let mut inactive_page_table = InActivePageTable::new(&mut active_page_table, bman).ok_or(Error::NoUsableMemory)?;
+    active_page_table.with(&mut inactive_page_table, bman, |table, allocator| {
         let v_range = (kernel_begin, kernel_end);
         let p_range = (address::kernel_addr_begin_physical(), address::kernel_addr_end_physical());
 

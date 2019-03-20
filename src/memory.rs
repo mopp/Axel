@@ -3,21 +3,26 @@ mod buddy_system;
 mod early_allocator;
 mod frame;
 mod frame_allocator;
+mod global_allocator;
 mod paging;
 mod region;
 
+use crate::ALLOCATOR;
 use address::*;
 use buddy_system::BuddyAllocator;
 use core::mem;
 use core::ptr::Unique;
-use early_allocator::EarlyAllocator;
+pub use early_allocator::EarlyAllocator;
 use failure::Fail;
 pub use frame::{Frame, FrameAdapter};
 pub use frame_allocator::FrameAllocator;
+use global_allocator::HeapAllocator;
+pub use global_allocator::GlobalAllocator;
 use paging::table::Error as PageTableError;
-pub use paging::table::{ActivePageTable, InActivePageTable};
 pub use paging::IdenticalReMapRequest;
+pub use paging::{ActivePageTable, InActivePageTable, ACTIVE_PAGE_TABLE};
 pub use region::{Multiboot2Adapter, Region};
+use alloc::boxed::Box;
 
 #[derive(Fail, Debug)]
 pub enum Error {
@@ -74,10 +79,19 @@ pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<It
         }
     };
 
-    let bman = BuddyAllocator::new(base_addr, frames, count_frames, FrameAdapter::new());
+    let mut bman = BuddyAllocator::new(base_addr, frames, count_frames, FrameAdapter::new());
     println!("{} buddy objects", bman.count_free_objs());
 
-    paging::init(remap_requests, bman)
+    paging::init(remap_requests, &mut bman)?;
+
+    // Initialize Rust heap allocator.
+    let allocator = HeapAllocator::new(&mut bman).ok_or(Error::NoUsableMemory)?;
+    ALLOCATOR.init(allocator);
+
+    let mut v = Box::new(100);
+    *v = 200;
+
+    Ok(())
 }
 
 #[inline(always)]
