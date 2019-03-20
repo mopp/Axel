@@ -333,11 +333,6 @@ impl ActivePageTable {
         entry.set_frame_addr(addr);
         entry.set_flags(PageEntryFlags::WRITABLE);
 
-        // Restore the active page table entry.
-        let entry = &mut self.level4_page_table_mut()[511];
-        entry.set_frame_addr(addr);
-        entry.set_flags(PageEntryFlags::WRITABLE);
-
         tlb::flush_all();
 
         result
