@@ -1,17 +1,23 @@
 use super::interrupt::InterruptFrame;
+use crate::process;
 
-pub struct Thread {}
+pub struct Thread {
+    interrupt_frame: InterruptFrame,
+}
 
 impl Thread {
     pub fn new() -> Thread {
-        Thread {}
+        Thread { interrupt_frame: InterruptFrame::new() }
     }
 }
 
-pub fn switch_context(frame: &mut InterruptFrame) {
-    crate::process::select_threads(|| {
-        frame.cs = 8 * 3 + 3;
-        frame.ss = 8 * 4 + 3;
+// Steps
+//   1. Change segment selector to user mode.
+//   2. Keep the current execution context.
+pub fn switch_context(current_interrupt_frame: &mut InterruptFrame) {
+    process::switch_context(|_current_thread: &mut Thread, _next_thread: &mut Thread| {
+        current_interrupt_frame.cs = 8 * 3 + 3;
+        current_interrupt_frame.ss = 8 * 4 + 3;
         unsafe {
             asm!("mov ds, $0
                   mov es, $0
@@ -19,7 +25,7 @@ pub fn switch_context(frame: &mut InterruptFrame) {
                   mov gs, $0
                  "
                  :
-                 : "r"(frame.ss as u16)
+                 : "r"(current_interrupt_frame.ss as u16)
                  : "ax"
                  : "intel", "volatile"
             );

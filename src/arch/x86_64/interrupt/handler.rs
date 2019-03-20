@@ -21,6 +21,12 @@ pub struct InterruptFrame {
     pub ss: usize,
 }
 
+impl InterruptFrame {
+    pub fn new() -> InterruptFrame {
+        InterruptFrame { ip: 0, cs: 0, flags: 0, sp: 0, ss: 0 }
+    }
+}
+
 impl fmt::Debug for InterruptFrame {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "InterruptFrame {{ cs:ip = 0x{:x}:0x{:x}, ss:sp = 0x{:x}:0x{:x}, flags = 0x{:x}}}", self.cs, self.ip, self.ss, self.sp, self.flags)
