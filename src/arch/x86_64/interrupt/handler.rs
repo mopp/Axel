@@ -21,11 +21,11 @@ pub struct InterruptFrame {
     pub ss: usize,
 }
 
-impl InterruptFrame {
-    pub fn new() -> InterruptFrame {
-        InterruptFrame { ip: 0, cs: 0, flags: 0, sp: 0, ss: 0 }
-    }
-}
+// impl InterruptFrame {
+//     pub fn new() -> InterruptFrame {
+//         InterruptFrame { ip: 0, cs: 0, flags: 0, sp: 0, ss: 0 }
+//     }
+// }
 
 impl fmt::Debug for InterruptFrame {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

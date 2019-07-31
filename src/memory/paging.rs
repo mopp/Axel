@@ -95,7 +95,7 @@ pub fn init(remap_requests: &[IdenticalReMapRequest], bman: &mut BuddyAllocator<
 }
 
 #[inline(always)]
-pub fn runtime_test(active_page_table: &mut ActivePageTable, allocator: &mut FrameAllocator) -> Result<(), Error> {
+pub fn runtime_test(active_page_table: &mut ActivePageTable, allocator: &mut dyn FrameAllocator) -> Result<(), Error> {
     // Runtime test.
     let frame = allocator.alloc_one().ok_or(Error::NoUsableMemory)?;
 

@@ -9,6 +9,7 @@ mod region;
 
 use crate::ALLOCATOR;
 use address::*;
+use alloc::boxed::Box;
 use buddy_system::BuddyAllocator;
 use core::mem;
 use core::ptr::Unique;
@@ -16,13 +17,12 @@ pub use early_allocator::EarlyAllocator;
 use failure::Fail;
 pub use frame::{Frame, FrameAdapter};
 pub use frame_allocator::FrameAllocator;
-use global_allocator::HeapAllocator;
 pub use global_allocator::GlobalAllocator;
+use global_allocator::HeapAllocator;
 use paging::table::Error as PageTableError;
 pub use paging::IdenticalReMapRequest;
 pub use paging::{ActivePageTable, InActivePageTable, ACTIVE_PAGE_TABLE};
 pub use region::{Multiboot2Adapter, Region};
-use alloc::boxed::Box;
 
 #[derive(Fail, Debug)]
 pub enum Error {
@@ -44,13 +44,12 @@ pub fn clean_bss_section() {
     let size = kernel_bss_section_size() as i32;
 
     unsafe {
-        use rlibc;
         rlibc::memset(begin, size, 0x00);
     }
 }
 
 #[inline(always)]
-pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &region::Adapter<Item = U, Target = T>, remap_requests: &[IdenticalReMapRequest]) -> Result<(), Error> {
+pub fn init<U: Into<Region>, T: Iterator<Item = U>>(regions: &dyn region::Adapter<Item = U, Target = T>, remap_requests: &[IdenticalReMapRequest]) -> Result<(), Error> {
     let kernel_addr_begin_physical = kernel_addr_begin_physical();
 
     let mut usable_memory_regions = regions.iter().filter(|region| kernel_addr_begin_physical <= region.base_addr());

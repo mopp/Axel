@@ -2,13 +2,13 @@ use super::interrupt::InterruptFrame;
 use crate::process;
 
 pub struct Thread {
-    interrupt_frame: InterruptFrame,
+    // interrupt_frame: InterruptFrame,
 }
 
 impl Thread {
-    pub fn new() -> Thread {
-        Thread { interrupt_frame: InterruptFrame::new() }
-    }
+    // pub fn new() -> Thread {
+    //     Thread { interrupt_frame: InterruptFrame::new() }
+    // }
 }
 
 // Steps

@@ -132,7 +132,7 @@ where
         self.next_level_table_address(index).map(|address| unsafe { &mut *(address as *mut _) })
     }
 
-    pub fn next_level_table_create_mut(&mut self, index: usize, allocator: &mut FrameAllocator) -> Option<&mut Table<T::NextLevel>> {
+    pub fn next_level_table_create_mut(&mut self, index: usize, allocator: &mut dyn FrameAllocator) -> Option<&mut Table<T::NextLevel>> {
         // TODO; refactor
         if self.next_level_table_mut(index).is_some() {
             return self.next_level_table_mut(index);
@@ -226,7 +226,7 @@ impl ActivePageTable {
     // }
 
     /// FIXME: support N:N mapping.
-    pub fn map(&mut self, page: Page, frame: Frame, allocator: &mut FrameAllocator) -> Result<(), Error> {
+    pub fn map(&mut self, page: Page, frame: Frame, allocator: &mut dyn FrameAllocator) -> Result<(), Error> {
         let page_addr = page.address();
         let frame_addr = frame.address();
 
@@ -250,7 +250,7 @@ impl ActivePageTable {
     }
 
     // TODO: consider suitable name.
-    pub fn map_fitting(&mut self, v_range: (VirtualAddress, VirtualAddress), p_range: (PhysicalAddress, PhysicalAddress), allocator: &mut FrameAllocator) -> Result<(), Error> {
+    pub fn map_fitting(&mut self, v_range: (VirtualAddress, VirtualAddress), p_range: (PhysicalAddress, PhysicalAddress), allocator: &mut dyn FrameAllocator) -> Result<(), Error> {
         let (v_begin, v_end) = v_range;
         let (p_begin, p_end) = p_range;
         debug_assert_eq!(v_end - v_begin, p_end - p_begin);
@@ -281,7 +281,7 @@ impl ActivePageTable {
         Ok(())
     }
 
-    pub fn auto_continuous_map(&mut self, frame: &Frame, allocator: &mut FrameAllocator) -> Option<(VirtualAddress, VirtualAddress)> {
+    pub fn auto_continuous_map(&mut self, frame: &Frame, allocator: &mut dyn FrameAllocator) -> Option<(VirtualAddress, VirtualAddress)> {
         let frame_count = 1 << frame.order();
         let size = frame_count * frame::SIZE;
         let page = self.find_empty_pages(frame_count, allocator)?;
@@ -299,7 +299,7 @@ impl ActivePageTable {
         Some((addr, addr + size))
     }
 
-    pub fn unmap(&mut self, page: Page, allocator: &mut FrameAllocator) -> Result<(), Error> {
+    pub fn unmap(&mut self, page: Page, allocator: &mut dyn FrameAllocator) -> Result<(), Error> {
         let addr = page.address();
 
         // FIXME: Support huge page.
@@ -318,12 +318,12 @@ impl ActivePageTable {
         Ok(())
     }
 
-    pub fn find_empty_page(&mut self, allocator: &mut FrameAllocator) -> Option<Page> {
+    pub fn find_empty_page(&mut self, allocator: &mut dyn FrameAllocator) -> Option<Page> {
         self.find_empty_pages(1, allocator)
     }
 
     // FIXME: support large page.
-    pub fn find_empty_pages(&mut self, count: usize, allocator: &mut FrameAllocator) -> Option<Page> {
+    pub fn find_empty_pages(&mut self, count: usize, allocator: &mut dyn FrameAllocator) -> Option<Page> {
         let table = self.level4_page_table_mut();
 
         let mut i4: usize = 0;
@@ -361,7 +361,7 @@ impl ActivePageTable {
             })
     }
 
-    pub fn with(&mut self, inactive_page_table: &mut InActivePageTable, allocator: &mut FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut FrameAllocator) -> Result<(), Error>)) -> Result<(), Error> {
+    pub fn with(&mut self, inactive_page_table: &mut InActivePageTable, allocator: &mut dyn FrameAllocator, f: (impl Fn(&mut ActivePageTable, &mut dyn FrameAllocator) -> Result<(), Error>)) -> Result<(), Error> {
         // Keep the current active page table entry to restore it.
         let addr = registers::control::Cr3::read().0.start_address().as_u64() as usize;
         let original_table_frame = Frame::from_address(addr);
@@ -409,7 +409,7 @@ pub struct InActivePageTable {
 }
 
 impl InActivePageTable {
-    pub fn new(active_page_table: &mut ActivePageTable, allocator: &mut FrameAllocator) -> Option<InActivePageTable> {
+    pub fn new(active_page_table: &mut ActivePageTable, allocator: &mut dyn FrameAllocator) -> Option<InActivePageTable> {
         allocator.alloc_one().map(|frame| {
             let p = active_page_table.find_empty_page(allocator).unwrap();
             active_page_table.map(p.clone(), frame.clone(), allocator).unwrap();

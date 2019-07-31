@@ -46,7 +46,7 @@ impl GlobalAllocator {
 }
 
 pub struct HeapAllocator {
-    used_pages: LinkedList<FrameAdapter>,
+    // used_pages: LinkedList<FrameAdapter>,
     addr_begin: usize,
     addr_end: usize,
 }
@@ -61,7 +61,8 @@ impl HeapAllocator {
 
         pages.push_front(frame);
 
-        Some(HeapAllocator { used_pages: pages, addr_begin, addr_end })
+        // Some(HeapAllocator { used_pages: pages, addr_begin, addr_end })
+        Some(HeapAllocator { addr_begin, addr_end })
     }
 }
 

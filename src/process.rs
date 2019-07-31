@@ -1,32 +1,32 @@
 use crate::arch::Thread;
-use crate::memory::{ActivePageTable, FrameAllocator, InActivePageTable, ACTIVE_PAGE_TABLE};
-use alloc::boxed::Box;
+// use crate::memory::{ActivePageTable, FrameAllocator, InActivePageTable, ACTIVE_PAGE_TABLE};
+// use alloc::boxed::Box;
 use core::mem;
 use core::ptr;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
 struct Process {
-    page_table: InActivePageTable,
+    // page_table: InActivePageTable,
     thread: Thread,
 }
-
-impl Process {
-    fn new(active_page_table: &mut ActivePageTable, allocator: &mut FrameAllocator) -> Process {
-        // FIXME: remove 1st argument (ActivePageTable).
-        Process {
-            page_table: InActivePageTable::new(active_page_table, allocator).unwrap(),
-            thread: Thread::new(),
-        }
-    }
-}
+//
+// impl Process {
+//     fn new(active_page_table: &mut ActivePageTable, allocator: &mut FrameAllocator) -> Process {
+//         // FIXME: remove 1st argument (ActivePageTable).
+//         Process {
+//             page_table: InActivePageTable::new(active_page_table, allocator).unwrap(),
+//             thread: Thread::new(),
+//         }
+//     }
+// }
 
 const MAX_PROCESS_COUNT: usize = 16;
 
 pub struct ProcessManager {
     // current_process: Box<Process>,
     processes: [Option<Process>; MAX_PROCESS_COUNT],
-    current_index: usize,
+    // current_index: usize,
 }
 
 impl ProcessManager {
@@ -41,7 +41,7 @@ impl ProcessManager {
 
             // processes[0] = create_init_user_process();
 
-            ProcessManager { processes, current_index: 0 }
+            ProcessManager { processes }
         }
     }
 }
