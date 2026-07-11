@@ -9,7 +9,7 @@ use failure::Fail;
 pub enum Error {
     #[fail(display = "No memory map is in multiboot_info")]
     NoMemoryMap,
-    #[fail(display = "Memory initialization faild: {}", _0)]
+    #[fail(display = "Memory initialization failed: {}", _0)]
     MemoryInitializationFailed(MemoryError),
 }
 
